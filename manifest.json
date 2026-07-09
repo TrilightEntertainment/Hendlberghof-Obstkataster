@@ -1,0 +1,15 @@
+{
+  "name": "Hendlberghof Obstdatenbank",
+  "short_name": "Obstdatenbank",
+  "description": "Digitales Baumkataster für den Hendlberghof",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#F1EDE2",
+  "theme_color": "#2E3F2A",
+  "lang": "de",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ]
+}
