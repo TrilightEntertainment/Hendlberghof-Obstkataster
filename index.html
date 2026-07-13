@@ -205,6 +205,14 @@
     font-size:.78rem;color:var(--muted);background:#fff4e0;border:1px dashed #f0d19a;
     padding:8px 12px;border-radius:8px;margin-top:14px;
   }
+  .arche-link{
+    display:inline-flex;align-items:center;margin:2px 0 10px;
+    font-family:'DM Sans',sans-serif;font-size:.78rem;font-weight:600;letter-spacing:.2px;
+    color:var(--waldrand);text-decoration:none;
+    border:1px solid var(--border);border-radius:20px;padding:5px 13px;background:transparent;
+    transition:border-color .12s,background .12s;
+  }
+  .arche-link:hover{border-color:var(--stroh);background:#faf7ef;}
   .card .snippet{font-size:.85rem;color:var(--text);line-height:1.4;}
   .empty{color:var(--muted);font-style:italic;}
 
@@ -1258,6 +1266,14 @@ function fieldRow(label, val){
   return `<div class="field"><b>${label}</b>${val}</div>`;
 }
 
+function archeNoahLink(obj){
+  if(!obj || !obj.arche_pdf) return '';
+  return `<a class="arche-link" href="${obj.arche_pdf}" target="_blank" rel="noopener" title="Offizielles Arche-Noah-Sortenblatt (PDF) öffnen">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false" style="margin-right:6px;">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+    Sortenblatt: Arche Noah</a>`;
+}
+
 const VERWENDUNG_OPTIONEN = ['Tafelobst','Wirtschaftsobst','Saft/Most'];
 
 function getSorte(sorteName){
@@ -1329,6 +1345,7 @@ function openBaumModal(id){
       : (state.verifiziert[t.sorte]? `<div class="badge-verifiziert">✓ Verifiziert am ${state.verifiziert[t.sorte]}</div>
       <button class="btn-verify done" onclick="toggleVerifiziert('${t.sorte.replace(/'/g,"\\'")}', {baumId:'${t.id}'})">Verifizierung zurücknehmen</button>` : '')}
     <h2>${t.sorte||'Unbekannte Sorte'} <span class="idbadge">${t.id_placeholder? 'ID noch offen' : 'ID '+t.id}</span></h2>
+    ${archeNoahLink(merged)}
     <div class="grid2">
       ${fieldRow('Obstart', t.frucht)}
       ${fieldRow('Pflückreife', merged.pflueckzeitpunkt||merged.pflueck_reifezeit)}
@@ -1452,6 +1469,7 @@ function openSortenModal(sorteName){
       : (state.verifiziert[s.sorte]? `<div class="badge-verifiziert">✓ Verifiziert am ${state.verifiziert[s.sorte]}</div>
       <button class="btn-verify done" onclick="toggleVerifiziert('${s.sorte.replace(/'/g,"\\'")}')">Verifizierung zurücknehmen</button>` : '')}
     <h2>${s.sorte}</h2>
+    ${archeNoahLink(s)}
     <div class="grid2">
       ${fieldRow('Obstart', s.frucht)}
       ${fieldRow('Pflückreife', s.pflueckzeitpunkt||s.pflueck_reifezeit)}
