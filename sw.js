@@ -1,5 +1,12 @@
-const CACHE_NAME = 'hendlberghof-v1';
-const CORE_ASSETS = ['./', './index.html'];
+const CACHE_NAME = 'hendlberghof-v2';
+const CORE_ASSETS = [
+  './',
+  './index.html',
+  './assets/images/lageplan.jpg',
+  './icons/icon-192.png',
+  './icons/icon-512.png',
+  './manifest.json'
+];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
