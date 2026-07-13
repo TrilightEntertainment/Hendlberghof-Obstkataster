@@ -317,6 +317,100 @@
     table{font-size:.8rem;}
     thead th, tbody td{padding:8px 8px;}
   }
+/* ===== Sortenberater (integriert, an App-Design angepasst) ===== */
+#tab-sortenberater{max-width:760px;margin:0 auto;--gruen:#2E3F2A;--gruen-hell:#eaf3de;--gruen-mid:#6E8A4E;--braun:#854F0B;--braun-hell:#FAEEDA;--rand:#E2DACB;--blau:#185FA5;--blau-hell:#E6F1FB;--lila:#993556;--lila-hell:#FBEAF0;--text:#2A231D;--text-mid:#5F5E5A;--text-leicht:#7A7168;--weiss:#ffffff;--stroh:#D9B458;--radius:10px}
+#tab-sortenberater .sbr-tabs{display:flex;background:var(--weiss);border-bottom:1px solid var(--rand);max-width:760px;margin:0 auto}
+#tab-sortenberater .sbr-tab{flex:1;padding:12px 10px;text-align:center;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:500;color:var(--text-mid);cursor:pointer;border-bottom:2px solid transparent;transition:all .15s}
+#tab-sortenberater .sbr-tab:hover{color:var(--gruen)}
+#tab-sortenberater .sbr-tab.active{color:var(--gruen);border-bottom-color:var(--stroh);font-weight:600}
+#tab-sortenberater .sbr-panel{display:none}
+#tab-sortenberater .sbr-panel.active{display:block}
+#tab-sortenberater .sb-sec{margin-bottom:1.75rem}
+#tab-sortenberater .sb-title{font-family:'DM Sans',sans-serif;font-size:11px;font-weight:600;color:var(--text-leicht);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;border-bottom:1px solid var(--rand);padding-bottom:6px}
+#tab-sortenberater .sb-arten{display:flex;gap:10px}
+#tab-sortenberater .sb-art{flex:1;padding:11px 10px;border:1px solid var(--rand);border-radius:var(--radius);cursor:pointer;text-align:center;font-family:'Cormorant Garamond',serif;font-size:1.05rem;color:var(--text-mid);background:var(--weiss);transition:all .15s}
+#tab-sortenberater .sb-art:hover{border-color:var(--gruen-mid);color:var(--gruen)}
+#tab-sortenberater .sb-art.active{border-color:var(--gruen);background:var(--gruen-hell);color:var(--gruen);font-weight:600}
+#tab-sortenberater .sb-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:1rem}
+@media(max-width:520px){#tab-sortenberater .sb-grid{grid-template-columns:1fr}}
+#tab-sortenberater .sb-field{display:flex;flex-direction:column;gap:6px}
+#tab-sortenberater .sb-field label{font-family:'DM Sans',sans-serif;font-size:12px;color:var(--text-mid);font-weight:500}
+#tab-sortenberater select{width:100%;padding:8px 10px;border:1px solid var(--rand);border-radius:var(--radius);background:var(--weiss);font-family:'Cormorant Garamond',serif;font-size:1rem;color:var(--text);appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888780' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;cursor:pointer}
+#tab-sortenberater select:focus{outline:2px solid var(--gruen);outline-offset:1px}
+#tab-sortenberater .sb-slider-row{display:flex;align-items:center;gap:10px}
+#tab-sortenberater .sb-slider-row input[type=range]{flex:1;accent-color:var(--gruen);cursor:pointer}
+#tab-sortenberater .sb-val{font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;min-width:48px;color:var(--gruen)}
+#tab-sortenberater .sb-checks{display:flex;flex-wrap:wrap;gap:10px}
+#tab-sortenberater .sb-check{display:flex;align-items:center;gap:6px;font-size:.95rem;color:var(--text-mid);cursor:pointer}
+#tab-sortenberater .sb-check input{accent-color:var(--gruen);cursor:pointer;width:15px;height:15px}
+#tab-sortenberater .sbr-btn{display:inline-block;padding:11px 28px;background:var(--gruen);color:#fff;border:none;border-radius:var(--radius);font-family:'Cormorant Garamond',serif;font-size:1.05rem;font-weight:600;cursor:pointer;transition:background .15s}
+#tab-sortenberater .sbr-btn:hover{background:var(--gruen-mid)}
+#tab-sortenberater #res{margin-top:2rem}
+#tab-sortenberater .sb-leer{background:var(--weiss);border:1px solid var(--rand);border-radius:12px;padding:1.5rem;color:var(--text-leicht);font-style:italic;font-size:1rem;line-height:1.7}
+#tab-sortenberater .res-header{font-family:'DM Sans',sans-serif;font-size:12px;color:var(--text-leicht);margin-bottom:14px;letter-spacing:.03em}
+#tab-sortenberater .sb-sorte{background:var(--weiss);border:1px solid var(--rand);border-left:3px solid var(--gruen);border-radius:12px;padding:1.1rem 1.4rem;margin-bottom:12px}
+#tab-sortenberater .sb-sorte-name{font-size:1.15rem;font-weight:600;color:var(--text);margin-bottom:3px}
+#tab-sortenberater .sb-reife{font-family:'DM Sans',sans-serif;font-size:12px;color:var(--text-leicht);font-weight:400;margin-left:8px}
+#tab-sortenberater .sb-tags{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
+#tab-sortenberater .sb-tag{font-family:'DM Sans',sans-serif;font-size:11px;padding:3px 9px;border-radius:20px;font-weight:600}
+#tab-sortenberater .tg{background:var(--gruen-hell);color:var(--gruen)}
+#tab-sortenberater .ta{background:var(--braun-hell);color:var(--braun)}
+#tab-sortenberater .tb{background:var(--blau-hell);color:var(--blau)}
+#tab-sortenberater .tp{background:var(--lila-hell);color:var(--lila)}
+#tab-sortenberater .sb-gilde{font-size:.92rem;color:var(--text-mid);line-height:1.65;margin-top:4px}
+#tab-sortenberater .sb-gilde strong{font-family:'DM Sans',sans-serif;font-size:11px;color:var(--text-leicht);font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-right:5px}
+#tab-sortenberater .sl-toolbar{display:flex;gap:10px;margin-bottom:1.25rem;flex-wrap:wrap;align-items:center}
+#tab-sortenberater .sl-search{flex:1;min-width:160px;padding:8px 12px;border:1px solid var(--rand);border-radius:var(--radius);font-family:'Cormorant Garamond',serif;font-size:1rem;color:var(--text);background:var(--weiss)}
+#tab-sortenberater .sl-search:focus{outline:2px solid var(--gruen);outline-offset:1px}
+#tab-sortenberater .sl-filter-btn{padding:6px 12px;border:1px solid var(--rand);border-radius:20px;font-family:'DM Sans',sans-serif;font-size:11px;font-weight:500;color:var(--text-mid);background:var(--weiss);cursor:pointer;transition:all .15s;white-space:nowrap;margin:2px}
+#tab-sortenberater .sl-filter-btn:hover{border-color:var(--gruen-mid);color:var(--gruen)}
+#tab-sortenberater .sl-filter-btn.active{border-color:var(--gruen);background:var(--gruen-hell);color:var(--gruen)}
+#tab-sortenberater .sl-art-tabs{display:flex;gap:8px;margin-bottom:1rem;flex-wrap:wrap}
+#tab-sortenberater .sl-art-tab{padding:8px 18px;border:1px solid var(--rand);border-radius:var(--radius);font-family:'Cormorant Garamond',serif;font-size:1rem;color:var(--text-mid);background:var(--weiss);cursor:pointer;transition:all .15s}
+#tab-sortenberater .sl-art-tab.active{border-color:var(--gruen);background:var(--gruen-hell);color:var(--gruen);font-weight:600}
+#tab-sortenberater .sl-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:520px){#tab-sortenberater .sl-grid{grid-template-columns:1fr}}
+#tab-sortenberater .sl-card{background:var(--weiss);border:1.5px solid var(--rand);border-radius:12px;padding:1rem 1.2rem;cursor:pointer;transition:all .15s;position:relative}
+#tab-sortenberater .sl-card:hover{border-color:var(--gruen-mid);box-shadow:0 2px 8px rgba(59,109,17,.08)}
+#tab-sortenberater .sl-card.selected{border-color:var(--gruen);border-width:2px;background:var(--gruen-hell)}
+#tab-sortenberater .sl-card-check{position:absolute;top:10px;right:10px;width:20px;height:20px;border-radius:50%;border:2px solid var(--rand);background:var(--weiss);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+#tab-sortenberater .sl-card.selected .sl-card-check{background:var(--gruen);border-color:var(--gruen)}
+#tab-sortenberater .sl-card-check svg{display:none}
+#tab-sortenberater .sl-card.selected .sl-card-check svg{display:block}
+#tab-sortenberater .sl-card-name{font-size:1.05rem;font-weight:600;color:var(--text);margin-bottom:2px;padding-right:28px}
+#tab-sortenberater .sl-card-reife{font-family:'DM Sans',sans-serif;font-size:11px;color:var(--text-leicht);margin-bottom:8px}
+#tab-sortenberater .sl-card-desc{font-size:.88rem;color:var(--text-mid);line-height:1.55;margin-top:6px}
+#tab-sortenberater .sl-empty{color:var(--text-leicht);font-style:italic;font-size:1rem;padding:1rem 0}
+#tab-sortenberater .sl-auswahl-bar{background:var(--gruen);color:#fff;border-radius:12px;padding:1rem 1.4rem;margin-bottom:1.5rem;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+#tab-sortenberater .sl-auswahl-bar p{font-size:.95rem}
+#tab-sortenberater .sl-auswahl-bar button{padding:7px 16px;background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.4);border-radius:6px;color:#fff;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;cursor:pointer}
+#tab-sortenberater .sl-count{font-family:'DM Sans',sans-serif;font-size:12px;color:var(--text-leicht);margin-bottom:12px}
+#tab-sortenberater .an-badge{display:inline-block;font-family:'DM Sans',sans-serif;font-size:10px;padding:2px 7px;border-radius:20px;background:#FFF3CD;color:#7A5700;font-weight:600;margin-bottom:6px;border:1px solid #E8D48A}
+#tab-sortenberater .an-hint{font-family:'DM Sans',sans-serif;font-size:12px;color:var(--text-leicht);margin-bottom:1rem;line-height:1.6;padding:.75rem 1rem;background:var(--weiss);border:1px solid var(--rand);border-radius:8px}
+#tab-sortenberater .an-hint a{color:var(--gruen);text-decoration:none}
+#tab-sortenberater .an-abc{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:1rem}
+#tab-sortenberater .an-abc-btn{min-width:30px;height:30px;padding:0 6px;border:1px solid var(--rand);border-radius:6px;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;color:var(--text-mid);background:var(--weiss);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s}
+#tab-sortenberater .an-abc-btn:hover{border-color:var(--gruen-mid);color:var(--gruen)}
+#tab-sortenberater .an-abc-btn.active{border-color:var(--gruen);background:var(--gruen-hell);color:var(--gruen)}
+#tab-sortenberater .an-pdf-link{display:inline-block;margin-top:8px;font-family:'DM Sans',sans-serif;font-size:11px;color:var(--gruen);text-decoration:none;font-weight:600;border:1px solid var(--gruen-hell);padding:3px 8px;border-radius:4px;background:var(--gruen-hell)}
+#tab-sortenberater .an-monate{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:1rem}
+#tab-sortenberater .an-monat-btn{min-width:36px;height:30px;padding:0 6px;border:1px solid var(--rand);border-radius:6px;font-family:'DM Sans',sans-serif;font-size:11px;font-weight:600;color:var(--text-mid);background:var(--weiss);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s}
+#tab-sortenberater .an-monat-btn:hover{border-color:var(--gruen-mid);color:var(--gruen)}
+#tab-sortenberater .an-monat-btn.active{border-color:var(--gruen);background:var(--gruen-hell);color:var(--gruen)}
+#tab-sortenberater .an-ernte-bar{display:flex;gap:2px;margin:6px 0 4px}
+#tab-sortenberater .an-ernte-dot{width:14px;height:14px;border-radius:3px;font-family:'DM Sans',sans-serif;font-size:8px;font-weight:700;display:flex;align-items:center;justify-content:center;color:rgba(0,0,0,.35)}
+#tab-sortenberater .an-ernte-dot.aktiv{background:#C0392B;color:#fff}
+#tab-sortenberater .an-ernte-dot.lager{background:#FAEEDA;border:1px solid #854F0B;color:#854F0B}
+#tab-sortenberater .an-ernte-dot.inaktiv{background:var(--erde-hell);border:1px solid var(--rand)}
+#tab-sortenberater .an-ernte-dot.genuss{background:#EAF3DE;border:1px solid #3B6D11;color:#3B6D11}
+#tab-sortenberater .an-modus-btn{padding:7px 14px;border:1px solid var(--rand);border-radius:20px;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:500;color:var(--text-mid);background:var(--weiss);cursor:pointer;transition:all .15s}
+#tab-sortenberater .an-modus-btn:hover{border-color:var(--gruen-mid);color:var(--gruen)}
+#tab-sortenberater .an-modus-btn.active{border-color:var(--gruen);background:var(--gruen-hell);color:var(--gruen);font-weight:600}
+#tab-sortenberater .an-ernte-zeile{font-family:'DM Sans',sans-serif;font-size:11px;color:#C0392B;margin-bottom:2px;font-weight:600;display:flex;align-items:center;gap:5px}
+#tab-sortenberater .an-lager-zeile{font-family:'DM Sans',sans-serif;font-size:11px;color:#854F0B;margin-bottom:2px;font-weight:500;display:flex;align-items:center;gap:5px}
+#tab-sortenberater .an-genuss-zeile{font-family:'DM Sans',sans-serif;font-size:11px;color:#3B6D11;margin-top:1px;font-weight:600;display:flex;align-items:center;gap:5px}
+#tab-sortenberater .an-pdf-link:hover{background:var(--gruen);color:#fff}
+#tab-sortenberater .an-search-row{display:flex;gap:10px;margin-bottom:1rem;flex-wrap:wrap;align-items:center}
 </style>
 </head>
 <body>
@@ -339,6 +433,7 @@
   <button class="tab-btn active" data-tab="baumkataster">Baumkataster</button>
   <button class="tab-btn" data-tab="sorten">Sorten</button>
   <button class="tab-btn" data-tab="lageplan">Lageplan</button>
+  <button class="tab-btn" data-tab="sortenberater">Sortenberater</button>
   <button class="tab-btn" id="tab-btn-daten" data-tab="daten" style="display:none;">Daten &amp; Sicherung</button>
 </nav>
 
@@ -454,6 +549,90 @@
     </div>
   </section>
 
+  <section id="tab-sortenberater" style="display:none;">
+<div class="sbr-tabs">
+  <div class="sbr-tab active" onclick="sbrShowTab('berater')">Standort-Berater</div>
+  <div class="sbr-tab" onclick="sbrShowTab('liste')">Hofsortenpool</div>
+  <div class="sbr-tab" onclick="sbrShowTab('arche')">Arche Noah Sorten</div>
+</div>
+<main>
+
+<!-- BERATER -->
+<div class="sbr-panel active" id="panel-berater">
+<div class="sb-sec">
+  <div class="sb-title">Obstart</div>
+  <div class="sb-arten">
+    <div class="sb-art active" id="art-apfel" onclick="setArt('apfel')">Apfel</div>
+    <div class="sb-art" id="art-birne" onclick="setArt('birne')">Birne</div>
+    <div class="sb-art" id="art-zwetschke" onclick="setArt('zwetschke')">Zwetschke</div>
+  </div>
+</div>
+<div class="sb-sec">
+  <div class="sb-title">Standort</div>
+  <div class="sb-grid">
+    <div class="sb-field"><label>Höhenlage</label>
+      <div class="sb-slider-row">
+        <input type="range" min="200" max="1200" step="10" value="720" id="hoehe" oninput="document.getElementById('hv').textContent=this.value+'m'">
+        <span class="sb-val" id="hv">720m</span>
+      </div>
+    </div>
+    <div class="sb-field"><label>Exposition</label>
+      <select id="expo"><option value="sued">Südhang</option><option value="nord">Nordhang</option><option value="ost">Osthang</option><option value="west">Westhang</option><option value="mulde" selected>Ebene / Mulde</option></select>
+    </div>
+    <div class="sb-field"><label>Spätfrostrisiko</label>
+      <select id="frost"><option value="hoch">hoch (Mulde, Talboden)</option><option value="mittel" selected>mittel</option><option value="gering">gering (Hanglagen)</option></select>
+    </div>
+    <div class="sb-field"><label>Niederschlag</label>
+      <select id="ns"><option value="trocken">trocken (&lt;600mm)</option><option value="mittel" selected>mittel (600–900mm)</option><option value="feucht">feucht (&gt;900mm)</option></select>
+    </div>
+  </div>
+</div>
+<div class="sb-sec">
+  <div class="sb-title">Nutzungsziel</div>
+  <div class="sb-checks" id="ziele-box"></div>
+</div>
+<button class="sbr-btn" onclick="beraten()">Sorten empfehlen</button>
+<div id="res"><div class="sb-leer">Standort und Ziele wählen — der Berater filtert aus dem Hofsortenpool nach Permakultur-Prinzipien.</div></div>
+</div>
+
+<!-- HOFSORTEN -->
+<div class="sbr-panel" id="panel-liste">
+<div id="auswahl-bar" style="display:none" class="sl-auswahl-bar">
+  <p><span id="auswahl-count">0</span> Sorten ausgewählt</p>
+  <button onclick="auswahl_leeren()">Auswahl leeren</button>
+</div>
+<div class="sl-art-tabs">
+  <div class="sl-art-tab active" id="sl-art-apfel" onclick="slSetArt('apfel')">Apfel</div>
+  <div class="sl-art-tab" id="sl-art-birne" onclick="slSetArt('birne')">Birne</div>
+  <div class="sl-art-tab" id="sl-art-zwetschke" onclick="slSetArt('zwetschke')">Zwetschke</div>
+</div>
+<div class="sl-toolbar">
+  <input class="sl-search" type="text" id="sl-search" placeholder="Sorte suchen…" oninput="renderListe()">
+  <div id="sl-filter-buttons"></div>
+</div>
+<div id="sl-count" class="sl-count"></div>
+<div class="sl-grid" id="sl-grid"></div>
+</div>
+
+<!-- ARCHE NOAH A–F -->
+<div class="sbr-panel" id="panel-arche">
+<div class="an-hint">
+  Echte Sortenblätter von <a href="https://www.arche-noah.at/sortenerhaltung/obst-obstsammlung/sortenbeschreibungen/" target="_blank">Arche Noah, Schiltern</a> — Apfelsorten A bis Z &middot; <strong>Sortenblatt PDF</strong> öffnet das offizielle Dokument direkt. Klick auf Karte = zur Hofauswahl merken.
+</div>
+<div class="an-search-row">
+  <input class="sl-search" type="text" id="an-search" placeholder="Sortenname oder Stichwort…" oninput="renderArche()" style="flex:1">
+</div>
+<div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+  <button class="an-modus-btn active" id="modus-ernte" onclick="anSetModus('ernte')">Erntemonat</button>
+  <button class="an-modus-btn" id="modus-genuss" onclick="anSetModus('genuss')">Genussreife</button>
+</div>
+<div class="sb-title" id="an-filter-title" style="margin-bottom:8px">Erntemonat — Ernte erzielen &amp; Sukzession beobachten</div>
+<div class="an-monate" id="an-monate"></div>
+<div class="an-abc" id="an-abc"></div>
+<div id="an-count" class="sl-count"></div>
+<div class="sl-grid" id="an-grid"></div>
+</div>
+  </section>
 </main>
 
 <footer>Hendlberghof · Obstdatenbank · Grunddaten aus Numbers-Export (Apfel/Birne) · lokal, offline, ohne Cloud-Anbindung</footer>
@@ -2018,6 +2197,374 @@ window.__dataReadyPromise = Promise.all([
       navigator.serviceWorker.register('sw.js').catch(()=>{});
     });
   }
+</script>
+<script>
+/* ===== Sortenberater ===== */
+
+// ─── HOFSORTEN ────────────────────────────────────────────────────────────────
+const ZIELE_DEF={apfel:[{id:'tafel',label:'Tafelobst'},{id:'most',label:'Most / Cider'},{id:'lager',label:'Lagerfähigkeit'},{id:'frueh',label:'Frühe Reife'},{id:'robust',label:'Pilzresistenz'},{id:'wild',label:'Wildtiernahrung'}],birne:[{id:'tafel',label:'Tafelobst'},{id:'most',label:'Most / Saft'},{id:'lager',label:'Lagerfähigkeit'},{id:'frueh',label:'Frühe Reife'},{id:'robust',label:'Robustheit'},{id:'bestaeuber',label:'Bestäuberblüte'}],zwetschke:[{id:'tafel',label:'Tafelobst'},{id:'einkochen',label:'Einkochen / Marmelade'},{id:'schnaps',label:'Schnaps / Destillat'},{id:'frueh',label:'Frühe Reife'},{id:'robust',label:'Robustheit'},{id:'wild',label:'Wildtiernahrung'}]};
+const SORTEN={apfel:[{name:'Weißer Klarapfel',reife:'Juli',hmax:900,expo:['sued','ost','west','mulde'],frost:'mittel',ns:['trocken','mittel','feucht'],ziele:['tafel','frueh'],gilde:'Frühblüher, Bienenweide; Begleitpflanzen: Borretsch, Kapuzinerkresse',tags:['Frühsorte','Tafelobst','historisch']},{name:'Gravenstein',reife:'Aug–Sep',hmax:900,expo:['sued','ost','west','mulde'],frost:'mittel',ns:['mittel','feucht'],ziele:['tafel','most'],gilde:'Windschutzreihe; Unterpflanzung Brennnessel',tags:['Tafelobst','Most','historisch']},{name:'Kronprinz Rudolf',reife:'Sep–Okt',hmax:1000,expo:['sued','ost','west','mulde','nord'],frost:'gering',ns:['mittel','feucht'],ziele:['tafel','lager'],gilde:'Spätblüher für Spätfrostlagen; verträgt Halbschatten',tags:['Lager','Spätfrostresistent','österreichisch']},{name:'Bittenfelder',reife:'Okt',hmax:900,expo:['sued','west','mulde'],frost:'mittel',ns:['trocken','mittel'],ziele:['most','lager'],gilde:'Robust, pflegeleicht; Bienenweide; Streuobst',tags:['Most','robust','Streuobst']},{name:'Boskoop',reife:'Okt–Nov',hmax:850,expo:['sued','ost','west','mulde'],frost:'mittel',ns:['mittel','feucht'],ziele:['tafel','lager','most'],gilde:'Windschutz; Unterpflanzung Walderdbeere',tags:['Lager','Tafelobst','Most']},{name:'Topaz',reife:'Sep–Okt',hmax:900,expo:['sued','ost','west','mulde'],frost:'mittel',ns:['trocken','mittel','feucht'],ziele:['tafel','lager','robust'],gilde:'Schorfresistent; Bio-Streuobst; Begleitpflanzen: Lavendel',tags:['pilzresistent','Lager','Bio']},{name:'Florina',reife:'Okt',hmax:850,expo:['sued','west','mulde'],frost:'mittel',ns:['mittel','feucht'],ziele:['tafel','robust'],gilde:'Schorfresistent, kompakter Wuchs',tags:['pilzresistent','Tafelobst']},{name:'Goldreinette',reife:'Nov–Jan',hmax:800,expo:['sued','west'],frost:'gering',ns:['trocken','mittel'],ziele:['tafel','lager'],gilde:'Lange Lagerung; Thymian, Salbei auf Trockenhang',tags:['Lager','historisch','Südhang']},{name:'Maschansker',reife:'Sep',hmax:1000,expo:['sued','ost','west','mulde','nord'],frost:'gering',ns:['mittel','feucht'],ziele:['most','wild'],gilde:'Tiroler Landsorte; winterhart; Vogelfutter im Winter',tags:['Most','winterhart','historisch','Wildtier']},{name:'Bohnapfel',reife:'Dez–Feb',hmax:800,expo:['sued','west','mulde'],frost:'mittel',ns:['trocken','mittel'],ziele:['lager','most'],gilde:'Langer Lager-Apfel; Streuobst; Winterfutter für Drosseln',tags:['Lager','Most','Wildtier','historisch']}],birne:[{name:'Williams Christ',reife:'Aug',hmax:700,expo:['sued','west'],frost:'gering',ns:['trocken','mittel'],ziele:['tafel','frueh','most'],gilde:'Wärmebedürftig; Südhang; Weinraute, Ysop',tags:['Tafelobst','Frühsorte','Most']},{name:'Gute Luise',reife:'Aug–Sep',hmax:750,expo:['sued','ost','west','mulde'],frost:'mittel',ns:['mittel','feucht'],ziele:['tafel','frueh'],gilde:'Streuobstbirne; Phacelia, Schafgarbe',tags:['Tafelobst','Bestäuber','historisch']},{name:'Conference',reife:'Sep–Okt',hmax:800,expo:['sued','west','mulde'],frost:'mittel',ns:['mittel','feucht'],ziele:['tafel','lager'],gilde:'Selbstfruchtbar; kompakter Wuchs',tags:['Lager','selbstfruchtbar','Tafelobst']},{name:'Köstliche von Charneu',reife:'Sep',hmax:850,expo:['sued','ost','west','mulde'],frost:'mittel',ns:['mittel','feucht'],ziele:['tafel','lager'],gilde:'Robust; Bestäuber für Gute Luise',tags:['Lager','robust','Tafelobst']},{name:'Mostbirne Landlbirne',reife:'Okt',hmax:950,expo:['sued','ost','west','mulde','nord'],frost:'gering',ns:['mittel','feucht'],ziele:['most','wild','bestaeuber'],gilde:'Alpenlandsorte; winterhart; Wildbienen-Blüte',tags:['Most','winterhart','Bestäuber','historisch']},{name:'Harrow Sweet',reife:'Aug–Sep',hmax:850,expo:['sued','ost','west','mulde'],frost:'mittel',ns:['trocken','mittel','feucht'],ziele:['tafel','robust'],gilde:'Feuerbrandresistent; biologischer Anbau',tags:['feuerbrandresistent','Tafelobst','robust']},{name:'Schweizer Wasserbirne',reife:'Sep–Okt',hmax:1000,expo:['sued','ost','west','mulde','nord'],frost:'gering',ns:['mittel','feucht'],ziele:['most','wild','bestaeuber'],gilde:'Winterhart; Streuobst-Leitsorte Alpenraum',tags:['Most','winterhart','historisch','Streuobst']}],zwetschke:[{name:'Hauszwetschke',reife:'Aug–Sep',hmax:900,expo:['sued','ost','west','mulde'],frost:'mittel',ns:['trocken','mittel','feucht'],ziele:['tafel','einkochen','schnaps','wild'],gilde:'Allzwecksorte; Hühnerweide; Bienenweide',tags:['Allzweck','robust','historisch']},{name:'Wangenheimer Frühzwetschke',reife:'Jul–Aug',hmax:800,expo:['sued','west','mulde'],frost:'mittel',ns:['trocken','mittel'],ziele:['tafel','frueh','einkochen'],gilde:'Früher Ertrag; Mischkultur mit Erdbeeren',tags:['Frühsorte','Tafelobst','Einkochen']},{name:'Bühler Frühzwetschke',reife:'Aug',hmax:850,expo:['sued','ost','west','mulde'],frost:'mittel',ns:['mittel','feucht'],ziele:['tafel','frueh','schnaps'],gilde:'Zuverlässig; Vogelnistmöglichkeit im Altholz',tags:['Frühsorte','Schnaps','robust']},{name:'Ortenauer',reife:'Sep',hmax:900,expo:['sued','ost','west','mulde'],frost:'mittel',ns:['trocken','mittel','feucht'],ziele:['einkochen','schnaps','lager'],gilde:'Destillationscharakter; Raubvogel-Ansitzbaum',tags:['Schnaps','Einkochen','Streuobst']},{name:'Tophit',reife:'Aug–Sep',hmax:800,expo:['sued','west','mulde'],frost:'mittel',ns:['mittel','feucht'],ziele:['tafel','robust'],gilde:'Scharkavirus-tolerant; Bio-Streuobst',tags:['robust','Tafelobst','scharkatolerant']},{name:'Presenta',reife:'Sep',hmax:850,expo:['sued','ost','west','mulde'],frost:'mittel',ns:['trocken','mittel','feucht'],ziele:['tafel','robust','einkochen'],gilde:'Scharkavirus-tolerant; selbstfruchtbar',tags:['robust','selbstfruchtend','Einkochen']},{name:'Hanita',reife:'Sep',hmax:900,expo:['sued','ost','west','mulde'],frost:'mittel',ns:['mittel','feucht'],ziele:['tafel','einkochen','schnaps'],gilde:'Großfrüchtig, ertragreich',tags:['Ertragreich','Einkochen','Schnaps']},{name:"Althann's Reneklode",reife:'Aug',hmax:750,expo:['sued','west'],frost:'gering',ns:['trocken','mittel'],ziele:['tafel','frueh','schnaps'],gilde:'Wärmebedürftig; Südhang; historische Sorte',tags:['historisch','Frühsorte','Südhang']}]};
+
+// ─── ARCHE NOAH SORTEN A–F (echte PDF-Links von arche-noah.at) ──────────────
+const AN_SORTEN=[
+  // A
+  {b:'A',name:'Adersleber Kalvill',reife:'Winter',genuss:'Nov–Feb',beschreibung:'Alte Winterrenette mit feinem Aroma. Historisch bedeutsam, lange lagernd.',tags:['Lager','historisch','Winterapfel'],pdf:'https://www.arche-noah.at/media/test.pdf',erntem:[10],lagerm:[11,12,1,2]},
+  {b:'A',name:'Ananasrenette',reife:'Winter',genuss:'Nov–März',beschreibung:'Altösterreichische Winterrenette mit edlem Gewürzaroma. Schwacher Wuchs, ideal für kleine Baumformen. Mitte–Ende Oktober pflücken.',tags:['Lager','historisch','Winterapfel','Tafelobst'],pdf:'https://www.arche-noah.at/media/ananasrenette.pdf',erntem:[10],lagerm:[11,12,1,2,3]},
+  {b:'A',name:'Antonowka (Possarts Nalivia)',reife:'Herbst',genuss:'Nov–Dez',beschreibung:'Russische Landsorte. Sehr winterhart und ertragssicher auch in Extremlagen bis 1400m. Großes gesundes Laub, wenig Pflegebedarf.',tags:['winterhart','Most','Höhenlage','robust'],pdf:'https://www.arche-noah.at/media/antonowka_possarts_nalivia.pdf',erntem:[9,10],lagerm:[11,12]},
+  {b:'A',name:'Apfel aus Croncels',reife:'Herbst',genuss:'Sep–Okt',beschreibung:'Französische Sorte von 1869. Frosthart im Holz, für Straßenbepflanzung geeignet. Lang anhaltende Bienenweide-Blüte.',tags:['Tafelobst','historisch','Herbstapfel','robust'],pdf:'https://www.arche-noah.at/media/apfel_aus_croncels.pdf',erntem:[8,9],lagerm:[10]},
+  // B
+  {b:'B',name:'Bananenapfel Gföhlerwald',reife:'Herbst/Winter',genuss:'Okt–Jan',beschreibung:'Waldviertler Landsorte mit bananenähnlichem Aroma. Streuobst-Leitsorte für das nordöstliche Alpenvorland.',tags:['Lager','historisch','Streuobst','Waldviertel'],pdf:'https://www.arche-noah.at/media/bananenapfel_gfoehlerwald_beschreibung_und_foto.pdf',erntem:[9,10],lagerm:[11,12,1]},
+  {b:'B',name:'Batullenapfel',reife:'Herbst',genuss:'Sep–Nov',beschreibung:'Robuste alte Landsorte für Streuobstwiesen. Zuverlässig tragend, pflegeleicht. Wichtig für Sortenerhaltung.',tags:['Streuobst','historisch','Most','robust'],pdf:'https://www.arche-noah.at/media/batullenapfel.pdf',erntem:[8,9],lagerm:[10,11]},
+  {b:'B',name:'Belle fille de salins',reife:'Herbst',genuss:'Sep–Okt',beschreibung:'Neu dokumentierte Sorte (2026). Historische Rarität aus dem französischen Raum.',tags:['historisch','Rarität','Tafelobst'],pdf:'https://www.arche-noah.at/media/belle_fille_de_salins.pdf',erntem:[8,9],lagerm:[10]},
+  {b:'B',name:'Berner Rosenapfel',reife:'Winter',genuss:'Nov–Feb',beschreibung:'Schweizer Zufallssämling um 1890. Leuchtend karminrote Deckfarbe. Früh und regelmäßig tragend. Verträgt raue Lagen, meidet Staunässe.',tags:['Lager','historisch','Winterapfel','Tafelobst'],pdf:'https://www.arche-noah.at/media/berner_rosenapfel.pdf',erntem:[10],lagerm:[11,12,1,2]},
+  {b:'B',name:'Birnförmiger Apfel',reife:'Herbst/Winter',genuss:'Okt–Jan',beschreibung:'Ungewöhnliche birnenförmige Fruchtform. Historische Rarität für Sortengärten und genetische Vielfalt.',tags:['historisch','Rarität','Tafelobst'],pdf:'https://www.arche-noah.at/media/birnfoermigerapfel.pdf',erntem:[9,10],lagerm:[11,12,1]},
+  {b:'B',name:'Blauensteiners Spitzapfel',reife:'Herbst',genuss:'Sep–Nov',beschreibung:'Regionale österreichische Landsorte. Charakteristischer Spitzapfel-Typ. Wertvoll für Streuobsterhaltung.',tags:['historisch','Streuobst','österreichisch'],pdf:'https://www.arche-noah.at/media/blauensteiners_spitzapfel_beschreibung_und_foto.pdf',erntem:[8,9],lagerm:[10,11]},
+  {b:'B',name:'Böhmer Maschanzker',reife:'Herbst',genuss:'Sep–Nov',beschreibung:'Maschanzker-Typ aus dem böhmisch-niederösterreichischen Grenzraum. Robust und anpassungsfähig.',tags:['Most','historisch','Streuobst','robust'],pdf:'https://www.arche-noah.at/media/boehmer_maschanzker_beschreibung_und_foto.pdf',erntem:[8,9],lagerm:[10,11]},
+  {b:'B',name:'Böhmischer Brünnerling',reife:'Winter',genuss:'Nov–Feb',beschreibung:'Neu dokumentierter Brünnerling-Typ aus dem böhmischen Raum (2025). Robuste Streuobstsorte mit Regionalcharakter.',tags:['historisch','Streuobst','Winterapfel'],pdf:'https://www.arche-noah.at/media/obstsortenblatt_2025_boehmischerbruennerling_web.pdf',erntem:[10],lagerm:[11,12,1,2]},
+  {b:'B',name:'Bunta Wuedoima',reife:'Herbst',genuss:'Sep–Nov',beschreibung:'Steirische Regionalsorte. Typische Streuobstsorte der südösterreichischen Kulturlandschaft. Mehrfachnutzen: Obst, Bienenweide, Lebensraum.',tags:['Streuobst','historisch','Most','Steiermark'],pdf:'https://www.arche-noah.at/media/obstsortenblatt_2020_bunta_wuedoima_web_fin.pdf',erntem:[8,9],lagerm:[10,11]},
+  // C
+  {b:'C',name:'Candil Sinap',reife:'Winter',genuss:'Nov–März',beschreibung:'Orientalische Sorte mit charakteristisch länglicher Fruchtform. Hervorragender Geschmack, lange lagernd. Rarität für Liebhabergärten.',tags:['Lager','historisch','Winterapfel','Rarität'],pdf:'https://www.arche-noah.at/media/candil_sinap.pdf',erntem:[10],lagerm:[11,12,1,2,3]},
+  {b:'C',name:'Champagner Renette',reife:'Winter',genuss:'Dez–Feb',beschreibung:'Elegante Winterrenette. Gehört zu den ältesten Renettensorten Europas. Historisch bedeutsam, heute selten. Lange Haltbarkeit.',tags:['Lager','historisch','Winterapfel','Tafelobst'],pdf:'https://www.arche-noah.at/media/champagner_renette.pdf',erntem:[10,11],lagerm:[12,1,2]},
+  {b:'C',name:'Charlamowsky',reife:'Sommer',genuss:'Aug–Sep',beschreibung:'Russisch-persische Herkunft. Für Höhenlagen und Nordhang geeignet. Kurzlebiger Baum — regelmäßige Verjüngungsschnitte nötig.',tags:['Frühsorte','Tafelobst','historisch','Sommerapfel'],pdf:'https://www.arche-noah.at/media/charlamowsky.pdf',erntem:[7,8],lagerm:[9]},
+  {b:'C',name:'Chrysofsker',reife:'Herbst',genuss:'Sep–Okt',beschreibung:'Historische Sorte mit griechischem Namen. Regionale Rarität aus dem österreichischen Sortenbestand.',tags:['historisch','Rarität','Herbstapfel'],pdf:'https://www.arche-noah.at/media/chrysofsker_foto_und_beschreibung.pdf',erntem:[8,9],lagerm:[10]},
+  {b:'C',name:'Cludius Herbstapfel',reife:'Herbst',genuss:'Sep–Nov',beschreibung:'Alte Herbstsorte. Robust und zuverlässig tragend. Für Streuobst und Hausgarten gleichermaßen geeignet.',tags:['Herbstapfel','historisch','robust'],pdf:'https://www.arche-noah.at/media/cludius_herbstapfel_beschreibung_und_foto2.pdf',erntem:[8,9],lagerm:[10,11]},
+  {b:'C',name:'Coulons Renette',reife:'Winter',genuss:'Nov–Feb',beschreibung:'Neu dokumentierte Renette (2025). Historische Sorte mit feinem Renetten-Aroma.',tags:['Lager','historisch','Winterapfel'],pdf:'https://www.arche-noah.at/media/obstsortenblatt_2025_coulonsrenette_web.pdf',erntem:[10],lagerm:[11,12,1,2]},
+  {b:'C',name:'Cox Orangenrenette',reife:'Winter',genuss:'Okt–Feb',beschreibung:'1830 in England gezogen. Höchste Geschmacksqualität. Mildes feuchtes Klima bevorzugt — Wienerwald-Lagen ideal. Anfällig für Krebs und Schorf.',tags:['Tafelobst','historisch','Winterapfel','Premiumqualität'],pdf:'https://www.arche-noah.at/media/cox_orangenrenette.pdf',erntem:[9,10],lagerm:[11,12,1,2]},
+  {b:'C',name:'Cox Pomona',reife:'Herbst',genuss:'Sep–Okt',beschreibung:'Verwandter der Cox Orangenrenette, etwas robuster und früher reifend. Guter Geschmack.',tags:['Tafelobst','historisch','Herbstapfel'],pdf:'https://www.arche-noah.at/media/cox_pomona.pdf',erntem:[8,9],lagerm:[10]},
+  {b:'C',name:'Credes Quittenrenette',reife:'Herbst/Winter',genuss:'Okt–Jan',beschreibung:'Seltene Renette mit Quittenaromen. Historische Rarität für Sortengärten.',tags:['historisch','Rarität','Winterapfel'],pdf:'https://www.arche-noah.at/media/credes_quittenrenette_foto_und_beschreibung.pdf',erntem:[9,10],lagerm:[11,12,1]},
+  // D
+  {b:'D',name:'Danzinger Kantapfel',reife:'Winter',genuss:'Nov–Feb',beschreibung:'Historische Sorte mit charakteristischer kantiger Fruchtform. Robust und lagernd. Wertvoll für Streuobst und Sortenerhaltung.',tags:['Lager','historisch','Most','Streuobst'],pdf:'https://www.arche-noah.at/media/danziger_kantapfel_web.pdf',erntem:[10],lagerm:[11,12,1,2]},
+  {b:'D',name:'Discovery',reife:'Sommer',genuss:'Aug–Sep',beschreibung:'Englische Sorte von 1962. Frühreifend, gut für Direktvermarktung und Hausgarten. Angenehm süß-säuerlich.',tags:['Frühsorte','Tafelobst','Sommerapfel'],pdf:'https://www.arche-noah.at/media/discovery_01_2.pdf',erntem:[7,8],lagerm:[9]},
+  // E
+  {b:'E',name:'Edelkönig',reife:'Herbst/Winter',genuss:'Okt–Jan',beschreibung:'Österreichische Hochstammsorte mit edlem Geschmack. Historische Rarität für Sortengärten.',tags:['Tafelobst','historisch','österreichisch'],pdf:'https://www.arche-noah.at/media/edelkoenig.pdf',erntem:[9,10],lagerm:[11,12,1]},
+  {b:'E',name:'Edelrambour von Winnitza',reife:'Herbst',genuss:'Sep–Nov',beschreibung:'Rambour-Typ aus dem ukrainischen Raum. Großfrüchtig, historisch bedeutsam.',tags:['Tafelobst','historisch','Herbstapfel'],pdf:'https://www.arche-noah.at/media/edelrambour__1.pdf',erntem:[8,9],lagerm:[10,11]},
+  {b:'E',name:'Edelrenette',reife:'Herbst/Winter',genuss:'Okt–Feb',beschreibung:'Klassische Renette mit ausgezeichnetem Geschmack. In österreichischen Hausgärten historisch verbreitet. Lange Lagerung möglich.',tags:['Lager','historisch','Winterapfel','Tafelobst'],pdf:'https://www.arche-noah.at/media/edelrenette_beschreibung_und_foto2.pdf',erntem:[9,10],lagerm:[11,12,1,2]},
+  {b:'E',name:'Englische Spitalrenette',reife:'Winter',genuss:'Dez–März',beschreibung:'Alte englische Renette, in österreichischen Klostergärten lang kultiviert. Spät reifend, sehr lang lagernd. Genetisch wichtige Rarität.',tags:['Lager','historisch','Winterapfel','Rarität'],pdf:'https://www.arche-noah.at/media/englische_spitalrenette.pdf',erntem:[11],lagerm:[12,1,2,3]},
+  // F
+  {b:'F',name:'Falchs Gulderling',reife:'Herbst',genuss:'Sep–Nov',beschreibung:'Historische Gulderling-Sorte, robust und ertragreich. Für Streuobstwiesen und extensiven Anbau, Mehrfachnutzen Tafel und Most.',tags:['Most','historisch','Streuobst','Tafelobst'],pdf:'https://www.arche-noah.at/media/falchs_gulderling.pdf',erntem:[8,9],lagerm:[10,11]},
+  {b:'F',name:'Fameuse (Schneeapfel)',reife:'Herbst',genuss:'Okt–Jan',beschreibung:'Um 1730 in Kanada aus Samen gezogen. Reinweißes Fruchtfleisch mit Rosenaroma. Wenig schorf- und mehltauanfällig. Für Hausgarten und Streuobst.',tags:['Tafelobst','historisch','Herbstapfel','Schorfresistent'],pdf:'https://www.arche-noah.at/media/fameuse_beschreibung_und_foto.pdf',erntem:[9,10],lagerm:[11,12,1]},
+  {b:'F',name:"Fey's Record",reife:'Herbst',genuss:'Sep–Okt',beschreibung:'Historische Sorte. Robust und anpassungsfähig für Streuobstlagen.',tags:['historisch','Herbstapfel','Streuobst'],pdf:'https://www.arche-noah.at/media/fey_s_record.pdf',erntem:[8,9],lagerm:[10]},
+  {b:'F',name:'Frauenkalvill',reife:'Herbst/Winter',genuss:'Okt–Jan',beschreibung:'Alte Kalvillsorte mit delikatem Aroma. In österreichischen Klostergärten historisch verbreitet.',tags:['Tafelobst','historisch','österreichisch'],pdf:'https://www.arche-noah.at/media/frauenkalvill.pdf',erntem:[9,10],lagerm:[11,12,1]},
+  {b:'F',name:'Fromms Renette',reife:'Winter',genuss:'Nov–Feb',beschreibung:'Robuste Winterrenette mit gutem Geschmack und langer Haltbarkeit. Für Streuobst und Hausgarten geeignet.',tags:['Lager','historisch','Winterapfel','robust'],pdf:'https://www.arche-noah.at/media/fromms_renette_beschreibung_und_foto2.pdf',erntem:[10],lagerm:[11,12,1,2]},
+  {b:'F',name:'Früher Roter Wiesling',reife:'Herbst',genuss:'Sep–Okt',beschreibung:'Frühe Rote Variante des österreichischen Wiesling. Wichtige regionale Mostsorte, robust, angepasst an niederösterreichische Lagen.',tags:['Most','historisch','Herbstapfel','österreichisch'],pdf:'https://www.arche-noah.at/media/obstsortenblatt_2016_frueher_roter_wiesling_b_web.pdf',erntem:[8,9],lagerm:[10]},
+  // G
+  {b:'G',name:'Galloway Pepping',reife:'Winter',genuss:'Nov–März',beschreibung:'Schottische Sorte mit feinem Aroma. Für kühle, feuchte Lagen geeignet — Wienerwald-Klima ideal. Historisch selten, genetisch wertvoll.',tags:['Lager','historisch','Winterapfel','Tafelobst'],pdf:'https://www.arche-noah.at/media/galloway_pepping_foto_und_beschreibung.pdf',erntem:[10],lagerm:[11,12,1,2]},
+  {b:'G',name:'Gascoynes Scharlachsämling',reife:'Herbst/Winter',genuss:'Okt–Jan',beschreibung:'Englische Sorte mit leuchtend roter Schale. Großfrüchtig, aromatisch. Für Streuobst und Hausgärten geeignet.',tags:['Tafelobst','historisch','Herbstapfel'],pdf:'https://www.arche-noah.at/media/gascoynes_scharlachsaemling.pdf',erntem:[9,10],lagerm:[11,12,1]},
+  {b:'G',name:'Geflammter Kardinal',reife:'Sommer',genuss:'Jul–Aug',beschreibung:'Früh reifende historische Sommersorte. Lebhaft rot geflammte Schale. Bienenweide durch frühe Blüte — wertvoll als Gilden-Frühlieferant.',tags:['Frühsorte','Sommerapfel','historisch','Tafelobst'],pdf:'https://www.arche-noah.at/media/geflammter_kardinal.pdf',erntem:[7,8],lagerm:[]},
+  {b:'G',name:'Gelber Bellefleur',reife:'Herbst/Winter',genuss:'Okt–Feb',beschreibung:'Großfrüchtige alte Sorte mit goldgelber Schale. Für Streuobst und Wirtschaftszwecke. Robust, anpassungsfähig.',tags:['Tafelobst','historisch','Streuobst','Most'],pdf:'https://www.arche-noah.at/media/gelber_bellefleur.pdf',erntem:[9,10],lagerm:[11,12,1,2]},
+  {b:'G',name:'Gelber Edelapfel',reife:'Herbst',genuss:'Sep–Nov',beschreibung:'Österreichische Landsorte mit gelbgrüner Schale und mildem Geschmack. Für Streuobstwiesen und Hausgärten. Gute Bestäubungsleistung.',tags:['Tafelobst','historisch','österreichisch','Streuobst'],pdf:'https://www.arche-noah.at/media/gelber_edelapfel.pdf',erntem:[8,9],lagerm:[10,11]},
+  {b:'G',name:'George Cave',reife:'Sommer',genuss:'Jul–Aug',beschreibung:'Englische Frühsorte von 1923. Frühreifend, süß-aromatisch. Für Direktvermarktung und Hausgarten. Gute Bienenweide durch frühe Blüte.',tags:['Frühsorte','Sommerapfel','Tafelobst'],pdf:'https://www.arche-noah.at/media/george_cave_01_1.pdf',erntem:[7,8],lagerm:[]},
+  {b:'G',name:'Gesäuseapfel',reife:'Herbst',genuss:'Sep–Nov',beschreibung:'Steirische Regionalsorte aus dem Gesäuse. Robust und angepasst an Berglagen. Wichtige Sortenerhaltung für alpine Kulturlandschaft.',tags:['historisch','Streuobst','Steiermark','robust'],pdf:'https://www.arche-noah.at/media/gesaeuseapfel_2018.pdf',erntem:[8,9],lagerm:[10,11]},
+  {b:'G',name:'Gestreifter Fasslapfel',reife:'Herbst',genuss:'Sep–Nov',beschreibung:'Neu dokumentierte Sorte 2026. Charakteristisch gestreifter Fasslapfel-Typ. Regionale Rarität für Sortenerhaltung.',tags:['historisch','Rarität','Herbstapfel','NEU 2026'],pdf:'https://www.arche-noah.at/media/gestreifter_fasslapfel.pdf',erntem:[8,9],lagerm:[10,11]},
+  {b:'G',name:'Gloria Mundi',reife:'Herbst',genuss:'Sep–Okt',beschreibung:'Eine der größten Apfelsorten überhaupt. Historische Schausorte, Bienenweide. Wuchs stark, für Windschutzreihen geeignet.',tags:['Tafelobst','historisch','Streuobst'],pdf:'https://www.arche-noah.at/media/gloria_mundi_beschreibung_1.pdf',erntem:[8,9],lagerm:[10]},
+  {b:'G',name:'Goldrenette von Blenheim',reife:'Winter',genuss:'Nov–März',beschreibung:'Englische Renette von 1818. Feines Gewürzaroma, lang lagernd. Benötigt warmen Standort. Historisch bedeutsam, heute selten.',tags:['Lager','historisch','Winterapfel','Tafelobst'],pdf:'https://www.arche-noah.at/media/goldrenette_von_blenheim.pdf',erntem:[10,11],lagerm:[12,1,2,3]},
+  {b:'G',name:'Gravensteiner',reife:'Herbst',genuss:'Aug–Sep',beschreibung:'Klassische Herbstsorte mit unverwechselbarem Aroma. Starker Wuchs, ideal als Windschutzreihe. Unterpflanzung mit Brennnessel stärkt Boden.',tags:['Tafelobst','Most','historisch','Streuobst'],pdf:'https://www.arche-noah.at/media/gravensteiner.pdf',erntem:[8,9],lagerm:[]},
+  {b:'G',name:'Großer Bohnapfel',reife:'Winter',genuss:'Dez–März',beschreibung:'Robuste alte Wintersorte. Lang lagernd, für Streuobst und Most. Winterfutter für Drosseln und Amseln — ökologisch wertvoll.',tags:['Lager','Most','historisch','Wildtier'],pdf:'https://www.arche-noah.at/media/grosser_bohnapfel.pdf',erntem:[10,11],lagerm:[12,1,2,3]},
+  {b:'G',name:'Großherzog Friedrich von Baden',reife:'Herbst/Winter',genuss:'Okt–Jan',beschreibung:'Großfrüchtige historische Sorte. Robust und ertragreich. Für Streuobstwiesen und Direktvermarktung geeignet.',tags:['Tafelobst','historisch','Streuobst'],pdf:'https://www.arche-noah.at/media/grossherzog_friedrich_von_baden.pdf',erntem:[9,10],lagerm:[11,12,1]},
+  {b:'G',name:'Großreiflinger Eckapfel',reife:'Herbst',genuss:'Sep–Nov',beschreibung:'Steirische Regionalsorte aus Großreifling. Angepasst an alpine Berglagen. Wichtige regionale Sortenerhaltung für den Alpenraum.',tags:['historisch','Streuobst','Steiermark','robust'],pdf:'https://www.arche-noah.at/media/obstsortenblatt_2020_grossreiflinger_eckapfel_web_fin_.pdf',erntem:[8,9],lagerm:[10,11]},
+  {b:'G',name:'Grüner Fürstenapfel',reife:'Herbst/Winter',genuss:'Okt–Jan',beschreibung:'Alte Sorte mit grüngelblicher Schale. Mildes Aroma, für Hausgarten und Streuobst. Historisch in österreichischen Gärten verbreitet.',tags:['Tafelobst','historisch','österreichisch'],pdf:'https://www.arche-noah.at/media/gruener_fuerstenapfel.pdf',erntem:[9,10],lagerm:[11,12,1]},
+  // H
+  {b:'H',name:'Harberts Renette',reife:'Winter',genuss:'Nov–Feb',beschreibung:'Norddeutsche Winterrenette mit gutem Aroma. Lang lagernd, robust. Für Streuobst und Hausgarten gleichermaßen geeignet.',tags:['Lager','historisch','Winterapfel','robust'],pdf:'https://www.arche-noah.at/media/harberts_renette.pdf',erntem:[10],lagerm:[11,12,1,2]},
+  {b:'H',name:'Haslinger',reife:'Herbst/Winter',genuss:'Okt–Jan',beschreibung:'Österreichische Regionalsorte. Robust und angepasst an mittelösterreichische Lagen. Wertvoll für regionale Sortenerhaltung.',tags:['historisch','österreichisch','Streuobst'],pdf:'https://www.arche-noah.at/media/haslinger.pdf',erntem:[9,10],lagerm:[11,12]},
+  {b:'H',name:'Herzogin Olga Apfel',reife:'Herbst',genuss:'Sep–Okt',beschreibung:'Historische Tafelsorte mit adeligem Namen. Robust, ertragreich, für Streuobstwiesen geeignet. Bienenweide im Frühjahr.',tags:['Tafelobst','historisch','Streuobst'],pdf:'https://www.arche-noah.at/media/herzogin_olga_apfel.pdf',erntem:[8,9],lagerm:[10]},
+  {b:'H',name:'Himbeerapfel von Holovous',reife:'Sommer',genuss:'Jul–Aug',beschreibung:'Frühreifende Sorte mit Himbeeraroma im Fruchtfleisch. Seltenheit für Liebhaber besonderer Aromen. Bienenweide durch frühe Blüte.',tags:['Frühsorte','Sommerapfel','historisch','Rarität'],pdf:'https://www.arche-noah.at/media/himbeerapfel_von_holovous_beschreibung_und_foto.pdf',erntem:[7,8],lagerm:[]},
+  {b:'H',name:'Horneburger Pfannkuchenapfel',reife:'Winter',genuss:'Nov–Feb',beschreibung:'Plattgedrückte charakteristische Fruchtform — namensgebend. Alter Wirtschaftsapfel, sehr ertragreich. Für Streuobst und Most.',tags:['Most','historisch','Winterapfel','Streuobst'],pdf:'https://www.arche-noah.at/media/horneburger.pdf',erntem:[10],lagerm:[11,12,1,2]},
+  // I
+  {b:'I',name:'Ingrid Marie',reife:'Herbst/Winter',genuss:'Okt–Jan',beschreibung:'Dänische Sorte von 1910. Leuchtend rote Schale, aromatisch. Zuverlässig tragend, für Bio-Anbau gut geeignet.',tags:['Tafelobst','historisch','Herbstapfel'],pdf:'https://www.arche-noah.at/media/ingrid_marie.pdf',erntem:[9,10],lagerm:[11,12,1]},
+  {b:'I',name:'Ilzer Rosenapfel',reife:'Herbst',genuss:'Sep–Nov',beschreibung:'Steirische Regionalsorte aus dem Ilztal. Rosenapfel-Typ mit angenehmem Aroma. Regionale Rarität für Sortenerhaltung im Alpenraum.',tags:['historisch','Streuobst','Steiermark','Rarität'],pdf:'https://www.arche-noah.at/media/obstsortenblatt_2016_ilzer_rosenapfel_web.pdf',erntem:[8,9],lagerm:[10,11]},
+  // J
+  {b:'J',name:'James Grieve',reife:'Herbst',genuss:'Aug–Sep',beschreibung:'Schottische Sorte von 1893. Frühreifend, süß-säuerlich, aromatisch. Guter Bestäuber für andere Sorten. Für feuchte kühle Lagen.',tags:['Tafelobst','historisch','Herbstapfel','Bestäuber'],pdf:'https://www.arche-noah.at/media/james_grieve.pdf',erntem:[8,9],lagerm:[]},
+  {b:'J',name:'Jeanne Hardy',reife:'Herbst',genuss:'Sep–Okt',beschreibung:'Historische Sorte französischer Herkunft. Aromatisch und zuverlässig tragend. Für Streuobst und Hausgarten geeignet.',tags:['Tafelobst','historisch','Herbstapfel'],pdf:'https://www.arche-noah.at/media/jeanne_hardy.pdf',erntem:[8,9],lagerm:[10]},
+  // K
+  {b:'K',name:'Kaiser Alexander',reife:'Herbst',genuss:'Sep–Nov',beschreibung:'Großfrüchtige imposante Sorte. Einer der größten Äpfel überhaupt. Für Schausammlungen und Streuobst. Starker Wuchs, Windschutzreihe.',tags:['Tafelobst','historisch','Streuobst'],pdf:'https://www.arche-noah.at/media/kaiser_alexander.pdf',erntem:[8,9],lagerm:[10,11]},
+  {b:'K',name:'Kaiser Wilhelm',reife:'Winter',genuss:'Nov–Feb',beschreibung:'Deutsche Sorte von 1864. Robust, ertragreich, gut lagernd. Für Streuobst und Wirtschaftszwecke bewährt. Windschutz durch starken Wuchs.',tags:['Lager','historisch','Winterapfel','robust','Streuobst'],pdf:'https://www.arche-noah.at/media/kaiser_wilhelm.pdf',erntem:[10],lagerm:[11,12,1,2]},
+  {b:'K',name:'Kardinal Graf Galen',reife:'Herbst/Winter',genuss:'Okt–Jan',beschreibung:'Historische Sorte mit kirchlichem Namen. Aromatisch und lagernd. Für Hausgarten und Streuobst, gute Bienenweide.',tags:['Tafelobst','historisch','Streuobst'],pdf:'https://www.arche-noah.at/media/kardinal_graf_galen.pdf',erntem:[9,10],lagerm:[11,12,1]},
+  {b:'K',name:'Karmeliterrenette',reife:'Herbst',genuss:'Sep–Nov',beschreibung:'Alte Klostersorte aus Karmeliterorden-Gärten. Feines Renettenaroma, historisch bedeutsam. Genetische Rarität für Sortengärten.',tags:['Tafelobst','historisch','Rarität','österreichisch'],pdf:'https://www.arche-noah.at/media/karmeliterrenette.pdf',erntem:[8,9],lagerm:[10,11]},
+  {b:'K',name:'Kleine Kasseler Renette',reife:'Winter',genuss:'Nov–März',beschreibung:'Kleine aber feine Winterrenette aus Nordhessen. Lang lagernd, intensives Aroma. Für Hausgarten und Liebhabersammlungen.',tags:['Lager','historisch','Winterapfel','Tafelobst'],pdf:'https://www.arche-noah.at/media/kleine_kasseler_renette_beschreibung_und_foto.pdf',erntem:[10],lagerm:[11,12,1,2,3]},
+  {b:'K',name:'Kleiner Brünnerling',reife:'Winter',genuss:'Nov–Feb',beschreibung:'Neu dokumentierter Brünnerling-Typ 2025. Österreichische Landsorte, robust und anpassungsfähig. Wichtige Ergänzung zur Brünnerling-Gruppe.',tags:['historisch','Winterapfel','österreichisch','robust'],pdf:'https://www.arche-noah.at/media/obstsortenblatt_2025_kleinerbruennerling_web.pdf',erntem:[10],lagerm:[11,12,1,2]},
+  {b:'K',name:'Klöcher Maschanzker',reife:'Herbst',genuss:'Sep–Nov',beschreibung:'Steirische Maschanzker-Variante aus Klöch. Robust, für südsteirische Lagen optimiert. Mostsorte mit Regionalcharakter.',tags:['Most','historisch','Steiermark','Streuobst'],pdf:'https://www.arche-noah.at/media/kloecher_maschanzker_beschreibung_und_foto.pdf',erntem:[8,9],lagerm:[10,11]},
+  {b:'K',name:'Königin Olga Apfel',reife:'Herbst',genuss:'Sep–Nov',beschreibung:'Historische Tafelsorte mit königlichem Namen. Robust, für Streuobstwiesen geeignet. Bienenweide und Wildtiernahrung.',tags:['Tafelobst','historisch','Streuobst'],pdf:'https://www.arche-noah.at/media/koenigin_olga_beschreibung_und_foto.pdf',erntem:[8,9],lagerm:[10,11]},
+  {b:'K',name:'Königin Sophienapfel',reife:'Herbst/Winter',genuss:'Okt–Jan',beschreibung:'Historische Sorte. Aromatisch und zuverlässig tragend. Für Hausgarten und Streuobst. Genetisch bedeutsam.',tags:['Tafelobst','historisch','Streuobst'],pdf:'https://www.arche-noah.at/media/koenigin_sophienapfel_beschreibung_und_foto.pdf',erntem:[9,10],lagerm:[11,12,1]},
+  {b:'K',name:'Königinapfel',reife:'Herbst',genuss:'Sep–Nov',beschreibung:'Österreichische Landsorte. Charakteristische Fruchtform, historisch in Hausgärten verbreitet. Für Streuobst und Sortenerhaltung.',tags:['Tafelobst','historisch','österreichisch'],pdf:'https://www.arche-noah.at/media/koeniginapfel_beschreibung_und_foto.pdf',erntem:[8,9],lagerm:[10,11]},
+  {b:'K',name:'Königlicher Kurzstiel',reife:'Herbst/Winter',genuss:'Okt–Jan',beschreibung:'Charakteristisch kurzstielig. Historische Rarität. Robust und ertragreich für Streuobstwiesen.',tags:['historisch','Streuobst','Rarität'],pdf:'https://www.arche-noah.at/media/koeniglicher_kurzstiel_beschreibung_und_foto.pdf',erntem:[9,10],lagerm:[11,12,1]},
+  {b:'K',name:'Köstlicher Langstiel',reife:'Herbst',genuss:'Sep–Nov',beschreibung:'Österreichische Landsorte mit charakteristisch langem Stiel. Aromatisch, für Hausgarten und Streuobst. Regional bedeutsam.',tags:['Tafelobst','historisch','österreichisch'],pdf:'https://www.arche-noah.at/media/koestlicher_langstiel_beschreibung_und_foto.pdf',erntem:[8,9],lagerm:[10,11]},
+  {b:'K',name:'Kronprinz Rudolf',reife:'Herbst/Winter',genuss:'Okt–Jan',beschreibung:'Österreichische Landsorte. Spätblüher — ideal für Spätfrostlagen bis 1000m. Verträgt Halbschatten, für Nordhang geeignet. Lang lagernd.',tags:['Lager','Spätfrostresistent','österreichisch','historisch'],pdf:'https://www.arche-noah.at/media/kronprinz_rudolf.pdf',erntem:[9,10],lagerm:[11,12,1]},
+  {b:'K',name:'Kuhländer Gulderling',reife:'Herbst/Winter',genuss:'Okt–Dez',beschreibung:'Gulderling-Typ aus dem mährisch-schlesischen Raum. Robust und ertragreich. Für Streuobst und Most. Historisch bedeutsam für Mitteleuropa.',tags:['Most','historisch','Streuobst','robust'],pdf:'https://www.arche-noah.at/media/kuhlaender_gulderling.pdf',erntem:[9,10],lagerm:[11,12]},
+  // L
+  {b:'L',name:'Landsberger Renette',reife:'Winter',genuss:'Nov–März',beschreibung:'Deutsche Winterrenette. Feines Aroma, sehr lang lagernd. Für kühle feuchte Lagen gut geeignet — Wienerwald-Klima ideal.',tags:['Lager','historisch','Winterapfel','Tafelobst'],pdf:'https://www.arche-noah.at/media/landsberger_renette.pdf',erntem:[10,11],lagerm:[12,1,2,3]},
+  {b:'L',name:'Langer Bellefleur',reife:'Herbst/Winter',genuss:'Okt–Jan',beschreibung:'Charakteristisch langgestreckte Fruchtform — namensgebend. Alter Wirtschaftsapfel, robust und ertragreich. Für Streuobst und Most.',tags:['Most','historisch','Streuobst','Tafelobst'],pdf:'https://www.arche-noah.at/media/langer_bellefleur_beschreibung_und_foto.pdf',erntem:[9,10],lagerm:[11,12,1]},
+  {b:'L',name:'Lavanttaler Bananenapfel',reife:'Herbst/Winter',genuss:'Okt–Jan',beschreibung:'Kärntnische Regionalsorte aus dem Lavanttal. Bananenartiges Aroma, charakteristisch. Wichtige Sortenerhaltung für alpine Kulturlandschaft.',tags:['historisch','Streuobst','Kärnten','Rarität'],pdf:'https://www.arche-noah.at/media/lavanttaler_bananenapfel.pdf',erntem:[9,10],lagerm:[11,12,1]},
+  {b:'L',name:'London Pepping',reife:'Winter',genuss:'Nov–März',beschreibung:'Englische Pepping-Sorte, historisch bedeutsam. Feines säuerliches Aroma, lang lagernd. Für kühle feuchte Lagen — für den Wienerwald geeignet.',tags:['Lager','historisch','Winterapfel','Tafelobst'],pdf:'https://www.arche-noah.at/media/london_pepping.pdf',erntem:[10,11],lagerm:[12,1,2,3]},
+  // M
+  {b:'M',name:'Mantet',reife:'Sommer',genuss:'Jul–Aug',beschreibung:'Kanadische Frühsorte. Frühreifend, süß-aromatisch. Für Direktvermarktung und Hausgarten. Bienenweide durch frühe Blüte — wertvoll als Gilden-Frühlieferant.',tags:['Frühsorte','Sommerapfel','Tafelobst'],pdf:'https://www.arche-noah.at/media/mantet.pdf',erntem:[7,8],lagerm:[]},
+  {b:'M',name:'Merton Worcester',reife:'Herbst',genuss:'Sep–Okt',beschreibung:'Englische Sorte von 1947. Aromatisch, frühreifend im Herbst. Für Hausgarten und Direktvermarktung. Gute Bienenweide.',tags:['Tafelobst','Herbstapfel','historisch'],pdf:'https://www.arche-noah.at/media/merton_worcester_01_1.pdf',erntem:[8,9],lagerm:[10]},
+  {b:'M',name:'Minister von Hammerstein',reife:'Winter',genuss:'Nov–Feb',beschreibung:'Deutsche Wintersorte mit imposantem Namen. Großfrüchtig, robust und lagernd. Für Streuobst und Wirtschaftszwecke bewährt.',tags:['Lager','historisch','Winterapfel','robust'],pdf:'https://www.arche-noah.at/media/minister_von_hammerstein.pdf',erntem:[10],lagerm:[11,12,1,2]},
+  {b:'M',name:'Müschens Rosenapfel',reife:'Herbst',genuss:'Sep–Okt',beschreibung:'Rosenapfel-Typ mit angenehmem Rosen-Aroma. Historisch in deutschen und österreichischen Gärten verbreitet. Genetisch wertvoll.',tags:['Tafelobst','historisch','Herbstapfel'],pdf:'https://www.arche-noah.at/media/mueschens_rosenapfel_01_1.pdf',erntem:[8,9],lagerm:[10]},
+  {b:'M',name:'Muskatrenette',reife:'Herbst/Winter',genuss:'Okt–Jan',beschreibung:'Renette mit charakteristischem Muskat-Aroma. Historische Rarität. Lang lagernd, für Liebhaber besonderer Aromen.',tags:['Lager','historisch','Winterapfel','Rarität'],pdf:'https://www.arche-noah.at/media/muskatrenette_beschreibung_und_foto.pdf',erntem:[9,10],lagerm:[11,12,1]},
+  // N
+  {b:'N',name:'Nancy',reife:'Herbst',genuss:'Sep–Nov',beschreibung:'Österreichische Regionalsorte. Robust und angepasst an mittelösterreichische Streuobstlagen. Für Sortenerhaltung im Alpenvorland bedeutsam.',tags:['historisch','Streuobst','österreichisch'],pdf:'https://www.arche-noah.at/media/nancy_web_beschreibung_und_foto.pdf',erntem:[8,9],lagerm:[10,11]},
+  // O
+  {b:'O',name:'Oberdiecks Renette',reife:'Winter',genuss:'Nov–Feb',beschreibung:'Deutsche Winterrenette mit feinem Aroma. Historisch bedeutsam, lang lagernd. Für gute tiefgründige Böden.',tags:['Lager','historisch','Winterapfel','Tafelobst'],pdf:'https://www.arche-noah.at/media/oberdiecks_renette_beschreibung_und_foto.pdf',erntem:[10],lagerm:[11,12,1,2]},
+  {b:'O',name:'Oberösterreichischer Brünnerling',reife:'Winter',genuss:'Nov–März',beschreibung:'Neu dokumentierter Brünnerling-Typ 2025. Oberösterreichische Landsorte, robust. Wichtige Ergänzung für die Brünnerling-Gruppe im Alpenvorland.',tags:['historisch','Winterapfel','österreichisch','robust'],pdf:'https://www.arche-noah.at/media/oberoesterreichischer_bruennerling.pdf',erntem:[10],lagerm:[11,12,1,2,3]},
+  {b:'O',name:'Oderlin',reife:'Herbst',genuss:'Sep–Nov',beschreibung:'Historische Sorte aus dem österreichischen Raum. Robust und zuverlässig tragend. Für Streuobst und regionalen Sortenerhalt.',tags:['historisch','Streuobst','Herbstapfel'],pdf:'https://www.arche-noah.at/media/obstsortenblatt_2016_oderlin_web.pdf',erntem:[8,9],lagerm:[10,11]},
+  {b:'O',name:'Okabena',reife:'Herbst',genuss:'Sep–Okt',beschreibung:'Seltene historische Sorte. Aromatisch und charakteristisch. Genetisch bedeutsam für die Sortenerhaltung.',tags:['historisch','Rarität','Herbstapfel'],pdf:'https://www.arche-noah.at/media/okabena_web.pdf',erntem:[8,9],lagerm:[10]},
+  {b:'O',name:'Osnabrücker Renette',reife:'Winter',genuss:'Nov–Feb',beschreibung:'Norddeutsche Winterrenette. Gutes Aroma, robust und lagernd. Für Streuobst und Hausgarten gleichermaßen geeignet.',tags:['Lager','historisch','Winterapfel','robust'],pdf:'https://www.arche-noah.at/media/osnabruecker_renette_web.pdf',erntem:[10],lagerm:[11,12,1,2]},
+  // P
+  {b:'P',name:'Palfauer Pommeralmapfel',reife:'Herbst',genuss:'Sep–Nov',beschreibung:'Steirische Regionalsorte aus Palfau/Pommern. Angepasst an alpine Berglagen. Wichtige Sortenerhaltung für die steirische Kulturlandschaft.',tags:['historisch','Streuobst','Steiermark','robust'],pdf:'https://www.arche-noah.at/media/palfauer_pommeralmapfel_2018.pdf',erntem:[8,9],lagerm:[10,11]},
+  {b:'P',name:'Parkers Pepping',reife:'Winter',genuss:'Nov–März',beschreibung:'Englische Pepping-Sorte. Feines säuerliches Aroma, sehr lang lagernd. Für kühle feuchte Lagen — Wienerwald-Klima geeignet.',tags:['Lager','historisch','Winterapfel','Tafelobst'],pdf:'https://www.arche-noah.at/media/parkers_pepping_beschreibung_und_foto2.pdf',erntem:[10,11],lagerm:[12,1,2,3]},
+  {b:'P',name:'Peasgoods Sondergleichen',reife:'Herbst',genuss:'Sep–Okt',beschreibung:'Englische Sorte von 1858. Außergewöhnlich großfrüchtig — einer der imposantesten Äpfel. Für Schauzwecke und Streuobst.',tags:['Tafelobst','historisch','Herbstapfel','Streuobst'],pdf:'https://www.arche-noah.at/media/peasgoods_sondergleichen.pdf',erntem:[8,9],lagerm:[10]},
+  {b:'P',name:'Peter Smith',reife:'Herbst',genuss:'Sep–Nov',beschreibung:'Historische Sorte. Robust und ertragreich. Für Streuobstwiesen und extensiven Anbau geeignet.',tags:['historisch','Streuobst','Herbstapfel'],pdf:'https://www.arche-noah.at/media/peter_smith.pdf',erntem:[8,9],lagerm:[10,11]},
+  {b:'P',name:'Pfirsichroter Sommerapfel',reife:'Sommer',genuss:'Jul–Aug',beschreibung:'Frühreifende Sommersorte mit pfirsichroter Schale. Bienenweide durch frühe Blüte. Für Hausgarten und Direktvermarktung.',tags:['Frühsorte','Sommerapfel','Tafelobst','historisch'],pdf:'https://www.arche-noah.at/media/pfirsichroter_sommerapfel_beschreibung_und_foto.pdf',erntem:[7,8],lagerm:[]},
+  {b:'P',name:'Prigglitzer Abendrot',reife:'Herbst',genuss:'Sep–Okt',beschreibung:'Historische Sorte mit malerisch klingendem Namen. Leuchtend rote Schale. Robust für Streuobstwiesen.',tags:['Tafelobst','historisch','Herbstapfel','Streuobst'],pdf:'https://www.arche-noah.at/media/prigglitzer_abendrot_beschreibung_und_foto.pdf',erntem:[8,9],lagerm:[10]},
+  {b:'P',name:'Prinzenapfel',reife:'Herbst/Winter',genuss:'Okt–Jan',beschreibung:'Historische Sorte mit edlem Namen. Aromatisch und gut lagernd. Für Hausgarten und Streuobst.',tags:['Tafelobst','historisch','Streuobst'],pdf:'https://www.arche-noah.at/media/prinzenapfel.pdf',erntem:[9,10],lagerm:[11,12,1]},
+  {b:'P',name:'Prinz Albrecht von Preussen',reife:'Herbst',genuss:'Sep–Nov',beschreibung:'Deutsche Sorte mit royalem Namen. Großfrüchtig, robust. Für Streuobstwiesen und Windschutzreihen geeignet.',tags:['Tafelobst','historisch','Streuobst','robust'],pdf:'https://www.arche-noah.at/media/prinz_albrecht.pdf',erntem:[8,9],lagerm:[10,11]},
+  // Q
+  {b:'Q',name:'Quittenmaschanzker',reife:'Herbst',genuss:'Sep–Nov',beschreibung:'Maschanzker-Typ mit Quittenaromen. Österreichische Rarität — verbindet zwei Fruchttypen in einer Sorte. Genetisch bedeutsam.',tags:['historisch','Rarität','österreichisch','Streuobst'],pdf:'https://www.arche-noah.at/media/quittenmaschanzker_beschreibung_und_foto.pdf',erntem:[8,9],lagerm:[10,11]},
+  // R
+  {b:'R',name:'Ribston Pepping',reife:'Winter',genuss:'Nov–Feb',beschreibung:'Englische Sorte von 1688 — Elternteil der Cox Orangenrenette. Feines Aroma, historisch bedeutsam. Für kühle feuchte Lagen optimal.',tags:['Lager','historisch','Winterapfel','Tafelobst'],pdf:'https://www.arche-noah.at/media/ribston_pepping.pdf',erntem:[10],lagerm:[11,12,1,2]},
+  {b:'R',name:'Riesenboiken',reife:'Winter',genuss:'Dez–März',beschreibung:'Eine der größten Apfelsorten. Sehr lang lagernd, für Most und Tafel. Starker Wuchs — als Windschutzreihe ideal.',tags:['Lager','Most','historisch','Streuobst'],pdf:'https://www.arche-noah.at/media/riesenboiken_beschreibung_und_foto.pdf',erntem:[10,11],lagerm:[12,1,2,3]},
+  {b:'R',name:'Rodauner Goldapfel',reife:'Herbst/Winter',genuss:'Okt–Jan',beschreibung:'Österreichische Regionalsorte aus Rodaun bei Wien. Goldgelbe Schale, mildes Aroma. Historisch bedeutsam für den Wiener Raum.',tags:['Tafelobst','historisch','österreichisch'],pdf:'https://www.arche-noah.at/media/rodauner_goldapfel_beschreibung_und_foto.pdf',erntem:[9,10],lagerm:[11,12,1]},
+  {b:'R',name:'Rote Sternrenette',reife:'Winter',genuss:'Nov–März',beschreibung:'Renette mit charakteristischer Sternzeichnung. Historische Rarität, feines Aroma. Lang lagernd.',tags:['Lager','historisch','Winterapfel','Rarität'],pdf:'https://www.arche-noah.at/media/rote_sternrenette_foto_und_beschreibung_1.pdf',erntem:[10,11],lagerm:[12,1,2,3]},
+  {b:'R',name:'Rote Walze',reife:'Herbst',genuss:'Sep–Nov',beschreibung:'Charakteristisch walzenförmige Frucht. Historische Rarität. Für Sortengärten und genetische Vielfalt.',tags:['historisch','Rarität','Herbstapfel'],pdf:'https://www.arche-noah.at/media/rote_walze_beschreibung_und_foto.pdf',erntem:[8,9],lagerm:[10,11]},
+  {b:'R',name:'Roter Astrachan',reife:'Sommer',genuss:'Jul–Aug',beschreibung:'Russische Frühsorte. Lebhaft rot, frühreifend. Bienenweide durch frühe Blüte — wichtiger Gilden-Frühlieferant für Bestäuber.',tags:['Frühsorte','Sommerapfel','historisch','Bienenweide'],pdf:'https://www.arche-noah.at/media/roter_astrachan.pdf',erntem:[7,8],lagerm:[]},
+  {b:'R',name:'Roter Bellefleur',reife:'Herbst/Winter',genuss:'Okt–Jan',beschreibung:'Rotschalige Bellefleur-Variante. Großfrüchtig, robust. Für Streuobst und Windschutzreihen.',tags:['Tafelobst','historisch','Streuobst','robust'],pdf:'https://www.arche-noah.at/media/roter_bellefleur.pdf',erntem:[9,10],lagerm:[11,12,1]},
+  {b:'R',name:'Roter Berlepsch',reife:'Winter',genuss:'Nov–Feb',beschreibung:'Deutsche Wintersorte. Leuchtend rote Schale, feines Aroma. Robust und lagernd. Für Bio-Streuobst geeignet.',tags:['Lager','historisch','Winterapfel','robust'],pdf:'https://www.arche-noah.at/media/roter_berlepsch.pdf',erntem:[10],lagerm:[11,12,1,2]},
+  {b:'R',name:'Roter Boskoop',reife:'Herbst/Winter',genuss:'Okt–Feb',beschreibung:'Rotschalige Mutation des Boskoop. Starker Wuchs als Windschutz. Robust, lagernd, Mehrfachnutzen Tafel und Most.',tags:['Lager','Most','historisch','robust'],pdf:'https://www.arche-noah.at/media/roter_boskoop.pdf',erntem:[9,10],lagerm:[11,12,1,2]},
+  {b:'R',name:'Roter Eiserapfel',reife:'Winter',genuss:'Dez–April',beschreibung:'Außergewöhnlich lang lagernd — bis in den April. Sehr robust, für Streuobst ideal. Winterfutter für Wildtiere.',tags:['Lager','historisch','Winterapfel','Wildtier'],pdf:'https://www.arche-noah.at/media/roter_eiserapfel.pdf',erntem:[11,12],lagerm:[1,2,3,4]},
+  {b:'R',name:'Roter Gravensteiner',reife:'Herbst',genuss:'Aug–Sep',beschreibung:'Rotschalige Mutation des Gravensteiner. Unverwechselbares Aroma, starker Wuchs. Windschutzreihe und Bienenweide.',tags:['Tafelobst','Most','historisch','Streuobst'],pdf:'https://www.arche-noah.at/media/roter_gravensteiner.pdf',erntem:[8,9],lagerm:[]},
+  {b:'R',name:'Roter Herbstkalvill',reife:'Herbst',genuss:'Sep–Okt',beschreibung:'Alte Kalvillsorte mit roter Schale. Feines Kalvill-Aroma, historisch bedeutsam. Für Sortengärten und Liebhaber.',tags:['Tafelobst','historisch','Herbstapfel'],pdf:'https://www.arche-noah.at/media/roter_herbstkalvill.pdf',erntem:[8,9],lagerm:[10]},
+  {b:'R',name:'Roter Stettiner',reife:'Winter',genuss:'Nov–März',beschreibung:'Alte norddeutsche Wintersorte. Sehr robust und lagernd. Für Streuobstwiesen und extensiven Anbau bewährt.',tags:['Lager','historisch','Winterapfel','robust','Streuobst'],pdf:'https://www.arche-noah.at/media/roter_stettiner.pdf',erntem:[10,11],lagerm:[12,1,2,3]},
+  {b:'R',name:'Roter von Simonffi',reife:'Herbst',genuss:'Sep–Nov',beschreibung:'Ungarische Regionalsorte. Robust und angepasst an kontinentale Lagen. Für Streuobst und Sortenerhaltung.',tags:['historisch','Streuobst','robust'],pdf:'https://www.arche-noah.at/media/roter_von_simonffi_beschreibung_und_foto.pdf',erntem:[8,9],lagerm:[10,11]},
+  {b:'R',name:'Roter Winterhimbeerapfel',reife:'Winter',genuss:'Nov–Feb',beschreibung:'Wintersorte mit Himbeeraroma. Historische Rarität für Liebhaber besonderer Aromen. Lang lagernd.',tags:['Lager','historisch','Winterapfel','Rarität'],pdf:'https://www.arche-noah.at/media/roter_winterhimbeerapfel.pdf',erntem:[10,11],lagerm:[12,1,2]},
+  {b:'R',name:'Rotgestreifter Wiesling',reife:'Herbst',genuss:'Sep–Nov',beschreibung:'Rotgestreifte Wiesling-Variante aus Niederösterreich. Mostsorte mit Regionalcharakter. Robust und angepasst.',tags:['Most','historisch','Herbstapfel','österreichisch'],pdf:'https://www.arche-noah.at/media/obstsortenblatt_2016_rotgestreifter_wiesling_web.pdf',erntem:[8,9],lagerm:[10,11]},
+  // S
+  {b:'S',name:'Salzataler Raftingapfel',reife:'Herbst',genuss:'Sep–Nov',beschreibung:'Steirische Regionalsorte aus dem Salzatal. Angepasst an alpine Berglagen. Historisch von Flößern genutzt — kulturgeschichtlich bedeutsam.',tags:['historisch','Streuobst','Steiermark','robust'],pdf:'https://www.arche-noah.at/media/salzataler_raftingapfel_2018.pdf',erntem:[8,9],lagerm:[10,11]},
+  {b:'S',name:'Schieblers Taubenapfel',reife:'Winter',genuss:'Nov–Feb',beschreibung:'Charakteristisch kleine, taubeneigroße Früchte. Historische Rarität. Lang lagernd, für Liebhaber historischer Sorten.',tags:['Lager','historisch','Winterapfel','Rarität'],pdf:'https://www.arche-noah.at/media/schieblers_taubenapfel.pdf',erntem:[10],lagerm:[11,12,1,2]},
+  {b:'S',name:'Schmidberger Renette',reife:'Winter',genuss:'Nov–März',beschreibung:'Österreichische Renette aus dem Stiftsbereich Kremsmünster. Feines Aroma, historisch bedeutsam. Klostergarten-Rarität.',tags:['Lager','historisch','Winterapfel','österreichisch'],pdf:'https://www.arche-noah.at/media/schmidberger_renette.pdf',erntem:[10,11],lagerm:[12,1,2,3]},
+  {b:'S',name:'Schöner aus Nordhausen',reife:'Herbst/Winter',genuss:'Okt–Jan',beschreibung:'Thüringische Sorte mit imposanter Frucht. Großfrüchtig, aromatisch. Für Streuobst und Wirtschaftszwecke.',tags:['Tafelobst','historisch','Streuobst'],pdf:'https://www.arche-noah.at/media/schoener_aus_nordhausen.pdf',erntem:[9,10],lagerm:[11,12,1]},
+  {b:'S',name:'Schöner von Wiltshire',reife:'Herbst',genuss:'Sep–Nov',beschreibung:'Englische Sorte. Aromatisch und charakteristisch. Für Hausgarten und Streuobst geeignet. Bienenweide.',tags:['Tafelobst','historisch','Herbstapfel'],pdf:'https://www.arche-noah.at/media/schoener_von_wiltshire.pdf',erntem:[8,9],lagerm:[10,11]},
+  {b:'S',name:'Schwarzer Borsdorfer',reife:'Herbst/Winter',genuss:'Okt–Jan',beschreibung:'Dunkle Borsdorfer-Variante. Historische Rarität. Für Sortensammlungen und genetische Vielfalt bedeutsam.',tags:['historisch','Rarität','Streuobst'],pdf:'https://www.arche-noah.at/media/obstsortenblatt_2016_schw_borsdorfer_web.pdf',erntem:[9,10],lagerm:[11,12,1]},
+  {b:'S',name:'Schweizer Glockenapfel',reife:'Herbst',genuss:'Sep–Nov',beschreibung:'Schweizer Sorte mit glockenförmiger Frucht. Robust und angepasst an feuchte Lagen. Für Streuobst im Alpenvorland.',tags:['historisch','Streuobst','robust'],pdf:'https://www.arche-noah.at/media/schweizer_glockenapfel_web.pdf',erntem:[8,9],lagerm:[10,11]},
+  {b:'S',name:'Siebenkant',reife:'Herbst/Winter',genuss:'Okt–Jan',beschreibung:'Charakteristisch siebenkantige Fruchtform — namensgebend. Historische Rarität. Genetisch bedeutsam.',tags:['historisch','Rarität','Streuobst'],pdf:'https://www.arche-noah.at/media/siebenkant_beschreibung_und_foto.pdf',erntem:[9,10],lagerm:[11,12,1]},
+  {b:'S',name:'Signe Tillisch',reife:'Herbst',genuss:'Sep–Okt',beschreibung:'Dänische Sorte. Aromatisch und zuverlässig tragend. Für Bio-Anbau und Hausgarten geeignet. Gute Bienenweide.',tags:['Tafelobst','historisch','Herbstapfel'],pdf:'https://www.arche-noah.at/media/signe_tillisch.pdf',erntem:[8,9],lagerm:[10]},
+  {b:'S',name:'Sikulaer',reife:'Herbst/Winter',genuss:'Okt–Jan',beschreibung:'Österreichische Regionalsorte. Robust und angepasst. Für Streuobst und regionale Sortenerhaltung.',tags:['historisch','Streuobst','österreichisch'],pdf:'https://www.arche-noah.at/media/sikulaer_beschreibung_und_foto.pdf',erntem:[9,10],lagerm:[11,12]},
+  {b:'S',name:'Sommer Parmäne',reife:'Sommer',genuss:'Jul–Aug',beschreibung:'Frühreifende Parmäne-Variante. Feines Aroma bereits im Sommer. Bienenweide durch frühe Blüte — Gilden-Frühlieferant.',tags:['Frühsorte','Sommerapfel','historisch','Tafelobst'],pdf:'https://www.arche-noah.at/media/sommer_parmaene_01_1.pdf',erntem:[7,8],lagerm:[]},
+  {b:'S',name:'Sommergewürzapfel',reife:'Sommer',genuss:'Jul–Aug',beschreibung:'Frühreifende Sorte mit würzigem Aroma. Bienenweide. Für Hausgarten und Direktvermarktung.',tags:['Frühsorte','Sommerapfel','historisch','Tafelobst'],pdf:'https://www.arche-noah.at/media/sommergewuerzapfel_01_1.pdf',erntem:[7,8],lagerm:[]},
+  {b:'S',name:'Später Roter Wiesling',reife:'Herbst',genuss:'Okt–Nov',beschreibung:'Späte Rote Wiesling-Variante aus Niederösterreich. Mostsorte mit Regionalcharakter, robust.',tags:['Most','historisch','Herbstapfel','österreichisch'],pdf:'https://www.arche-noah.at/media/obstsortenblatt_2016_spaeter_roter_wiesling_s_web.pdf',erntem:[9,10],lagerm:[11]},
+  {b:'S',name:'Stark Earliest',reife:'Sommer',genuss:'Jun–Jul',beschreibung:'Sehr frühreifende amerikanische Sorte. Ernte bereits im Juni/Juli — frühste Apfelernte. Bienenweide, Frühlieferant für Insekten.',tags:['Frühsorte','Sommerapfel','Bienenweide'],pdf:'https://www.arche-noah.at/media/stark_erliest.pdf',erntem:[6,7],lagerm:[]},
+  {b:'S',name:'Steirischer Constantin',reife:'Herbst',genuss:'Sep–Nov',beschreibung:'Steirische Regionalsorte. Robust und angepasst an südösterreichische Lagen. Wichtige Sortenerhaltung im steirischen Streuobstbestand.',tags:['historisch','Streuobst','Steiermark','robust'],pdf:'https://www.arche-noah.at/media/steirischer_constantin_2018.pdf',erntem:[8,9],lagerm:[10,11]},
+  {b:'S',name:'Steirischer Maschanzker',reife:'Herbst',genuss:'Sep–Nov',beschreibung:'Steirische Maschanzker-Variante. Wichtige regionale Mostsorte. Robust, angepasst an steirische Lagen. Kulturhistorisch bedeutsam.',tags:['Most','historisch','Steiermark','Streuobst'],pdf:'https://www.arche-noah.at/media/steirischer_maschanzker.pdf',erntem:[8,9],lagerm:[10,11]},
+  {b:'S',name:'Steirischer Passamaner',reife:'Herbst/Winter',genuss:'Okt–Jan',beschreibung:'Steirische Landsorte. Robust und zuverlässig tragend. Für Streuobst und Most. Regionale Sortenerhaltung.',tags:['Most','historisch','Steiermark','Streuobst'],pdf:'https://www.arche-noah.at/media/steirischer_passamaner.pdf',erntem:[9,10],lagerm:[11,12]},
+  {b:'S',name:'Steirische Schafnase',reife:'Herbst',genuss:'Sep–Nov',beschreibung:'Charakteristische schafnasenförmige Frucht. Steirische Rarität. Kulturhistorisch bedeutsam.',tags:['historisch','Rarität','Steiermark'],pdf:'https://www.arche-noah.at/media/obstsortenblatt_2016_steir_schafnase_web.pdf',erntem:[8,9],lagerm:[10,11]},
+  {b:'S',name:'Sternrambur',reife:'Herbst',genuss:'Sep–Okt',beschreibung:'Neu dokumentiert 2026. Rambur-Typ mit charakteristischer Sternzeichnung. Historische Rarität, genetisch bedeutsam.',tags:['historisch','Rarität','Herbstapfel','NEU 2026'],pdf:'https://www.arche-noah.at/media/sternrambur.pdf',erntem:[8,9],lagerm:[10]},
+  {b:'S',name:'Strauwalds Parmäne',reife:'Winter',genuss:'Nov–Feb',beschreibung:'Neu dokumentiert 2025. Winterparmäne mit feinem Aroma. Historische Rarität für Sortensammlungen.',tags:['Lager','historisch','Winterapfel','Rarität'],pdf:'https://www.arche-noah.at/media/obstsortenblatt_2025_strauwaldsparmaene_web.pdf',erntem:[10],lagerm:[11,12,1,2]},
+  {b:'S',name:'Süßer Klapperapfel',reife:'Herbst',genuss:'Sep–Nov',beschreibung:'Niederösterreichische Landsorte. Die Kerne klappern bei Reife hörbar — namensgebend. Mostsorte mit Regionalcharakter.',tags:['Most','historisch','österreichisch','Streuobst'],pdf:'https://www.arche-noah.at/media/obstsortenblatt_2016_suesser_klapperapfel_web.pdf',erntem:[8,9],lagerm:[10,11]},
+  // T
+  {b:'T',name:'Tiroler Spitzlederer',reife:'Herbst/Winter',genuss:'Okt–Jan',beschreibung:'Tiroler Landsorte mit charakteristisch lederartig gerauter Schale. Robust für alpine Berglagen. Wichtige Sortenerhaltung für den Alpenraum.',tags:['historisch','Streuobst','winterhart','Tirol'],pdf:'https://www.arche-noah.at/media/tiroler_spitzlederer_beschreibung_und_foto.pdf',erntem:[9,10],lagerm:[11,12,1]},
+  // W
+  {b:'W',name:'Waldviertler Böhmer',reife:'Winter',genuss:'Nov–März',beschreibung:'Waldviertler Landsorte. Sehr robust und winterhart. Für das raue Klima des Waldviertels und ähnliche Höhenlagen optimiert.',tags:['winterhart','historisch','Waldviertel','Streuobst'],pdf:'https://www.arche-noah.at/media/obstsortenblatt_2016_waldviertler_boehmer_web.pdf',erntem:[10,11],lagerm:[12,1,2,3]},
+  {b:'W',name:'Weißer Klarapfel',reife:'Sommer',genuss:'Jul–Aug',beschreibung:'Eine der bekanntesten Frühsorten. Frühblüher als Bienenweide. Für viele Höhenlagen bis 900m geeignet. Schnell essreif nach der Ernte.',tags:['Frühsorte','Sommerapfel','historisch','Tafelobst'],pdf:'https://www.arche-noah.at/media/weisser_klarapfel.pdf',erntem:[7,8],lagerm:[]},
+  {b:'W',name:'Weißer Wiesling',reife:'Herbst',genuss:'Sep–Nov',beschreibung:'Weiße Wiesling-Variante aus Niederösterreich. Wichtige regionale Mostsorte. Robust, angepasst.',tags:['Most','historisch','österreichisch','Streuobst'],pdf:'https://www.arche-noah.at/media/obstsortenblatt_2016_weisser_wiesling_web.pdf',erntem:[8,9],lagerm:[10,11]},
+  {b:'W',name:'Weißer Winter Taffetapfel',reife:'Winter',genuss:'Dez–März',beschreibung:'Alte Wintersorte mit seidig-weißer Schale — taffetartig glänzend, namensgebend. Historische Rarität, lang lagernd.',tags:['Lager','historisch','Winterapfel','Rarität'],pdf:'https://www.arche-noah.at/media/weisser_winter_taffetapfel.pdf',erntem:[11,12],lagerm:[1,2,3]},
+  {b:'W',name:'Weißer Winterkalvill',reife:'Winter',genuss:'Nov–März',beschreibung:'Älteste dokumentierte Kalvillsorte Europas. Feinstes Aroma, historisch einzigartig bedeutsam. Für Sortengärten unverzichtbar.',tags:['Lager','historisch','Winterapfel','Rarität'],pdf:'https://www.arche-noah.at/media/weisser_winterkalvill.pdf',erntem:[10,11],lagerm:[12,1,2,3]},
+  {b:'W',name:'Welschbrunner',reife:'Winter',genuss:'Nov–Feb',beschreibung:'Neu dokumentiert 2025. Österreichische Landsorte. Robust und angepasst. Wichtige Ergänzung für die regionale Sortenvielfalt.',tags:['historisch','Winterapfel','österreichisch'],pdf:'https://www.arche-noah.at/media/obstsortenblatt_2025_welschbrunner_web.pdf',erntem:[10],lagerm:[11,12,1,2]},
+  {b:'W',name:'Wildalpener Hubertusapfel',reife:'Herbst/Winter',genuss:'Okt–Jan',beschreibung:'Steirische Bergsorte aus Wildalpen. Angepasst an alpine Extremlagen. Schutzpatron Hubertus namengebend — jagdkulturell bedeutsam.',tags:['historisch','Streuobst','Steiermark','winterhart'],pdf:'https://www.arche-noah.at/media/obstsortenblatt_2016_wildalpener_hubertusapfel_web.pdf',erntem:[9,10],lagerm:[11,12,1]},
+  {b:'W',name:'Winterbananenapfel',reife:'Winter',genuss:'Nov–Feb',beschreibung:'Wintersorte mit bananenähnlichem Aroma. Historische Rarität. Lang lagernd, für Liebhaber besonderer Aromen.',tags:['Lager','historisch','Winterapfel','Rarität'],pdf:'https://www.arche-noah.at/media/winterbananenapfel_foto_und_beschreibung.pdf',erntem:[10,11],lagerm:[12,1,2]},
+  {b:'W',name:'Wintergoldparmäne',reife:'Winter',genuss:'Nov–März',beschreibung:'Klassische englische Parmäne von 1200 — eine der ältesten Apfelsorten überhaupt. Feinstes Gewürzaroma, golden. Historisch unverzichtbar.',tags:['Lager','historisch','Winterapfel','Tafelobst'],pdf:'https://www.arche-noah.at/media/wintergoldparmaene.pdf',erntem:[10,11],lagerm:[12,1,2,3]},
+  {b:'W',name:'Worcester Parmäne',reife:'Herbst',genuss:'Sep–Okt',beschreibung:'Englische Sorte von 1874. Erdbeer-Aroma, aromatisch-süß. Für Direktvermarktung und Hausgarten. Bienenweide.',tags:['Tafelobst','historisch','Herbstapfel'],pdf:'https://www.arche-noah.at/media/worcester_parmaene_beschreibung_und_foto.pdf',erntem:[8,9],lagerm:[10]},
+  // Z
+  {b:'Z',name:'Zigeunerin',reife:'Herbst/Winter',genuss:'Okt–Jan',beschreibung:'Österreichische Landsorte mit farbenfreudigem Namen. Robust und angepasst. Für Streuobst und regionale Sortenerhaltung.',tags:['historisch','Streuobst','österreichisch'],pdf:'https://www.arche-noah.at/media/zigeunerin_foto_und_beschreibung.pdf',erntem:[9,10],lagerm:[11,12,1]},
+  {b:'Z',name:'Zitzenrenette aus Jaidhof',reife:'Winter',genuss:'Nov–Feb',beschreibung:'Niederösterreichische Renette aus Jaidhof im Kamptal. Charakteristische Zitzenform am Kelch. Historisch bedeutsam für die niederösterreichische Sortenerhaltung.',tags:['Lager','historisch','Winterapfel','österreichisch'],pdf:'https://www.arche-noah.at/media/zitzenrenette_jaidhof_beschreibung_und_foto.pdf',erntem:[10],lagerm:[11,12,1,2]}
+];
+
+// ─── STATUS ───────────────────────────────────────────────────────────────────
+let aktArt='apfel',slArt='apfel',slAktivTag=null,ausgewählt={},anBuchstabe=null,anMonat=null,anGenussMonat=null,anFilterModus='ernte';
+
+// ─── TABS ─────────────────────────────────────────────────────────────────────
+function sbrShowTab(t){
+  ['berater','liste','arche'].forEach((id,i)=>{
+    document.querySelectorAll('.sbr-tab')[i].classList.toggle('active',id===t);
+    document.getElementById('panel-'+id).classList.toggle('active',id===t);
+  });
+  if(t==='liste'){renderFilterButtons();renderListe();}
+  if(t==='arche'){renderAnAbc();renderArche();}
+}
+
+// ─── BERATER ──────────────────────────────────────────────────────────────────
+function setArt(art){aktArt=art;['apfel','birne','zwetschke'].forEach(a=>document.getElementById('art-'+a).classList.toggle('active',a===art));renderZiele();}
+function renderZiele(){document.getElementById('ziele-box').innerHTML=ZIELE_DEF[aktArt].map(z=>'<label class="sb-check"><input type="checkbox" id="z-'+z.id+'" checked> '+z.label+'</label>').join('');}
+renderZiele();
+function tagCls(t){const tl=t.toLowerCase();if(['pilzresistent','robust','winterhart','resistent','feuerbrand','scharka','bio','schorfresistent'].some(k=>tl.includes(k)))return 'tg';if(['most','cider','einkochen','schnaps','destillat','saft'].some(k=>tl.includes(k)))return 'ta';if(['bestäuber','wildtier','streuobst','historisch','österreichisch','rarität'].some(k=>tl.includes(k)))return 'tp';return 'tb';}
+function beraten(){
+  const hoehe=parseInt(document.getElementById('hoehe').value),expo=document.getElementById('expo').value,frost=document.getElementById('frost').value,ns=document.getElementById('ns').value;
+  const gZ=ZIELE_DEF[aktArt].filter(z=>{var e=document.getElementById('z-'+z.id);return e&&e.checked;}).map(z=>z.id);
+  const scored=SORTEN[aktArt].filter(s=>hoehe<=s.hmax&&s.expo.includes(expo)&&s.ns.includes(ns)&&!(frost==='hoch'&&s.frost==='gering')).map(s=>({...s,score:gZ.filter(z=>s.ziele.includes(z)).length})).sort((a,b)=>b.score-a.score).slice(0,4);
+  const lbl={apfel:'Apfel',birne:'Birne',zwetschke:'Zwetschke'}[aktArt];
+  const expoEl=document.getElementById('expo');
+  if(!scored.length){document.getElementById('res').innerHTML='<div class="sb-leer">Keine passenden Sorten gefunden.</div>';return;}
+  let html='<p class="res-header">'+lbl+' &middot; '+hoehe+'m &middot; '+expoEl.options[expoEl.selectedIndex].text+' &middot; '+scored.length+' Empfehlung'+(scored.length>1?'en':'')+'</p>';
+  scored.forEach(s=>{const tags=s.tags.map(t=>'<span class="sb-tag '+tagCls(t)+'">'+t+'</span>').join('');html+='<div class="sb-sorte"><div class="sb-sorte-name">'+s.name+'<span class="sb-reife">Reife: '+s.reife+'</span></div><div class="sb-tags">'+tags+'</div><div class="sb-gilde"><strong>Gilde</strong>'+s.gilde+'</div></div>';});
+  document.getElementById('res').innerHTML=html;
+}
+
+// ─── HOFSORTENPOOL ────────────────────────────────────────────────────────────
+function alleTags(art){const s=new Set();SORTEN[art].forEach(s2=>s2.tags.forEach(t=>s.add(t)));return Array.from(s).sort();}
+function slSetArt(art){slArt=art;slAktivTag=null;['apfel','birne','zwetschke'].forEach(a=>document.getElementById('sl-art-'+a).classList.toggle('active',a===art));document.getElementById('sl-search').value='';renderFilterButtons();renderListe();}
+function renderFilterButtons(){document.getElementById('sl-filter-buttons').innerHTML=alleTags(slArt).map(t=>'<button class="sl-filter-btn'+(slAktivTag===t?' active':'')+'" onclick="slToggleTag(\''+t.replace(/'/g,"\\'")+'\')">'+t+'</button>').join('');}
+function slToggleTag(t){slAktivTag=slAktivTag===t?null:t;renderFilterButtons();renderListe();}
+function renderListe(){
+  const suche=(document.getElementById('sl-search').value||'').toLowerCase();
+  let pool=SORTEN[slArt];
+  if(slAktivTag)pool=pool.filter(s=>s.tags.some(t=>t===slAktivTag));
+  if(suche)pool=pool.filter(s=>s.name.toLowerCase().includes(suche)||s.gilde.toLowerCase().includes(suche)||s.tags.some(t=>t.toLowerCase().includes(suche)));
+  document.getElementById('sl-count').textContent=pool.length+' von '+SORTEN[slArt].length+' Sorten';
+  if(!pool.length){document.getElementById('sl-grid').innerHTML='<p class="sl-empty">Keine Sorten gefunden.</p>';return;}
+  document.getElementById('sl-grid').innerHTML=pool.map(s=>{const sel=ausgewählt[s.name];const tags=s.tags.map(t=>'<span class="sb-tag '+tagCls(t)+'">'+t+'</span>').join('');return '<div class="sl-card'+(sel?' selected':'')+'" onclick="toggleAuswahl(\''+s.name.replace(/'/g,"\\'")+'\')"><div class="sl-card-check"><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><polyline points="1.5,5 4,7.5 8.5,2.5" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="sl-card-name">'+s.name+'</div><div class="sl-card-reife">Reife: '+s.reife+' &middot; bis '+s.hmax+'m</div><div class="sb-tags">'+tags+'</div><div class="sl-card-desc">'+s.gilde+'</div></div>';}).join('');
+  updateAuswahlBar();
+}
+function toggleAuswahl(name){if(ausgewählt[name])delete ausgewählt[name];else ausgewählt[name]=true;renderListe();}
+function updateAuswahlBar(){const n=Object.keys(ausgewählt).length;document.getElementById('auswahl-bar').style.display=n>0?'flex':'none';document.getElementById('auswahl-count').textContent=n;}
+function auswahl_leeren(){ausgewählt={};renderListe();}
+renderFilterButtons();renderListe();
+
+// ─── ARCHE NOAH ──────────────────────────────────────────────────────────────
+const AN_BUCHSTABEN=['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','W','Z'];
+const MONATE=[
+  {m:6,kz:'Jun',cls:'sommer'},{m:7,kz:'Jul',cls:'sommer'},{m:8,kz:'Aug',cls:'sommer'},
+  {m:9,kz:'Sep',cls:'herbst'},{m:10,kz:'Okt',cls:'herbst'},{m:11,kz:'Nov',cls:'herbst'},
+  {m:12,kz:'Dez',cls:'winter'},{m:1,kz:'Jan',cls:'winter'},{m:2,kz:'Feb',cls:'winter'},
+  {m:3,kz:'Mär',cls:'winter'}
+];
+const MNAM={1:'Jan',2:'Feb',3:'Mär',4:'Apr',5:'Mai',6:'Jun',7:'Jul',8:'Aug',9:'Sep',10:'Okt',11:'Nov',12:'Dez'};
+
+// Genussmonate = Erntemonat(e) + Lagermonate zusammen (= gesamtes Genussfenster)
+// Sonderfälle: Sommersorten ohne Lager — Genuss direkt nach Ernte, nur 1–2 Wochen
+// Wir leiten genussm zur Laufzeit ab: union(erntem, lagerm)
+// Falls lagerm leer → genussm = erntem (frisch ab Baum)
+function getGenussm(s){
+  const e=s.erntem||[];
+  const l=s.lagerm||[];
+  if(l.length===0) return e; // Frischsorte: nur Erntemonat(e)
+  return [...new Set([...e,...l])];
+}
+
+// Genuss-Textstring aus genussm ableiten
+function genussText(s){
+  const gm=getGenussm(s);
+  if(!gm.length) return s.genuss||'–';
+  // Sortiere nach Kalender (Jun=6 → Mär=3, Jahreswechsel beachten)
+  const ord=m=>m>=6?m:m+12;
+  const sorted=[...gm].sort((a,b)=>ord(a)-ord(b));
+  if(sorted.length===1) return MNAM[sorted[0]];
+  return MNAM[sorted[0]]+'–'+MNAM[sorted[sorted.length-1]];
+}
+
+function renderAnMonate(){
+  const modus=anFilterModus;
+  const vorhandene=new Set();
+  AN_SORTEN.forEach(s=>{
+    const arr=modus==='genuss'?getGenussm(s):(s.erntem||[]);
+    arr.forEach(m=>vorhandene.add(m));
+  });
+  const aktiv=modus==='genuss'?anGenussMonat:anMonat;
+  const setter=modus==='genuss'?'anSetGenussMonat':'anSetMonat';
+  document.getElementById('an-monate').innerHTML=
+    '<button class="an-monat-btn'+(aktiv===null?' active':'')+'" onclick="'+setter+'(null)">Alle</button>'+
+    MONATE.filter(mo=>vorhandene.has(mo.m)).map(mo=>
+      '<button class="an-monat-btn '+(mo.cls)+(aktiv===mo.m?' active':'')+'" onclick="'+setter+'('+mo.m+')">'+mo.kz+'</button>'
+    ).join('');
+  // Titel aktualisieren
+  document.getElementById('an-filter-title').innerHTML=
+    modus==='ernte'
+      ? 'Erntemonat — Ernte erzielen &amp; Sukzession beobachten'
+      : 'Genussreife — Vom Rand zur Mitte nutzen &amp; Ernte einplanen';
+}
+
+function anSetModus(m){
+  anFilterModus=m;
+  anMonat=null; anGenussMonat=null;
+  ['ernte','genuss'].forEach(id=>document.getElementById('modus-'+id).classList.toggle('active',id===m));
+  renderAnMonate();renderArche();
+}
+function anSetMonat(m){anMonat=m;renderAnMonate();renderArche();}
+function anSetGenussMonat(m){anGenussMonat=m;renderAnMonate();renderArche();}
+
+function renderAnAbc(){
+  document.getElementById('an-abc').innerHTML=AN_BUCHSTABEN.map(b=>{
+    const cnt=AN_SORTEN.filter(s=>s.b===b).length;
+    return '<button class="an-abc-btn'+(anBuchstabe===b?' active':'')+'" onclick="anToggle(\''+b+'\')">'+b+' <span style="font-size:10px;font-weight:400">('+cnt+')</span></button>';
+  }).join('');
+}
+function anToggle(b){anBuchstabe=anBuchstabe===b?null:b;renderAnAbc();renderArche();}
+
+function ernteBar(s){
+  const gm=getGenussm(s);
+  const ord=m=>m>=6?m:m+12;
+  const gmSorted=[...gm].sort((a,b)=>ord(a)-ord(b));
+  const letzterGenuss=gmSorted.length?gmSorted[gmSorted.length-1]:null;
+  return '<div class="an-ernte-bar">'+MONATE.map(mo=>{
+    const istErnte=(s.erntem||[]).includes(mo.m);
+    const istLager=(s.lagerm||[]).includes(mo.m);
+    const istGenussOnly=gm.includes(mo.m)&&!istErnte&&!istLager;
+    const istLetzterGenuss=mo.m===letzterGenuss;
+    let cls,tip;
+    if(istErnte){cls='aktiv';tip='Ernte';}
+    else if(istLager){cls='lager';tip='Lager / Genuss';}
+    else if(istGenussOnly){cls='genuss';tip='Genuss';}
+    else{cls='inaktiv';tip='';}
+    const extra=istLetzterGenuss?' style="background:#3B6D11;color:#fff;border-color:#3B6D11"':'';
+    return '<div class="an-ernte-dot '+cls+'"'+extra+' title="'+MNAM[mo.m]+(tip?' – '+tip:'')+(istLetzterGenuss?' (Ende Genussreife)':'')+'">'+mo.kz[0]+'</div>';
+  }).join('')+'</div>';
+}
+
+function renderArche(){
+  const suche=(document.getElementById('an-search').value||'').toLowerCase();
+  let pool=AN_SORTEN;
+  if(anBuchstabe)pool=pool.filter(s=>s.b===anBuchstabe);
+  if(anFilterModus==='ernte'&&anMonat!==null)
+    pool=pool.filter(s=>(s.erntem||[]).includes(anMonat));
+  if(anFilterModus==='genuss'&&anGenussMonat!==null)
+    pool=pool.filter(s=>getGenussm(s).includes(anGenussMonat));
+  if(suche)pool=pool.filter(s=>s.name.toLowerCase().includes(suche)||s.beschreibung.toLowerCase().includes(suche)||s.tags.some(t=>t.toLowerCase().includes(suche)));
+  document.getElementById('an-count').textContent=pool.length+' von '+AN_SORTEN.length+' Sorten (A–Z)';
+  if(!pool.length){document.getElementById('an-grid').innerHTML='<p class="sl-empty">Keine Sorten gefunden.</p>';return;}
+  document.getElementById('an-grid').innerHTML=pool.map(s=>{
+    const sel=ausgewählt['AN:'+s.name];
+    const tags=s.tags.map(t=>'<span class="sb-tag '+tagCls(t)+'">'+t+'</span>').join('');
+    const ernteMonate=(s.erntem||[]).map(m=>MNAM[m]).join(', ');
+    const ord=m=>m>=6?m:m+12;
+    const lagerm=s.lagerm||[];
+    const lagermSorted=[...lagerm].sort((a,b)=>ord(a)-ord(b));
+    const lagerMonate=lagermSorted.length===0?'–':lagermSorted.length===1?MNAM[lagermSorted[0]]:MNAM[lagermSorted[0]]+' bis '+MNAM[lagermSorted[lagermSorted.length-1]];
+    const genuss=genussText(s);
+    const gm=getGenussm(s);
+    const gmSorted=[...gm].sort((a,b)=>ord(a)-ord(b));
+    const genussLang=gmSorted.length===0?'–':gmSorted.length===1?MNAM[gmSorted[0]]:MNAM[gmSorted[0]]+' bis '+MNAM[gmSorted[gmSorted.length-1]];
+    return '<div class="sl-card'+(sel?' selected':'')+'" onclick="toggleAnAuswahl(\''+s.name.replace(/'/g,"\\'")+'\')">'+
+      '<div class="sl-card-check"><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><polyline points="1.5,5 4,7.5 8.5,2.5" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>'+
+      '<span class="an-badge">Arche Noah</span>'+
+      '<div class="sl-card-name">'+s.name+'</div>'+
+      '<div class="an-ernte-zeile">'+
+        '<span>Ernte: <strong>'+ernteMonate+'</strong></span>'+
+      '</div>'+
+      ((s.lagerm||[]).length?
+        '<div class="an-lager-zeile">'+
+          '<span>Lager: '+lagerMonate+'</span>'+
+        '</div>'
+      :'')+
+      '<div class="an-genuss-zeile">'+
+        '<span>Genussreife: '+genussLang+'</span>'+
+      '</div>'+
+      ernteBar(s)+
+      '<div class="sb-tags" style="margin-top:6px">'+tags+'</div>'+
+      '<div class="sl-card-desc">'+s.beschreibung+'</div>'+
+      '<a class="an-pdf-link" href="'+s.pdf+'" target="_blank" rel="noopener" onclick="event.stopPropagation()">Sortenblatt PDF ↗</a>'+
+    '</div>';
+  }).join('');
+}
+function toggleAnAuswahl(name){const k='AN:'+name;if(ausgewählt[k])delete ausgewählt[k];else ausgewählt[k]=true;renderArche();}
+renderAnMonate();renderAnAbc();renderArche();
+
 </script>
 </body>
 </html>
