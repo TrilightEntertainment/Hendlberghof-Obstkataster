@@ -1,8 +1,11 @@
-const CACHE_NAME = 'hendlberghof-v2';
+const CACHE_NAME = 'hendlberghof-v3';
 const CORE_ASSETS = [
   './',
   './index.html',
   './assets/images/lageplan.jpg',
+  './data/baum_data.json',
+  './data/sorten_data.json',
+  './data/seed_positions.json',
   './icons/icon-192.png',
   './icons/icon-512.png',
   './manifest.json'
