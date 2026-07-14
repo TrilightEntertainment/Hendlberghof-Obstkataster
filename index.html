@@ -749,11 +749,15 @@ function applyRemoteState(remote){
   if(!state.baumEdits) state.baumEdits = {};
   if(!state.sortenEdits) state.sortenEdits = {};
   if(state.gpsCalib===undefined) state.gpsCalib = null;
-  /* Stale Positionen aufräumen */
+  /* Stale Einträge aufräumen */
+  const baumIds = new Set(BAUM_DATA.map(b=>b.id));
+  state.customTrees = state.customTrees.filter(c=>baumIds.has(c.id) || c.id.startsWith('NEU-'));
+  for(const k of Object.keys(state.baumEdits)){
+    if(!baumIds.has(k) && !k.startsWith('NEU-')) delete state.baumEdits[k];
+  }
   if(state.positions){
-    const allIds = new Set(getAllTrees().map(t=>t.id));
     for(const k of Object.keys(state.positions)){
-      if(!allIds.has(k)) delete state.positions[k];
+      if(!baumIds.has(k) && !k.startsWith('NEU-')) delete state.positions[k];
     }
   }
   localStorage.setItem(LS_KEY, JSON.stringify(state));
@@ -2214,15 +2218,28 @@ function confirmDeleteBaum(id){
 /* ---------- Init (nach Laden der externen Grunddaten) ---------- */
 function startApp(){
   initState();
-  /* Positionen für nicht mehr existierende Baum-IDs aufräumen (z.B. nach Walnuss-Neuanlage) */
-  if(state.positions){
-    const allIds = new Set(getAllTrees().map(t=>t.id));
-    let changed = false;
-    for(const k of Object.keys(state.positions)){
-      if(!allIds.has(k)){ delete state.positions[k]; changed = true; }
-    }
-    if(changed) saveState();
+  /* State aufräumen: nicht mehr existierende Baum-IDs entfernen */
+  const baumIds = new Set(BAUM_DATA.map(b=>b.id));
+  let changed = false;
+  /* customTrees die nicht mehr in BAUM_DATA stehen */
+  if(state.customTrees && state.customTrees.length){
+    const before = state.customTrees.length;
+    state.customTrees = state.customTrees.filter(c=>baumIds.has(c.id) || c.id.startsWith('NEU-'));
+    if(state.customTrees.length !== before) changed = true;
   }
+  /* baumEdits für nicht mehr existierende IDs */
+  if(state.baumEdits){
+    for(const k of Object.keys(state.baumEdits)){
+      if(!baumIds.has(k) && !k.startsWith('NEU-')){ delete state.baumEdits[k]; changed = true; }
+    }
+  }
+  /* Positionen für nicht mehr existierende IDs */
+  if(state.positions){
+    for(const k of Object.keys(state.positions)){
+      if(!baumIds.has(k) && !k.startsWith('NEU-')){ delete state.positions[k]; changed = true; }
+    }
+  }
+  if(changed) saveState();
   refreshFilterOptions();
   applyEditModeUI();
   renderBaumTable();
