@@ -749,10 +749,18 @@ function applyRemoteState(remote){
   if(!state.baumEdits) state.baumEdits = {};
   if(!state.sortenEdits) state.sortenEdits = {};
   if(state.gpsCalib===undefined) state.gpsCalib = null;
+  /* Stale Positionen aufräumen */
+  if(state.positions){
+    const allIds = new Set(getAllTrees().map(t=>t.id));
+    for(const k of Object.keys(state.positions)){
+      if(!allIds.has(k)) delete state.positions[k];
+    }
+  }
   localStorage.setItem(LS_KEY, JSON.stringify(state));
   refreshFilterOptions();
   renderBaumTable();
   renderSortenCards();
+  renderUnplacedSelect();
   if(document.getElementById('tab-lageplan').style.display!=='none') renderPins();
 }
 
@@ -2183,6 +2191,15 @@ function confirmDeleteBaum(id){
 /* ---------- Init (nach Laden der externen Grunddaten) ---------- */
 function startApp(){
   initState();
+  /* Positionen für nicht mehr existierende Baum-IDs aufräumen (z.B. nach Walnuss-Neuanlage) */
+  if(state.positions){
+    const allIds = new Set(getAllTrees().map(t=>t.id));
+    let changed = false;
+    for(const k of Object.keys(state.positions)){
+      if(!allIds.has(k)){ delete state.positions[k]; changed = true; }
+    }
+    if(changed) saveState();
+  }
   refreshFilterOptions();
   applyEditModeUI();
   renderBaumTable();
