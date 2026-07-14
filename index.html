@@ -681,10 +681,11 @@
         Neuer Tab</a>
       <button class="pdf-act" onclick="closeArcheViewer()">✕ Schließen</button>
     </div>
-    <iframe class="pdf-frame" id="pdf-frame" title="Arche-Noah-Sortenblatt"></iframe>
+    <div class="pdf-frame" id="pdf-frame" title="Arche-Noah-Sortenblatt" style="overflow:auto;background:#f4f2ec;"></div>
   </div>
 </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
@@ -1336,18 +1337,40 @@ function archeNoahLink(obj){
 
 function openArcheViewer(url, sorte){
   document.getElementById('pdf-title').textContent = (sorte? sorte+' · ' : '') + 'Sortenblatt Arche Noah';
-  const gview = 'https://docs.google.com/gview?embedded=true&url=' + encodeURIComponent(url);
-  document.getElementById('pdf-frame').src = gview;
   const dl = document.getElementById('pdf-download');
   dl.href = url;
   const stem = (sorte||'Sortenblatt').replace(/[^A-Za-z0-9ÄÖÜäöüß]+/g,'_').replace(/^_+|_+$/g,'');
   dl.setAttribute('download', 'Arche-Noah_'+stem+'.pdf');
   document.getElementById('pdf-newtab').href = url;
   document.getElementById('pdf-overlay').classList.add('open');
+  const container = document.getElementById('pdf-frame');
+  container.innerHTML = '<p style="text-align:center;padding:2rem;color:#7a7a7a;">Lade Vorschau …</p>';
+  if(typeof pdfjsLib!=='undefined'){
+    pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    pdfjsLib.getDocument(url).promise.then(function(pdf){
+      container.innerHTML='';
+      var renderPage=function(pageNum){
+        pdf.getPage(pageNum).then(function(page){
+          var scale=(container.clientWidth-20)/page.getViewport({scale:1}).width;
+          var viewport=page.getViewport({scale:scale});
+          var canvas=document.createElement('canvas');
+          canvas.width=viewport.width;canvas.height=viewport.height;
+          canvas.style.display='block';canvas.style.margin='10px auto';
+          container.appendChild(canvas);
+          page.render({canvasContext:canvas.getContext('2d'),viewport:viewport});
+        });
+      };
+      for(var i=1;i<=pdf.numPages;i++) renderPage(i);
+    }).catch(function(){
+      container.innerHTML='<p style="text-align:center;padding:2rem;">Vorschau nicht verfügbar. <a href="'+url+'" target="_blank" rel="noopener">PDF öffnen</a></p>';
+    });
+  } else {
+    container.innerHTML='<iframe src="'+url+'" style="width:100%;height:100%;border:none;"></iframe>';
+  }
 }
 function closeArcheViewer(){
   document.getElementById('pdf-overlay').classList.remove('open');
-  document.getElementById('pdf-frame').src = 'about:blank';
+  document.getElementById('pdf-frame').innerHTML='';
 }
 
 const VERWENDUNG_OPTIONEN = ['Tafelobst','Wirtschaftsobst','Saft/Most'];
