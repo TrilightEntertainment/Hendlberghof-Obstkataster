@@ -353,7 +353,6 @@
     main{padding:14px 12px 40px;}
     .toolbar{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;align-items:stretch;}
     .toolbar > *{width:100%;}
-    .toolbar .search-wrap{grid-column:1/-1;}
     input[type=text]{min-width:0;}
     .map-toolbar{flex-direction:column;align-items:stretch;}
     .map-toolbar > *{width:100%;}
@@ -490,6 +489,13 @@
   <!-- BAUMKATASTER -->
   <section id="tab-baumkataster">
     <div class="toolbar">
+      <div class="search-wrap">
+        <svg class="search-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+          <circle cx="10" cy="10" r="7" fill="none" stroke="currentColor" stroke-width="2"/>
+          <line x1="15" y1="15" x2="21" y2="21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+        <input type="text" id="baum-search" placeholder="Suche nach Sorte, ID, Standort …">
+      </div>
       <select id="baum-filter-frucht">
         <option value="">Obstarten</option>
       </select>
@@ -500,13 +506,6 @@
         <option value="Saft/Most">Saft/Most</option>
       </select>
       <button type="button" class="btn field" id="btn-baum-search-reset" title="Suche zurücksetzen">✕ Suche zurücksetzen</button>
-      <div class="search-wrap">
-        <svg class="search-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-          <circle cx="10" cy="10" r="7" fill="none" stroke="currentColor" stroke-width="2"/>
-          <line x1="15" y1="15" x2="21" y2="21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-        </svg>
-        <input type="text" id="baum-search" placeholder="Suche nach Sorte, ID, Standort …">
-      </div>
       <button class="btn field" onclick="openExportDialog('baum','excel')" title="Gefilterte Auswahl als Excel exportieren">⬇ Excel</button>
       <button class="btn field" onclick="openExportDialog('baum','pdf')" title="Gefilterte Auswahl als PDF exportieren">⬇ PDF</button>
       <button class="btn field btn-login-toggle" onclick="handleLoginToggle()">Bearbeiten</button>
@@ -530,6 +529,13 @@
   <!-- SORTEN -->
   <section id="tab-sorten" style="display:none;">
     <div class="toolbar">
+      <div class="search-wrap">
+        <svg class="search-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+          <circle cx="10" cy="10" r="7" fill="none" stroke="currentColor" stroke-width="2"/>
+          <line x1="15" y1="15" x2="21" y2="21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+        <input type="text" id="sorten-search" placeholder="Sorte suchen …">
+      </div>
       <select id="sorten-filter-frucht">
         <option value="">Obstarten</option>
       </select>
@@ -540,13 +546,6 @@
         <option value="Saft/Most">Saft/Most</option>
       </select>
       <button type="button" class="btn field" id="btn-sorten-search-reset" title="Suche zurücksetzen">✕ Suche zurücksetzen</button>
-      <div class="search-wrap">
-        <svg class="search-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-          <circle cx="10" cy="10" r="7" fill="none" stroke="currentColor" stroke-width="2"/>
-          <line x1="15" y1="15" x2="21" y2="21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-        </svg>
-        <input type="text" id="sorten-search" placeholder="Sorte suchen …">
-      </div>
       <button class="btn field" onclick="openExportDialog('sorten','excel')" title="Gefilterte Auswahl als Excel exportieren">⬇ Excel</button>
       <button class="btn field" onclick="openExportDialog('sorten','pdf')" title="Gefilterte Auswahl als PDF exportieren">⬇ PDF</button>
       <button class="btn field" onclick="exportSortenbeschreibungenPDF()" title="Nur die Sortenbeschreibungen (Geschmack, Eigenschaften, Frucht) als PDF">⬇ Beschreibungen (PDF)</button>
