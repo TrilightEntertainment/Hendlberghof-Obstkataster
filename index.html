@@ -331,6 +331,13 @@
   }
   .edit-form textarea{min-height:70px;resize:vertical;}
   .edit-actions{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap;}
+  .sorte-ac-wrap{position:relative;}
+  .sorte-ac-list{position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid #C9C0A9;border-radius:7px;max-height:180px;overflow-y:auto;z-index:10;display:none;box-shadow:0 4px 12px rgba(0,0,0,.12);}
+  .sorte-ac-list.open{display:block;}
+  .sorte-ac-item{padding:8px 12px;cursor:pointer;font-size:.82rem;color:#3E2B22;border-bottom:1px solid #f0ede5;}
+  .sorte-ac-item:last-child{border-bottom:none;}
+  .sorte-ac-item:hover,.sorte-ac-item.active{background:#f5f0e1;}
+  .sorte-ac-item small{color:#8A7F63;display:block;font-size:.72rem;}
   .btn.danger{background:#c0392b;color:#fff;}
   .edit-mode-banner{
     background:#eaf3de;color:var(--waldrand);font-size:.82rem;font-weight:600;
@@ -2158,33 +2165,66 @@ function openBaumAddForm(){
     <button class="close" onclick="closeModal()">&times;</button>
     <h2><img src="icons/seedling.svg" width="20" height="20" style="vertical-align:-4px;margin-right:4px;" alt="">Neuen Baum hinzufügen</h2>
     <p style="font-size:.82rem;color:var(--muted);">Der neue Baum wird lokal gespeichert und erscheint sofort im Kataster. Bei Eingabe einer bekannten Sorte werden die Felder automatisch ausgefüllt.</p>
-    <form id="baum-edit-form" oninput="autoFillSorte()">${buildEditForm(null, true)}</form>
+    <form id="baum-edit-form">${buildEditForm(null, true)}</form>
     <div class="edit-actions">
       <button class="btn" onclick="saveNewBaum()"><img src="icons/tree.svg" width="13" height="13" style="vertical-align:-2px;margin-right:4px;" alt="">Baum anlegen</button>
       <button class="btn secondary" onclick="closeModal()">Abbrechen</button>
     </div>`;
   document.getElementById('modal-content').innerHTML = html;
   document.getElementById('overlay').classList.add('open');
+  initSorteAutocomplete();
 }
 
-function autoFillSorte(){
+const BAUM_INDIVIDUAL_KEYS = ['id','sorte','unterlage','veredelt','ausgepflanzt','standort_zeile'];
+
+function initSorteAutocomplete(){
   const form = document.getElementById('baum-edit-form');
   if(!form) return;
   const sorteEl = form.querySelector('[name="sorte"]');
   if(!sorteEl) return;
-  const q = sorteEl.value.trim().toLowerCase();
-  if(q.length < 3) return;
-  const match = SORTEN_DATA.find(s => s.sorte && s.sorte.toLowerCase().startsWith(q));
-  if(!match) return;
+  const wrap = document.createElement('div');
+  wrap.className = 'sorte-ac-wrap';
+  sorteEl.parentNode.insertBefore(wrap, sorteEl);
+  wrap.appendChild(sorteEl);
+  const list = document.createElement('div');
+  list.className = 'sorte-ac-list';
+  wrap.appendChild(list);
+  sorteEl.addEventListener('input', function(){
+    const q = this.value.trim().toLowerCase();
+    if(q.length < 2){ list.classList.remove('open'); list.innerHTML=''; return; }
+    const matches = SORTEN_DATA.filter(s => s.sorte && s.sorte.toLowerCase().includes(q)).slice(0,8);
+    if(!matches.length){ list.classList.remove('open'); list.innerHTML=''; return; }
+    list.innerHTML = matches.map((s,i) =>
+      '<div class="sorte-ac-item" data-idx="'+i+'">'+s.sorte+(s.frucht?' <small>'+s.frucht+'</small>':'')+'</div>'
+    ).join('');
+    list.classList.add('open');
+    list._matches = matches;
+  });
+  list.addEventListener('click', function(e){
+    const item = e.target.closest('.sorte-ac-item');
+    if(!item) return;
+    const match = list._matches[parseInt(item.dataset.idx)];
+    if(!match) return;
+    sorteEl.value = match.sorte;
+    list.classList.remove('open');
+    list.innerHTML='';
+    applySortToForm(form, match);
+  });
+  sorteEl.addEventListener('blur', function(){
+    setTimeout(()=>{ list.classList.remove('open'); }, 150);
+  });
+}
+
+function applySortToForm(form, match){
   FELDER.forEach(f => {
-    if(f.key === 'sorte' || f.key === 'id') return;
+    if(BAUM_INDIVIDUAL_KEYS.includes(f.key)) return;
     if(f.type === 'checkboxgroup'){
-      const boxes = form.querySelectorAll(`[name="${f.key}"]`);
+      const boxes = form.querySelectorAll('[name="'+f.key+'"]');
       const val = match[f.key];
       boxes.forEach(cb => { cb.checked = Array.isArray(val) && val.includes(cb.value); });
     } else {
-      const el = form.querySelector(`[name="${f.key}"]`);
-      if(el && !el.value && match[f.key]) el.value = match[f.key];
+      const el = form.querySelector('[name="'+f.key+'"]');
+      if(el && match[f.key]) el.value = match[f.key];
     }
   });
 }
