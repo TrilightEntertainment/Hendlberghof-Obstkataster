@@ -1562,6 +1562,11 @@ function openSortenModal(sorteName){
   const safeName = sorteName.replace(/'/g,"\\'");
   const html = `
     <button class="close" onclick="closeModal()">&times;</button>
+    <button class="close" style="right:88px;" title="Sorte bearbeiten" onclick="closeModal();editBaumWithLogin('${s.baum_ids[0]}')">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false" style="vertical-align:middle;">
+        <path d="M17 3l4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
+      </svg>
+    </button>
     <button class="close" style="right:44px;" title="Als PDF speichern" onclick="exportSortenKartePDF('${safeName}')">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false" style="vertical-align:middle;">
         <path d="M6 9V3h12v6"/>
