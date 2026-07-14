@@ -2575,7 +2575,7 @@ const AN_SORTEN=[
 ];
 
 // ─── STATUS ───────────────────────────────────────────────────────────────────
-let aktArt='apfel',slArt='apfel',slAktivTag=null,ausgewählt={},anBuchstabe=null,anMonat=null,anGenussMonat=null,anFilterModus='ernte';
+let aktArt='apfel',slArt='apfel',slAktiveTags=new Set(),ausgewählt={},anBuchstabe=null,anMonat=null,anGenussMonat=null,anFilterModus='ernte';
 
 // ─── TABS ─────────────────────────────────────────────────────────────────────
 function sbrShowTab(t){
@@ -2649,7 +2649,6 @@ function hofTags(s){
   if(s.lagerfaehig) t.push('lagerfähig');
   if(s.arche_pdf) t.push('Arche Noah');
   if(state.verifiziert && state.verifiziert[s.sorte]) t.push('verifiziert');
-  else if(s.recherchiert) t.push('recherchiert');
   return t;
 }
 function renderSlArtTabs(){
@@ -2659,20 +2658,17 @@ function renderSlArtTabs(){
   if(arten.length && !arten.some(a=>a.toLowerCase()===slArt)) slArt=arten[0].toLowerCase();
   document.getElementById('sl-art-tabs').innerHTML=arten.map(a=>'<div class="sl-art-tab'+(a.toLowerCase()===slArt?' active':'')+'" onclick="slSetArt(\''+a.toLowerCase().replace(/'/g,"\\'")+'\')">'+a+'</div>').join('');
 }
-function alleTags(){
-  const s=new Set();
-  hofpoolDaten().liste.filter(x=>(x.frucht||'').toLowerCase()===slArt).forEach(x=>hofTags(x).forEach(t=>s.add(t)));
-  return Array.from(s).sort((a,b)=>a.localeCompare(b,'de'));
-}
-function slSetArt(art){slArt=art;slAktivTag=null;document.getElementById('sl-search').value='';renderSlArtTabs();renderFilterButtons();renderListe();}
-function renderFilterButtons(){document.getElementById('sl-filter-buttons').innerHTML=alleTags().map(t=>'<button class="sl-filter-btn'+(slAktivTag===t?' active':'')+'" onclick="slToggleTag(\''+t.replace(/'/g,"\\'")+'\')">'+t+'</button>').join('');}
-function slToggleTag(t){slAktivTag=slAktivTag===t?null:t;renderFilterButtons();renderListe();}
+const SL_FILTER_OPTIONS=['Arche Noah','lagerfähig','Saft/Most','Wirtschaftsobst'];
+function slSetArt(art){slArt=art;slAktiveTags.clear();document.getElementById('sl-search').value='';renderSlArtTabs();renderFilterButtons();renderListe();}
+function renderFilterButtons(){document.getElementById('sl-filter-buttons').innerHTML=SL_FILTER_OPTIONS.map(t=>'<button class="sl-filter-btn'+(slAktiveTags.has(t)?' active':'')+'" onclick="slToggleTag(\''+t+'\')">'+t+'</button>').join('')+'<button class="sl-filter-btn" onclick="slResetFilters()">✕ Zurücksetzen</button>';}
+function slToggleTag(t){if(slAktiveTags.has(t))slAktiveTags.delete(t);else slAktiveTags.add(t);renderFilterButtons();renderListe();}
+function slResetFilters(){slAktiveTags.clear();document.getElementById('sl-search').value='';renderFilterButtons();renderListe();}
 function renderListe(){
   const suche=(document.getElementById('sl-search').value||'').toLowerCase();
   const {liste,anzahl}=hofpoolDaten();
   const gesamt=liste.filter(s=>(s.frucht||'').toLowerCase()===slArt);
   let pool=gesamt;
-  if(slAktivTag)pool=pool.filter(s=>hofTags(s).includes(slAktivTag));
+  if(slAktiveTags.size>0)pool=pool.filter(s=>{const tags=hofTags(s);return Array.from(slAktiveTags).every(t=>tags.includes(t));});
   if(suche)pool=pool.filter(s=>s.sorte.toLowerCase().includes(suche)||(s.geschmack||'').toLowerCase().includes(suche)||(s.eigenschaften||'').toLowerCase().includes(suche)||hofTags(s).some(t=>t.toLowerCase().includes(suche)));
   pool=pool.slice().sort((a,b)=>a.sorte.localeCompare(b.sorte,'de'));
   document.getElementById('sl-count').textContent=pool.length+' von '+gesamt.length+' Hofsorten (aus dem Baumkataster)';
