@@ -627,7 +627,7 @@
   <div class="sb-checks" id="ziele-box"></div>
 </div>
 <button class="sbr-btn" onclick="beraten()">Sorten empfehlen</button>
-<div id="res"><div class="sb-leer">Standort und Ziele wählen — der Berater filtert aus dem Hofsortenpool nach Permakultur-Prinzipien.</div></div>
+<div id="res"><div class="sb-leer">Standort und Ziele wählen — der Berater empfiehlt aus einem kuratierten Planungs-Sortenpool nach Permakultur-Prinzipien (unabhängig vom Baumkataster).</div></div>
 </div>
 
 <!-- HOFSORTEN -->
@@ -636,11 +636,7 @@
   <p><span id="auswahl-count">0</span> Sorten ausgewählt</p>
   <button onclick="auswahl_leeren()">Auswahl leeren</button>
 </div>
-<div class="sl-art-tabs">
-  <div class="sl-art-tab active" id="sl-art-apfel" onclick="slSetArt('apfel')">Apfel</div>
-  <div class="sl-art-tab" id="sl-art-birne" onclick="slSetArt('birne')">Birne</div>
-  <div class="sl-art-tab" id="sl-art-zwetschke" onclick="slSetArt('zwetschke')">Zwetschke</div>
-</div>
+<div class="sl-art-tabs" id="sl-art-tabs"></div>
 <div class="sl-toolbar">
   <input class="sl-search" type="text" id="sl-search" placeholder="Sorte suchen…" oninput="renderListe()">
   <div id="sl-filter-buttons"></div>
@@ -2463,7 +2459,7 @@ function sbrShowTab(t){
     document.querySelectorAll('.sbr-tab')[i].classList.toggle('active',id===t);
     document.getElementById('panel-'+id).classList.toggle('active',id===t);
   });
-  if(t==='liste'){renderFilterButtons();renderListe();}
+  if(t==='liste'){renderSlArtTabs();renderFilterButtons();renderListe();}
   if(t==='arche'){renderAnAbc();renderArche();}
 }
 
@@ -2485,24 +2481,67 @@ function beraten(){
 }
 
 // ─── HOFSORTENPOOL ────────────────────────────────────────────────────────────
-function alleTags(art){const s=new Set();SORTEN[art].forEach(s2=>s2.tags.forEach(t=>s.add(t)));return Array.from(s).sort();}
-function slSetArt(art){slArt=art;slAktivTag=null;['apfel','birne','zwetschke'].forEach(a=>document.getElementById('sl-art-'+a).classList.toggle('active',a===art));document.getElementById('sl-search').value='';renderFilterButtons();renderListe();}
-function renderFilterButtons(){document.getElementById('sl-filter-buttons').innerHTML=alleTags(slArt).map(t=>'<button class="sl-filter-btn'+(slAktivTag===t?' active':'')+'" onclick="slToggleTag(\''+t.replace(/'/g,"\\'")+'\')">'+t+'</button>').join('');}
+/* Hofsortenpool = alle Sorten aus dem Baumkataster (dynamisch, inkl. neu angelegter Bäume/Sorten) */
+function hofpoolDaten(){
+  if(!window.__dataReady || typeof state==='undefined' || !state) return {liste:[], anzahl:{}};
+  const anzahl={};
+  const baeume=getAllTrees();
+  baeume.forEach(t=>{ if(t.sorte) anzahl[t.sorte]=(anzahl[t.sorte]||0)+1; });
+  const map=new Map();
+  SORTEN_DATA.forEach(s=>{ if(anzahl[s.sorte]) map.set(s.sorte, getSorte(s.sorte)||s); });
+  Object.keys(anzahl).forEach(name=>{
+    if(!map.has(name)){
+      const t=baeume.find(x=>x.sorte===name);
+      map.set(name,{sorte:name,frucht:t.frucht||'',pflueckzeitpunkt:t.pflueckzeitpunkt||t.pflueck_reifezeit||'',geschmack:t.geschmack||'',eigenschaften:t.eigenschaften||'',frucht_beschreibung:t.frucht_beschreibung||'',verwendung:getVerwendung(t),lagerfaehig:t.lagerfaehig||''});
+    }
+  });
+  return {liste:Array.from(map.values()), anzahl};
+}
+function hofTags(s){
+  const t=[...(s.verwendung||[])];
+  if(s.lagerfaehig) t.push('lagerfähig');
+  if(s.arche_pdf) t.push('Arche Noah');
+  if(state.verifiziert && state.verifiziert[s.sorte]) t.push('verifiziert');
+  else if(s.recherchiert) t.push('recherchiert');
+  return t;
+}
+function renderSlArtTabs(){
+  const arten=[...new Set(hofpoolDaten().liste.map(s=>s.frucht).filter(Boolean))];
+  const prio=['Apfel','Birne','Walnuss'];
+  arten.sort((a,b)=>{const ia=prio.indexOf(a),ib=prio.indexOf(b);return (ia<0?99:ia)-(ib<0?99:ib)||a.localeCompare(b,'de');});
+  if(arten.length && !arten.some(a=>a.toLowerCase()===slArt)) slArt=arten[0].toLowerCase();
+  document.getElementById('sl-art-tabs').innerHTML=arten.map(a=>'<div class="sl-art-tab'+(a.toLowerCase()===slArt?' active':'')+'" onclick="slSetArt(\''+a.toLowerCase().replace(/'/g,"\\'")+'\')">'+a+'</div>').join('');
+}
+function alleTags(){
+  const s=new Set();
+  hofpoolDaten().liste.filter(x=>(x.frucht||'').toLowerCase()===slArt).forEach(x=>hofTags(x).forEach(t=>s.add(t)));
+  return Array.from(s).sort((a,b)=>a.localeCompare(b,'de'));
+}
+function slSetArt(art){slArt=art;slAktivTag=null;document.getElementById('sl-search').value='';renderSlArtTabs();renderFilterButtons();renderListe();}
+function renderFilterButtons(){document.getElementById('sl-filter-buttons').innerHTML=alleTags().map(t=>'<button class="sl-filter-btn'+(slAktivTag===t?' active':'')+'" onclick="slToggleTag(\''+t.replace(/'/g,"\\'")+'\')">'+t+'</button>').join('');}
 function slToggleTag(t){slAktivTag=slAktivTag===t?null:t;renderFilterButtons();renderListe();}
 function renderListe(){
   const suche=(document.getElementById('sl-search').value||'').toLowerCase();
-  let pool=SORTEN[slArt];
-  if(slAktivTag)pool=pool.filter(s=>s.tags.some(t=>t===slAktivTag));
-  if(suche)pool=pool.filter(s=>s.name.toLowerCase().includes(suche)||s.gilde.toLowerCase().includes(suche)||s.tags.some(t=>t.toLowerCase().includes(suche)));
-  document.getElementById('sl-count').textContent=pool.length+' von '+SORTEN[slArt].length+' Sorten';
-  if(!pool.length){document.getElementById('sl-grid').innerHTML='<p class="sl-empty">Keine Sorten gefunden.</p>';return;}
-  document.getElementById('sl-grid').innerHTML=pool.map(s=>{const sel=ausgewählt[s.name];const tags=s.tags.map(t=>'<span class="sb-tag '+tagCls(t)+'">'+t+'</span>').join('');return '<div class="sl-card'+(sel?' selected':'')+'" onclick="toggleAuswahl(\''+s.name.replace(/'/g,"\\'")+'\')"><div class="sl-card-check"><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><polyline points="1.5,5 4,7.5 8.5,2.5" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="sl-card-name">'+s.name+'</div><div class="sl-card-reife">Reife: '+s.reife+' &middot; bis '+s.hmax+'m</div><div class="sb-tags">'+tags+'</div><div class="sl-card-desc">'+s.gilde+'</div></div>';}).join('');
+  const {liste,anzahl}=hofpoolDaten();
+  const gesamt=liste.filter(s=>(s.frucht||'').toLowerCase()===slArt);
+  let pool=gesamt;
+  if(slAktivTag)pool=pool.filter(s=>hofTags(s).includes(slAktivTag));
+  if(suche)pool=pool.filter(s=>s.sorte.toLowerCase().includes(suche)||(s.geschmack||'').toLowerCase().includes(suche)||(s.eigenschaften||'').toLowerCase().includes(suche)||hofTags(s).some(t=>t.toLowerCase().includes(suche)));
+  pool=pool.slice().sort((a,b)=>a.sorte.localeCompare(b.sorte,'de'));
+  document.getElementById('sl-count').textContent=pool.length+' von '+gesamt.length+' Hofsorten (aus dem Baumkataster)';
+  if(!pool.length){document.getElementById('sl-grid').innerHTML='<p class="sl-empty">Keine Sorten gefunden.</p>';updateAuswahlBar();return;}
+  document.getElementById('sl-grid').innerHTML=pool.map(s=>{
+    const tags=hofTags(s).map(t=>'<span class="sb-tag '+tagCls(t)+'">'+t+'</span>').join('');
+    const snippet=s.geschmack||s.eigenschaften||s.frucht_beschreibung||'Noch keine Sortenbeschreibung erfasst.';
+    const reife=s.pflueckzeitpunkt||s.pflueck_reifezeit||'–';
+    const n=anzahl[s.sorte]||0;
+    return '<div class="sl-card" onclick="openSortenModal(\''+s.sorte.replace(/'/g,"\\'")+'\')"><div class="sl-card-name">'+s.sorte+'</div><div class="sl-card-reife">'+(s.frucht||'')+' &middot; '+n+' Baum/Bäume &middot; Pflückzeit '+reife+'</div><div class="sb-tags">'+tags+'</div><div class="sl-card-desc">'+snippet.slice(0,120)+(snippet.length>120?'…':'')+'</div></div>';
+  }).join('');
   updateAuswahlBar();
 }
-function toggleAuswahl(name){if(ausgewählt[name])delete ausgewählt[name];else ausgewählt[name]=true;renderListe();}
 function updateAuswahlBar(){const n=Object.keys(ausgewählt).length;document.getElementById('auswahl-bar').style.display=n>0?'flex':'none';document.getElementById('auswahl-count').textContent=n;}
-function auswahl_leeren(){ausgewählt={};renderListe();}
-renderFilterButtons();renderListe();
+function auswahl_leeren(){ausgewählt={};renderListe();if(document.getElementById('panel-arche').classList.contains('active'))renderArche();}
+if(window.__dataReadyPromise){window.__dataReadyPromise.then(()=>{renderSlArtTabs();renderFilterButtons();renderListe();});}
 
 // ─── ARCHE NOAH ──────────────────────────────────────────────────────────────
 const AN_BUCHSTABEN=['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','W','Z'];
