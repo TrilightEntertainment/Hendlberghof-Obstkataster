@@ -1,4 +1,4 @@
-const CACHE_NAME = 'hendlberghof-v7';
+const CACHE_NAME = 'hendlberghof-v8';
 const CORE_ASSETS = [
   './',
   './index.html',
@@ -8,7 +8,26 @@ const CORE_ASSETS = [
   './data/seed_positions.json',
   './icons/icon-192.png',
   './icons/icon-512.png',
-  './manifest.json'
+  './manifest.json',
+  './arche_pdfs/berner_rosenapfel.pdf',
+  './arche_pdfs/birnfoermigerapfel.pdf',
+  './arche_pdfs/danziger_kantapfel_web.pdf',
+  './arche_pdfs/galloway_pepping_foto_und_beschreibung.pdf',
+  './arche_pdfs/geflammter_kardinal.pdf',
+  './arche_pdfs/george_cave_01_1.pdf',
+  './arche_pdfs/gruener_fuerstenapfel.pdf',
+  './arche_pdfs/kleine_kasseler_renette_beschreibung_und_foto.pdf',
+  './arche_pdfs/kronprinz_rudolf.pdf',
+  './arche_pdfs/landsberger_renette.pdf',
+  './arche_pdfs/oberoesterreichischer_bruennerling.pdf',
+  './arche_pdfs/peasgoods_sondergleichen.pdf',
+  './arche_pdfs/rodauner_goldapfel_beschreibung_und_foto.pdf',
+  './arche_pdfs/roter_bellefleur.pdf',
+  './arche_pdfs/schmidberger_renette.pdf',
+  './arche_pdfs/schoener_von_wiltshire.pdf',
+  './arche_pdfs/schweizer_glockenapfel_web.pdf',
+  './arche_pdfs/siebenkant_beschreibung_und_foto.pdf',
+  './arche_pdfs/steirischer_maschanzker.pdf'
 ];
 
 self.addEventListener('install', (event) => {
