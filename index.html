@@ -693,6 +693,7 @@
 <script>
 let BAUM_DATA = [];
 let SORTEN_DATA = [];
+const BLACKLIST = new Set(['W20','W21','W22']);
 
 const LS_KEY = "hendlberghof_obstdb_v1";
 
@@ -749,7 +750,7 @@ function applyRemoteState(remote){
   if(!remote) return;
   /* Stale customTrees/Edits/Positions DES REMOTE bereinigen BEVOR merge */
   const baumIds = new Set(BAUM_DATA.map(b=>b.id));
-  const isAlive = (id)=> baumIds.has(id) || id.startsWith('NEU-');
+  const isAlive = (id)=> !BLACKLIST.has(id) && (baumIds.has(id) || id.startsWith('NEU-'));
   if(remote.customTrees && Array.isArray(remote.customTrees)){
     remote.customTrees = remote.customTrees.filter(c=> isAlive(c.id));
   }
@@ -775,7 +776,7 @@ function applyRemoteState(remote){
 
 function getAllTrees(){
   const custom = state.customTrees || [];
-  return BAUM_DATA.concat(custom).map(t=>{
+  return BAUM_DATA.concat(custom).filter(t=> !BLACKLIST.has(t.id)).map(t=>{
     const edit = (state.baumEdits && state.baumEdits[t.id]) || {};
     return Object.assign({}, t, edit);
   });
@@ -2235,13 +2236,13 @@ function startApp(){
   /* baumEdits für nicht mehr existierende IDs */
   if(state.baumEdits){
     for(const k of Object.keys(state.baumEdits)){
-      if(!baumIds.has(k) && !k.startsWith('NEU-')){ delete state.baumEdits[k]; changed = true; }
+      if(BLACKLIST.has(k) || (!baumIds.has(k) && !k.startsWith('NEU-'))){ delete state.baumEdits[k]; changed = true; }
     }
   }
   /* Positionen für nicht mehr existierende IDs */
   if(state.positions){
     for(const k of Object.keys(state.positions)){
-      if(!baumIds.has(k) && !k.startsWith('NEU-')){ delete state.positions[k]; changed = true; }
+      if(BLACKLIST.has(k) || (!baumIds.has(k) && !k.startsWith('NEU-'))){ delete state.positions[k]; changed = true; }
     }
   }
   if(changed) saveState();
