@@ -1,4 +1,4 @@
-const CACHE_NAME = 'hendlberghof-v8';
+const CACHE_NAME = 'hendlberghof-v9';
 const CORE_ASSETS = [
   './',
   './index.html',
@@ -27,7 +27,12 @@ const CORE_ASSETS = [
   './arche_pdfs/schoener_von_wiltshire.pdf',
   './arche_pdfs/schweizer_glockenapfel_web.pdf',
   './arche_pdfs/siebenkant_beschreibung_und_foto.pdf',
-  './arche_pdfs/steirischer_maschanzker.pdf'
+  './arche_pdfs/steirischer_maschanzker.pdf',
+  './arche_pdfs_birnen/abbe_fetel.pdf',
+  './arche_pdfs_birnen/graefin_von_paris.pdf',
+  './arche_pdfs_birnen/kiefers_saemling.pdf',
+  './arche_pdfs_birnen/nordhauuser_forellenbirne.pdf',
+  './arche_pdfs_birnen/williams_christbirne.pdf'
 ];
 
 self.addEventListener('install', (event) => {
