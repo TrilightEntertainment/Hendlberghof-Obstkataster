@@ -676,9 +676,6 @@
       <a class="pdf-act" id="pdf-download" href="#" download>
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M4 21h16"/></svg>
         Herunterladen</a>
-      <a class="pdf-act" id="pdf-newtab" href="#" target="_blank" rel="noopener">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3h7v7"/><path d="M21 3l-9 9"/><path d="M19 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h5"/></svg>
-        Neuer Tab</a>
       <button class="pdf-act" onclick="closeArcheViewer()">✕ Schließen</button>
     </div>
     <div class="pdf-frame" id="pdf-frame" title="Arche-Noah-Sortenblatt" style="overflow:auto;background:#f4f2ec;"></div>
@@ -1341,7 +1338,6 @@ function openArcheViewer(url, sorte){
   dl.href = url;
   const stem = (sorte||'Sortenblatt').replace(/[^A-Za-z0-9ÄÖÜäöüß]+/g,'_').replace(/^_+|_+$/g,'');
   dl.setAttribute('download', 'Arche-Noah_'+stem+'.pdf');
-  document.getElementById('pdf-newtab').href = url;
   document.getElementById('pdf-overlay').classList.add('open');
   const container = document.getElementById('pdf-frame');
   container.innerHTML = '<p style="text-align:center;padding:2rem;color:#7a7a7a;">Lade Vorschau …</p>';
