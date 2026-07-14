@@ -778,8 +778,10 @@ function getAllTrees(){
   const custom = state.customTrees || [];
   return BAUM_DATA.concat(custom).filter(t=> !BLACKLIST.has(t.id)).map(t=>{
     const edit = (state.baumEdits && state.baumEdits[t.id]) || {};
-    return Object.assign({}, t, edit);
-  });
+    const merged = Object.assign({}, t, edit);
+    if(BLACKLIST.has(merged.id)) return null;
+    return merged;
+  }).filter(Boolean);
 }
 function getTree(id){ return getAllTrees().find(t=>t.id===id); }
 
@@ -2227,10 +2229,10 @@ function startApp(){
   /* State aufräumen: nicht mehr existierende Baum-IDs entfernen */
   const baumIds = new Set(BAUM_DATA.map(b=>b.id));
   let changed = false;
-  /* customTrees die nicht mehr in BAUM_DATA stehen */
+  /* customTrees die nicht mehr in BAUM_DATA stehen oder blacklisted sind */
   if(state.customTrees && state.customTrees.length){
     const before = state.customTrees.length;
-    state.customTrees = state.customTrees.filter(c=>baumIds.has(c.id) || c.id.startsWith('NEU-'));
+    state.customTrees = state.customTrees.filter(c=>!BLACKLIST.has(c.id) && (baumIds.has(c.id) || c.id.startsWith('NEU-')));
     if(state.customTrees.length !== before) changed = true;
   }
   /* baumEdits für nicht mehr existierende IDs */
