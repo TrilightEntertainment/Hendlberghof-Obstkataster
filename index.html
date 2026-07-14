@@ -2196,9 +2196,10 @@ function saveNewBaum(){
 
 function confirmDeleteBaum(id){
   const t = getTree(id);
-  if(!confirm(`Baum "${t? t.sorte : id}" wirklich löschen?\n\nNur manuell angelegte Bäume (NEU-…) werden vollständig entfernt. Bei importierten Bäumen werden nur die lokalen Bearbeitungen zurückgesetzt.`)) return;
-  // Prüfen ob custom oder nur Edit
+  const inBaumData = BAUM_DATA.some(b=>b.id===id);
   const isCustom = (state.customTrees||[]).find(c=>c.id===id);
+  const fullRemove = isCustom || !inBaumData;
+  if(!confirm(`Baum "${t? t.sorte : id}" wirklich löschen?${fullRemove? '' : '\n\nBei importierten Bäumen werden nur die lokalen Bearbeitungen zurückgesetzt.'}`)) return;
   if(isCustom){
     state.customTrees = state.customTrees.filter(c=>c.id!==id);
   }
