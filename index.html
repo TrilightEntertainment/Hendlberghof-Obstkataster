@@ -422,6 +422,8 @@
 #tab-sortenberater .sl-card-name{font-size:1.05rem;font-weight:600;color:var(--text);margin-bottom:2px;padding-right:28px}
 #tab-sortenberater .sl-card-reife{font-family:'DM Sans',sans-serif;font-size:11px;color:var(--text-leicht);margin-bottom:8px}
 #tab-sortenberater .sl-card-desc{font-size:.88rem;color:var(--text-mid);line-height:1.55;margin-top:6px}
+#tab-sortenberater .sl-card-edit{position:absolute;top:10px;right:10px;width:28px;height:28px;border-radius:6px;border:1px solid var(--rand);background:var(--weiss);display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--text-leicht);transition:all .15s;z-index:2}
+#tab-sortenberater .sl-card-edit:hover{border-color:var(--gruen-mid);color:var(--gruen);background:var(--gruen-hell)}
 #tab-sortenberater .sl-empty{color:var(--text-leicht);font-style:italic;font-size:1rem;padding:1rem 0}
 #tab-sortenberater .sl-auswahl-bar{background:var(--gruen);color:#fff;border-radius:12px;padding:1rem 1.4rem;margin-bottom:1.5rem;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
 #tab-sortenberater .sl-auswahl-bar p{font-size:.95rem}
@@ -2679,7 +2681,7 @@ function renderListe(){
     const snippet=s.geschmack||s.eigenschaften||s.frucht_beschreibung||'Noch keine Sortenbeschreibung erfasst.';
     const reife=s.pflueckzeitpunkt||s.pflueck_reifezeit||'–';
     const n=anzahl[s.sorte]||0;
-    return '<div class="sl-card" onclick="openSortenModal(\''+s.sorte.replace(/'/g,"\\'")+'\')"><div class="sl-card-name">'+s.sorte+'</div><div class="sl-card-reife">'+(s.frucht||'')+' &middot; '+n+' Baum/Bäume &middot; Pflückzeit '+reife+'</div><div class="sb-tags">'+tags+'</div><div class="sl-card-desc">'+snippet.slice(0,120)+(snippet.length>120?'…':'')+'</div></div>';
+    return '<div class="sl-card" onclick="openSortenModal(\''+s.sorte.replace(/'/g,"\\'")+'\')"><div class="sl-card-edit" onclick="event.stopPropagation();openSortenModal(\''+s.sorte.replace(/'/g,"\\'")+'\')" title="Bearbeiten"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><line x1="4" y1="7" x2="20" y2="7"/><circle cx="14" cy="7" r="2.3"/><line x1="4" y1="14" x2="20" y2="14"/><circle cx="9" cy="14" r="2.3"/><line x1="4" y1="21" x2="20" y2="21"/><circle cx="16" cy="21" r="2.3"/></svg></div><div class="sl-card-name">'+s.sorte+'</div><div class="sl-card-reife">'+(s.frucht||'')+' &middot; '+n+' Baum/Bäume &middot; Pflückzeit '+reife+'</div><div class="sb-tags">'+tags+'</div><div class="sl-card-desc">'+snippet.slice(0,120)+(snippet.length>120?'…':'')+'</div></div>';
   }).join('');
   updateAuswahlBar();
 }
