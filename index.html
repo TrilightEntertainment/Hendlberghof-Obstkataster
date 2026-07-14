@@ -2649,6 +2649,7 @@ function hofTags(s){
   if(s.lagerfaehig) t.push('lagerfähig');
   if(s.arche_pdf) t.push('Arche Noah');
   if(state.verifiziert && state.verifiziert[s.sorte]) t.push('verifiziert');
+  else if(s.recherchiert) t.push('recherchiert');
   return t;
 }
 function renderSlArtTabs(){
