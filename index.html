@@ -596,11 +596,7 @@
 <div class="sbr-panel active" id="panel-berater">
 <div class="sb-sec">
   <div class="sb-title">Obstart</div>
-  <div class="sb-arten">
-    <div class="sb-art active" id="art-apfel" onclick="setArt('apfel')">Apfel</div>
-    <div class="sb-art" id="art-birne" onclick="setArt('birne')">Birne</div>
-    <div class="sb-art" id="art-zwetschke" onclick="setArt('zwetschke')">Zwetschke</div>
-  </div>
+  <div class="sb-arten" id="sb-arten"></div>
 </div>
 <div class="sb-sec">
   <div class="sb-title">Standort</div>
@@ -627,7 +623,7 @@
   <div class="sb-checks" id="ziele-box"></div>
 </div>
 <button class="sbr-btn" onclick="beraten()">Sorten empfehlen</button>
-<div id="res"><div class="sb-leer">Standort und Ziele wählen — der Berater empfiehlt aus einem kuratierten Planungs-Sortenpool nach Permakultur-Prinzipien (unabhängig vom Baumkataster).</div></div>
+<div id="res"><div class="sb-leer">Standort und Ziele wählen — der Berater empfiehlt aus deinen Hofsorten mit Standort-Daten aus den Arche-Noah-Sortenblättern.</div></div>
 </div>
 
 <!-- HOFSORTEN -->
@@ -2276,7 +2272,6 @@ window.__dataReadyPromise = Promise.all([
 
 // ─── HOFSORTEN ────────────────────────────────────────────────────────────────
 const ZIELE_DEF={apfel:[{id:'tafel',label:'Tafelobst'},{id:'most',label:'Most / Cider'},{id:'lager',label:'Lagerfähigkeit'},{id:'frueh',label:'Frühe Reife'},{id:'robust',label:'Pilzresistenz'},{id:'wild',label:'Wildtiernahrung'}],birne:[{id:'tafel',label:'Tafelobst'},{id:'most',label:'Most / Saft'},{id:'lager',label:'Lagerfähigkeit'},{id:'frueh',label:'Frühe Reife'},{id:'robust',label:'Robustheit'},{id:'bestaeuber',label:'Bestäuberblüte'}],zwetschke:[{id:'tafel',label:'Tafelobst'},{id:'einkochen',label:'Einkochen / Marmelade'},{id:'schnaps',label:'Schnaps / Destillat'},{id:'frueh',label:'Frühe Reife'},{id:'robust',label:'Robustheit'},{id:'wild',label:'Wildtiernahrung'}]};
-const SORTEN={apfel:[{name:'Weißer Klarapfel',reife:'Juli',hmax:900,expo:['sued','ost','west','mulde'],frost:'mittel',ns:['trocken','mittel','feucht'],ziele:['tafel','frueh'],gilde:'Frühblüher, Bienenweide; Begleitpflanzen: Borretsch, Kapuzinerkresse',tags:['Frühsorte','Tafelobst','historisch']},{name:'Gravenstein',reife:'Aug–Sep',hmax:900,expo:['sued','ost','west','mulde'],frost:'mittel',ns:['mittel','feucht'],ziele:['tafel','most'],gilde:'Windschutzreihe; Unterpflanzung Brennnessel',tags:['Tafelobst','Most','historisch']},{name:'Kronprinz Rudolf',reife:'Sep–Okt',hmax:1000,expo:['sued','ost','west','mulde','nord'],frost:'gering',ns:['mittel','feucht'],ziele:['tafel','lager'],gilde:'Spätblüher für Spätfrostlagen; verträgt Halbschatten',tags:['Lager','Spätfrostresistent','österreichisch']},{name:'Bittenfelder',reife:'Okt',hmax:900,expo:['sued','west','mulde'],frost:'mittel',ns:['trocken','mittel'],ziele:['most','lager'],gilde:'Robust, pflegeleicht; Bienenweide; Streuobst',tags:['Most','robust','Streuobst']},{name:'Boskoop',reife:'Okt–Nov',hmax:850,expo:['sued','ost','west','mulde'],frost:'mittel',ns:['mittel','feucht'],ziele:['tafel','lager','most'],gilde:'Windschutz; Unterpflanzung Walderdbeere',tags:['Lager','Tafelobst','Most']},{name:'Topaz',reife:'Sep–Okt',hmax:900,expo:['sued','ost','west','mulde'],frost:'mittel',ns:['trocken','mittel','feucht'],ziele:['tafel','lager','robust'],gilde:'Schorfresistent; Bio-Streuobst; Begleitpflanzen: Lavendel',tags:['pilzresistent','Lager','Bio']},{name:'Florina',reife:'Okt',hmax:850,expo:['sued','west','mulde'],frost:'mittel',ns:['mittel','feucht'],ziele:['tafel','robust'],gilde:'Schorfresistent, kompakter Wuchs',tags:['pilzresistent','Tafelobst']},{name:'Goldreinette',reife:'Nov–Jan',hmax:800,expo:['sued','west'],frost:'gering',ns:['trocken','mittel'],ziele:['tafel','lager'],gilde:'Lange Lagerung; Thymian, Salbei auf Trockenhang',tags:['Lager','historisch','Südhang']},{name:'Maschansker',reife:'Sep',hmax:1000,expo:['sued','ost','west','mulde','nord'],frost:'gering',ns:['mittel','feucht'],ziele:['most','wild'],gilde:'Tiroler Landsorte; winterhart; Vogelfutter im Winter',tags:['Most','winterhart','historisch','Wildtier']},{name:'Bohnapfel',reife:'Dez–Feb',hmax:800,expo:['sued','west','mulde'],frost:'mittel',ns:['trocken','mittel'],ziele:['lager','most'],gilde:'Langer Lager-Apfel; Streuobst; Winterfutter für Drosseln',tags:['Lager','Most','Wildtier','historisch']}],birne:[{name:'Williams Christ',reife:'Aug',hmax:700,expo:['sued','west'],frost:'gering',ns:['trocken','mittel'],ziele:['tafel','frueh','most'],gilde:'Wärmebedürftig; Südhang; Weinraute, Ysop',tags:['Tafelobst','Frühsorte','Most']},{name:'Gute Luise',reife:'Aug–Sep',hmax:750,expo:['sued','ost','west','mulde'],frost:'mittel',ns:['mittel','feucht'],ziele:['tafel','frueh'],gilde:'Streuobstbirne; Phacelia, Schafgarbe',tags:['Tafelobst','Bestäuber','historisch']},{name:'Conference',reife:'Sep–Okt',hmax:800,expo:['sued','west','mulde'],frost:'mittel',ns:['mittel','feucht'],ziele:['tafel','lager'],gilde:'Selbstfruchtbar; kompakter Wuchs',tags:['Lager','selbstfruchtbar','Tafelobst']},{name:'Köstliche von Charneu',reife:'Sep',hmax:850,expo:['sued','ost','west','mulde'],frost:'mittel',ns:['mittel','feucht'],ziele:['tafel','lager'],gilde:'Robust; Bestäuber für Gute Luise',tags:['Lager','robust','Tafelobst']},{name:'Mostbirne Landlbirne',reife:'Okt',hmax:950,expo:['sued','ost','west','mulde','nord'],frost:'gering',ns:['mittel','feucht'],ziele:['most','wild','bestaeuber'],gilde:'Alpenlandsorte; winterhart; Wildbienen-Blüte',tags:['Most','winterhart','Bestäuber','historisch']},{name:'Harrow Sweet',reife:'Aug–Sep',hmax:850,expo:['sued','ost','west','mulde'],frost:'mittel',ns:['trocken','mittel','feucht'],ziele:['tafel','robust'],gilde:'Feuerbrandresistent; biologischer Anbau',tags:['feuerbrandresistent','Tafelobst','robust']},{name:'Schweizer Wasserbirne',reife:'Sep–Okt',hmax:1000,expo:['sued','ost','west','mulde','nord'],frost:'gering',ns:['mittel','feucht'],ziele:['most','wild','bestaeuber'],gilde:'Winterhart; Streuobst-Leitsorte Alpenraum',tags:['Most','winterhart','historisch','Streuobst']}],zwetschke:[{name:'Hauszwetschke',reife:'Aug–Sep',hmax:900,expo:['sued','ost','west','mulde'],frost:'mittel',ns:['trocken','mittel','feucht'],ziele:['tafel','einkochen','schnaps','wild'],gilde:'Allzwecksorte; Hühnerweide; Bienenweide',tags:['Allzweck','robust','historisch']},{name:'Wangenheimer Frühzwetschke',reife:'Jul–Aug',hmax:800,expo:['sued','west','mulde'],frost:'mittel',ns:['trocken','mittel'],ziele:['tafel','frueh','einkochen'],gilde:'Früher Ertrag; Mischkultur mit Erdbeeren',tags:['Frühsorte','Tafelobst','Einkochen']},{name:'Bühler Frühzwetschke',reife:'Aug',hmax:850,expo:['sued','ost','west','mulde'],frost:'mittel',ns:['mittel','feucht'],ziele:['tafel','frueh','schnaps'],gilde:'Zuverlässig; Vogelnistmöglichkeit im Altholz',tags:['Frühsorte','Schnaps','robust']},{name:'Ortenauer',reife:'Sep',hmax:900,expo:['sued','ost','west','mulde'],frost:'mittel',ns:['trocken','mittel','feucht'],ziele:['einkochen','schnaps','lager'],gilde:'Destillationscharakter; Raubvogel-Ansitzbaum',tags:['Schnaps','Einkochen','Streuobst']},{name:'Tophit',reife:'Aug–Sep',hmax:800,expo:['sued','west','mulde'],frost:'mittel',ns:['mittel','feucht'],ziele:['tafel','robust'],gilde:'Scharkavirus-tolerant; Bio-Streuobst',tags:['robust','Tafelobst','scharkatolerant']},{name:'Presenta',reife:'Sep',hmax:850,expo:['sued','ost','west','mulde'],frost:'mittel',ns:['trocken','mittel','feucht'],ziele:['tafel','robust','einkochen'],gilde:'Scharkavirus-tolerant; selbstfruchtbar',tags:['robust','selbstfruchtend','Einkochen']},{name:'Hanita',reife:'Sep',hmax:900,expo:['sued','ost','west','mulde'],frost:'mittel',ns:['mittel','feucht'],ziele:['tafel','einkochen','schnaps'],gilde:'Großfrüchtig, ertragreich',tags:['Ertragreich','Einkochen','Schnaps']},{name:"Althann's Reneklode",reife:'Aug',hmax:750,expo:['sued','west'],frost:'gering',ns:['trocken','mittel'],ziele:['tafel','frueh','schnaps'],gilde:'Wärmebedürftig; Südhang; historische Sorte',tags:['historisch','Frühsorte','Südhang']}]};
 
 // ─── ARCHE NOAH SORTEN A–F (echte PDF-Links von arche-noah.at) ──────────────
 const AN_SORTEN=[
@@ -2459,24 +2454,47 @@ function sbrShowTab(t){
     document.querySelectorAll('.sbr-tab')[i].classList.toggle('active',id===t);
     document.getElementById('panel-'+id).classList.toggle('active',id===t);
   });
+  if(t==='berater'){renderSbArten();}
   if(t==='liste'){renderSlArtTabs();renderFilterButtons();renderListe();}
   if(t==='arche'){renderAnAbc();renderArche();}
 }
 
 // ─── BERATER ──────────────────────────────────────────────────────────────────
-function setArt(art){aktArt=art;['apfel','birne','zwetschke'].forEach(a=>document.getElementById('art-'+a).classList.toggle('active',a===art));renderZiele();}
-function renderZiele(){document.getElementById('ziele-box').innerHTML=ZIELE_DEF[aktArt].map(z=>'<label class="sb-check"><input type="checkbox" id="z-'+z.id+'" checked> '+z.label+'</label>').join('');}
+function beraterPool(){return hofpoolDaten().liste.filter(s=>s.standort);}
+function renderSbArten(){
+  const prio=['Apfel','Birne','Walnuss'];
+  const arten=[...new Set(beraterPool().map(s=>s.frucht).filter(Boolean))];
+  arten.sort((a,b)=>{const ia=prio.indexOf(a),ib=prio.indexOf(b);return (ia<0?99:ia)-(ib<0?99:ib)||a.localeCompare(b,'de');});
+  if(arten.length && !arten.some(a=>a.toLowerCase()===aktArt)) aktArt=arten[0].toLowerCase();
+  document.getElementById('sb-arten').innerHTML = arten.length
+    ? arten.map(a=>'<div class="sb-art'+(a.toLowerCase()===aktArt?' active':'')+'" onclick="setArt(\''+a.toLowerCase().replace(/'/g,"\\'")+'\')">'+a+'</div>').join('')
+    : '<div class="sl-empty">Noch keine Hofsorten mit Standort-Daten vorhanden.</div>';
+  renderZiele();
+}
+function setArt(art){aktArt=art;renderSbArten();}
+function renderZiele(){const zdef=ZIELE_DEF[aktArt]||ZIELE_DEF.apfel;document.getElementById('ziele-box').innerHTML=zdef.map(z=>'<label class="sb-check"><input type="checkbox" id="z-'+z.id+'" checked> '+z.label+'</label>').join('');}
 renderZiele();
 function tagCls(t){const tl=t.toLowerCase();if(['pilzresistent','robust','winterhart','resistent','feuerbrand','scharka','bio','schorfresistent'].some(k=>tl.includes(k)))return 'tg';if(['most','cider','einkochen','schnaps','destillat','saft'].some(k=>tl.includes(k)))return 'ta';if(['bestäuber','wildtier','streuobst','historisch','österreichisch','rarität'].some(k=>tl.includes(k)))return 'tp';return 'tb';}
 function beraten(){
   const hoehe=parseInt(document.getElementById('hoehe').value),expo=document.getElementById('expo').value,frost=document.getElementById('frost').value,ns=document.getElementById('ns').value;
-  const gZ=ZIELE_DEF[aktArt].filter(z=>{var e=document.getElementById('z-'+z.id);return e&&e.checked;}).map(z=>z.id);
-  const scored=SORTEN[aktArt].filter(s=>hoehe<=s.hmax&&s.expo.includes(expo)&&s.ns.includes(ns)&&!(frost==='hoch'&&s.frost==='gering')).map(s=>({...s,score:gZ.filter(z=>s.ziele.includes(z)).length})).sort((a,b)=>b.score-a.score).slice(0,4);
-  const lbl={apfel:'Apfel',birne:'Birne',zwetschke:'Zwetschke'}[aktArt];
+  const zdef=ZIELE_DEF[aktArt]||ZIELE_DEF.apfel;
+  const gZ=zdef.filter(z=>{var e=document.getElementById('z-'+z.id);return e&&e.checked;}).map(z=>z.id);
+  const {anzahl}=hofpoolDaten();
+  const pool=beraterPool().filter(s=>(s.frucht||'').toLowerCase()===aktArt);
+  const scored=pool.filter(s=>{const st=s.standort;return hoehe<=st.hmax&&st.expo.includes(expo)&&st.ns.includes(ns)&&!(frost==='hoch'&&st.frost==='gering');})
+    .map(s=>({s, score:gZ.filter(z=>s.standort.ziele.includes(z)).length}))
+    .sort((a,b)=>b.score-a.score).slice(0,4);
+  const lbl=aktArt.charAt(0).toUpperCase()+aktArt.slice(1);
   const expoEl=document.getElementById('expo');
-  if(!scored.length){document.getElementById('res').innerHTML='<div class="sb-leer">Keine passenden Sorten gefunden.</div>';return;}
-  let html='<p class="res-header">'+lbl+' &middot; '+hoehe+'m &middot; '+expoEl.options[expoEl.selectedIndex].text+' &middot; '+scored.length+' Empfehlung'+(scored.length>1?'en':'')+'</p>';
-  scored.forEach(s=>{const tags=s.tags.map(t=>'<span class="sb-tag '+tagCls(t)+'">'+t+'</span>').join('');html+='<div class="sb-sorte"><div class="sb-sorte-name">'+s.name+'<span class="sb-reife">Reife: '+s.reife+'</span></div><div class="sb-tags">'+tags+'</div><div class="sb-gilde"><strong>Gilde</strong>'+s.gilde+'</div></div>';});
+  if(!scored.length){document.getElementById('res').innerHTML='<div class="sb-leer">Keine passende Hofsorte für diesen Standort gefunden. Hinweis: Standort-Daten aus Arche-Noah-Sortenblättern liegen derzeit für '+pool.length+' '+lbl+'-Hofsorten vor.</div>';return;}
+  let html='<p class="res-header">'+lbl+' &middot; '+hoehe+'m &middot; '+expoEl.options[expoEl.selectedIndex].text+' &middot; '+scored.length+' Empfehlung'+(scored.length>1?'en':'')+' aus '+pool.length+' Hofsorten mit Standort-Daten</p>';
+  scored.forEach(e=>{
+    const s=e.s;
+    const tags=hofTags(s).map(t=>'<span class="sb-tag '+tagCls(t)+'">'+t+'</span>').join('');
+    const reife=s.pflueckzeitpunkt||s.pflueck_reifezeit||'–';
+    const n=anzahl[s.sorte]||0;
+    html+='<div class="sb-sorte" style="cursor:pointer" onclick="openSortenModal(\''+s.sorte.replace(/'/g,"\\'")+'\')"><div class="sb-sorte-name">'+s.sorte+'<span class="sb-reife">Pflückzeit: '+reife+' &middot; '+n+' Baum/Bäume am Hof &middot; bis '+s.standort.hmax+'m</span></div><div class="sb-tags">'+tags+'</div><div class="sb-gilde"><strong>Arche Noah</strong>'+s.standort.basis+'</div></div>';
+  });
   document.getElementById('res').innerHTML=html;
 }
 
@@ -2541,7 +2559,7 @@ function renderListe(){
 }
 function updateAuswahlBar(){const n=Object.keys(ausgewählt).length;document.getElementById('auswahl-bar').style.display=n>0?'flex':'none';document.getElementById('auswahl-count').textContent=n;}
 function auswahl_leeren(){ausgewählt={};renderListe();if(document.getElementById('panel-arche').classList.contains('active'))renderArche();}
-if(window.__dataReadyPromise){window.__dataReadyPromise.then(()=>{renderSlArtTabs();renderFilterButtons();renderListe();});}
+if(window.__dataReadyPromise){window.__dataReadyPromise.then(()=>{renderSbArten();renderSlArtTabs();renderFilterButtons();renderListe();});}
 
 // ─── ARCHE NOAH ──────────────────────────────────────────────────────────────
 const AN_BUCHSTABEN=['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','W','Z'];
