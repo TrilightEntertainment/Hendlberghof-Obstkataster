@@ -749,18 +749,20 @@ function applyRemoteState(remote){
   if(!state.baumEdits) state.baumEdits = {};
   if(!state.sortenEdits) state.sortenEdits = {};
   if(state.gpsCalib===undefined) state.gpsCalib = null;
-  /* Stale Einträge aufräumen */
+  /* Stale Einträge aufräumen und zurück nach Firestore schreiben */
   const baumIds = new Set(BAUM_DATA.map(b=>b.id));
-  state.customTrees = state.customTrees.filter(c=>baumIds.has(c.id) || c.id.startsWith('NEU-'));
+  let stale = false;
+  const ct = state.customTrees.filter(c=>{ if(!baumIds.has(c.id) && !c.id.startsWith('NEU-')){ stale=true; return false; } return true; });
+  if(stale) state.customTrees = ct;
   for(const k of Object.keys(state.baumEdits)){
-    if(!baumIds.has(k) && !k.startsWith('NEU-')) delete state.baumEdits[k];
+    if(!baumIds.has(k) && !k.startsWith('NEU-')){ delete state.baumEdits[k]; stale = true; }
   }
   if(state.positions){
     for(const k of Object.keys(state.positions)){
-      if(!baumIds.has(k) && !k.startsWith('NEU-')) delete state.positions[k];
+      if(!baumIds.has(k) && !k.startsWith('NEU-')){ delete state.positions[k]; stale = true; }
     }
   }
-  localStorage.setItem(LS_KEY, JSON.stringify(state));
+  if(stale) saveState(); else localStorage.setItem(LS_KEY, JSON.stringify(state));
   refreshFilterOptions();
   renderBaumTable();
   renderSortenCards();
