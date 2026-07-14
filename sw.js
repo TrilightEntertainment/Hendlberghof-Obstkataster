@@ -1,4 +1,4 @@
-const CACHE_NAME = 'hendlberghof-v12';
+const CACHE_NAME = 'hendlberghof-v13';
 const CORE_ASSETS = [
   './',
   './index.html',
