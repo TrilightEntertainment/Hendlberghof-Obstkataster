@@ -2120,41 +2120,34 @@ function openBaumAddForm(){
   const html = `
     <button class="close" onclick="closeModal()">&times;</button>
     <h2>🌱 Neuen Baum hinzufügen</h2>
-    <p style="font-size:.82rem;color:var(--muted);">Der neue Baum wird lokal gespeichert und erscheint sofort im Kataster.</p>
-    <form id="baum-edit-form">${buildEditForm(null, true)}</form>
+    <p style="font-size:.82rem;color:var(--muted);">Der neue Baum wird lokal gespeichert und erscheint sofort im Kataster. Bei Eingabe einer bekannten Sorte werden die Felder automatisch ausgefüllt.</p>
+    <form id="baum-edit-form" oninput="autoFillSorte()">${buildEditForm(null, true)}</form>
     <div class="edit-actions">
       <button class="btn" onclick="saveNewBaum()">🌳 Baum anlegen</button>
       <button class="btn secondary" onclick="closeModal()">Abbrechen</button>
     </div>`;
   document.getElementById('modal-content').innerHTML = html;
   document.getElementById('overlay').classList.add('open');
-  /* Autovervollständigung: Sorten-Daten bei Eingabe übernehmen */
-  const sorteInput = document.querySelector('#baum-edit-form [name="sorte"]');
-  if(sorteInput) sorteInput.addEventListener('input', autoFillSorte);
 }
 
 function autoFillSorte(){
-  const input = document.querySelector('#baum-edit-form [name="sorte"]');
-  if(!input) return;
-  const q = input.value.trim().toLowerCase();
-  if(q.length < 2) return;
-  const match = SORTEN_DATA.find(s => s.sorte && s.sorte.toLowerCase().includes(q));
-  if(!match) return;
   const form = document.getElementById('baum-edit-form');
+  if(!form) return;
+  const sorteEl = form.querySelector('[name="sorte"]');
+  if(!sorteEl) return;
+  const q = sorteEl.value.trim().toLowerCase();
+  if(q.length < 3) return;
+  const match = SORTEN_DATA.find(s => s.sorte && s.sorte.toLowerCase().startsWith(q));
+  if(!match) return;
   FELDER.forEach(f => {
     if(f.key === 'sorte' || f.key === 'id') return;
-    const el = form.querySelector(`[name="${f.key}"]`);
-    if(!el) return;
-    const current = f.type === 'checkboxgroup'
-      ? Array.from(form.querySelectorAll(`[name="${f.key}"]:checked`)).map(b=>b.value)
-      : el.value.trim();
     if(f.type === 'checkboxgroup'){
-      const val = match[f.key] || [];
-      el.closest('div').querySelectorAll('input[type="checkbox"]').forEach(cb => {
-        cb.checked = Array.isArray(val) && val.includes(cb.value);
-      });
-    } else if(!current && match[f.key]){
-      el.value = match[f.key];
+      const boxes = form.querySelectorAll(`[name="${f.key}"]`);
+      const val = match[f.key];
+      boxes.forEach(cb => { cb.checked = Array.isArray(val) && val.includes(cb.value); });
+    } else {
+      const el = form.querySelector(`[name="${f.key}"]`);
+      if(el && !el.value && match[f.key]) el.value = match[f.key];
     }
   });
 }
