@@ -1336,7 +1336,8 @@ function archeNoahLink(obj){
 
 function openArcheViewer(url, sorte){
   document.getElementById('pdf-title').textContent = (sorte? sorte+' · ' : '') + 'Sortenblatt Arche Noah';
-  document.getElementById('pdf-frame').src = url;
+  const gview = 'https://docs.google.com/gview?embedded=true&url=' + encodeURIComponent(url);
+  document.getElementById('pdf-frame').src = gview;
   const dl = document.getElementById('pdf-download');
   dl.href = url;
   const stem = (sorte||'Sortenblatt').replace(/[^A-Za-z0-9ÄÖÜäöüß]+/g,'_').replace(/^_+|_+$/g,'');
