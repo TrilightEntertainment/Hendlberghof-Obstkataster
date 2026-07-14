@@ -2757,7 +2757,7 @@ function renderArche(){
       ernteBar(s)+
       '<div class="sb-tags" style="margin-top:6px">'+tags+'</div>'+
       '<div class="sl-card-desc">'+s.beschreibung+'</div>'+
-      '<a class="an-pdf-link" href="'+s.pdf+'" target="_blank" rel="noopener" onclick="event.stopPropagation()">Sortenblatt PDF ↗</a>'+
+      '<button class="an-pdf-link" onclick="event.stopPropagation();openArcheViewer(\''+s.pdf.replace(/'/g,"\\'")+'\',\''+s.name.replace(/'/g,"\\'")+'\')">Sortenblatt PDF</button>'+
     '</div>';
   }).join('');
 }
