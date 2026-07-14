@@ -502,7 +502,7 @@
       <button class="btn field btn-login-toggle" onclick="handleLoginToggle()">Bearbeiten</button>
       <button class="btn field" onclick="openExportDialog('baum','excel')" title="Gefilterte Auswahl als Excel exportieren">⬇ Excel</button>
       <button class="btn field" onclick="openExportDialog('baum','pdf')" title="Gefilterte Auswahl als PDF exportieren">⬇ PDF</button>
-      <button class="btn accent" id="btn-add-baum" style="display:none;" onclick="openBaumAddForm()">+ Neuer Baum</button>
+      <button class="btn accent" id="btn-add-baum" style="display:none;" onclick="openBaumAddForm()"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="vertical-align:-2px;margin-right:4px;"><path d="M12 22V12"/><path d="M5 12l7-8 7 8"/><path d="M7 16l5-5 5 5"/></svg>Neuer Baum</button>
     </div>
     <div class="table-wrap">
     <table>
@@ -1023,6 +1023,8 @@ function renderBaumTable(){
 });
 document.getElementById('btn-baum-search-reset').addEventListener('click', ()=>{
   document.getElementById('baum-search').value = '';
+  document.getElementById('baum-filter-frucht').value = '';
+  document.getElementById('baum-filter-verwendung').value = '';
   renderBaumTable();
 });
 
@@ -1312,6 +1314,8 @@ function renderSortenCards(){
 });
 document.getElementById('btn-sorten-search-reset').addEventListener('click', ()=>{
   document.getElementById('sorten-search').value = '';
+  document.getElementById('sorten-filter-frucht').value = '';
+  document.getElementById('sorten-filter-verwendung').value = '';
   renderSortenCards();
 });
 
