@@ -2155,7 +2155,7 @@ function openBaumEditForm(id){
 function openBaumAddForm(){
   const html = `
     <button class="close" onclick="closeModal()">&times;</button>
-    <h2>🌱 Neuen Baum hinzufügen</h2>
+    <h2><img src="icons/seedling.svg" width="20" height="20" style="vertical-align:-4px;margin-right:4px;" alt="">Neuen Baum hinzufügen</h2>
     <p style="font-size:.82rem;color:var(--muted);">Der neue Baum wird lokal gespeichert und erscheint sofort im Kataster. Bei Eingabe einer bekannten Sorte werden die Felder automatisch ausgefüllt.</p>
     <form id="baum-edit-form" oninput="autoFillSorte()">${buildEditForm(null, true)}</form>
     <div class="edit-actions">

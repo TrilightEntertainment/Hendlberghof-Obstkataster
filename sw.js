@@ -1,4 +1,4 @@
-const CACHE_NAME = 'hendlberghof-v19';
+const CACHE_NAME = 'hendlberghof-v20';
 const CORE_ASSETS = [
   './',
   './index.html',
@@ -8,6 +8,7 @@ const CORE_ASSETS = [
   './data/seed_positions.json',
   './icons/icon-192.png',
   './icons/icon-512.png',
+  './icons/seedling.svg',
   './manifest.json',
   './arche_pdfs/berner_rosenapfel.pdf',
   './arche_pdfs/birnfoermigerapfel.pdf',
