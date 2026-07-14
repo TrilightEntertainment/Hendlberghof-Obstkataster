@@ -712,9 +712,13 @@ function loadState(){
   }catch(e){}
   return { positions: Object.assign({}, SEED_POSITIONS), sukzession:{}, ernten:{}, verifiziert:{}, customTrees:[], baumEdits:{}, sortenEdits:{}, gpsCalib:null };
 }
+let _saving = false;
 function saveState(){
+  if(_saving) return;
+  _saving = true;
   localStorage.setItem(LS_KEY, JSON.stringify(state));
   if(window.__syncToFirestore) window.__syncToFirestore(state);
+  setTimeout(()=>{ _saving = false; }, 500);
 }
 let state;
 function initState(){
@@ -743,26 +747,25 @@ function isEditMode(){ return !!window.__firebaseUser; }
 function getCurrentState(){ return state; }
 function applyRemoteState(remote){
   if(!remote) return;
+  /* Stale customTrees/Edits/Positions DES REMOTE bereinigen BEVOR merge */
+  const baumIds = new Set(BAUM_DATA.map(b=>b.id));
+  const isAlive = (id)=> baumIds.has(id) || id.startsWith('NEU-');
+  if(remote.customTrees && Array.isArray(remote.customTrees)){
+    remote.customTrees = remote.customTrees.filter(c=> isAlive(c.id));
+  }
+  if(remote.baumEdits && typeof remote.baumEdits === 'object'){
+    for(const k of Object.keys(remote.baumEdits)){ if(!isAlive(k)) delete remote.baumEdits[k]; }
+  }
+  if(remote.positions && typeof remote.positions === 'object'){
+    for(const k of Object.keys(remote.positions)){ if(!isAlive(k)) delete remote.positions[k]; }
+  }
   Object.assign(state, remote);
   if(!state.verifiziert) state.verifiziert = {};
   if(!state.customTrees) state.customTrees = [];
   if(!state.baumEdits) state.baumEdits = {};
   if(!state.sortenEdits) state.sortenEdits = {};
   if(state.gpsCalib===undefined) state.gpsCalib = null;
-  /* Stale Einträge aufräumen und zurück nach Firestore schreiben */
-  const baumIds = new Set(BAUM_DATA.map(b=>b.id));
-  let stale = false;
-  const ct = state.customTrees.filter(c=>{ if(!baumIds.has(c.id) && !c.id.startsWith('NEU-')){ stale=true; return false; } return true; });
-  if(stale) state.customTrees = ct;
-  for(const k of Object.keys(state.baumEdits)){
-    if(!baumIds.has(k) && !k.startsWith('NEU-')){ delete state.baumEdits[k]; stale = true; }
-  }
-  if(state.positions){
-    for(const k of Object.keys(state.positions)){
-      if(!baumIds.has(k) && !k.startsWith('NEU-')){ delete state.positions[k]; stale = true; }
-    }
-  }
-  if(stale) saveState(); else localStorage.setItem(LS_KEY, JSON.stringify(state));
+  localStorage.setItem(LS_KEY, JSON.stringify(state));
   refreshFilterOptions();
   renderBaumTable();
   renderSortenCards();
