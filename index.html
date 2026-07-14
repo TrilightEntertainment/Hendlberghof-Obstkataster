@@ -1630,8 +1630,8 @@ document.getElementById('unplaced-select').addEventListener('change', e=>{
 document.getElementById('btn-place-mode').addEventListener('click', ()=>{
   calibMode = false; calibStep = 0;
   placeMode = !placeMode;
-  document.getElementById('place-mode-label').textContent = placeMode? 'Modus aktiv – Klick auf Karte' : 'Position setzen';
-  document.getElementById('place-status').textContent = placeMode? 'Baum auswählen, dann auf die Karte klicken.' : '';
+  document.getElementById('place-mode-label').textContent = placeMode? 'Modus aktiv – Doppelklick auf Karte' : 'Position setzen';
+  document.getElementById('place-status').textContent = placeMode? 'Baum auswählen, dann auf die Karte doppelklicken.' : '';
   if(placeMode) renderUnplacedSelect();
 });
 
@@ -1805,7 +1805,7 @@ document.getElementById('btn-gps-calib').addEventListener('click', ()=>{
   calibMode = true;
   calibStep = 1;
   calibTemp = {points: []};
-  document.getElementById('place-status').textContent = `Kalibrierung Schritt 1/${CALIB_PUNKTE}: Auf der Karte den Punkt anklicken, an dem du gerade mit dem Handy stehst. Wähle 4 weit verteilte Punkte, die nicht auf einer Linie liegen (z.B. die vier Ecken des Geländes).`;
+  document.getElementById('place-status').textContent = `Kalibrierung Schritt 1/${CALIB_PUNKTE}: Auf der Karte den Punkt doppelklicken, an dem du gerade mit dem Handy stehst. Wähle 4 weit verteilte Punkte, die nicht auf einer Linie liegen (z.B. die vier Ecken des Geländes).`;
 });
 
 document.getElementById('btn-gps-place').addEventListener('click', ()=>{
@@ -1833,7 +1833,8 @@ document.getElementById('btn-gps-place').addEventListener('click', ()=>{
   }, {enableHighAccuracy:true, timeout:25000, maximumAge:0});
 });
 
-document.getElementById('map-wrap').addEventListener('click', (e)=>{
+document.getElementById('map-wrap').addEventListener('dblclick', (e)=>{
+  e.preventDefault();
   const rect = e.currentTarget.getBoundingClientRect();
   const x = parseFloat(((e.clientX-rect.left)/rect.width*100).toFixed(2));
   const y = parseFloat(((e.clientY-rect.top)/rect.height*100).toFixed(2));
@@ -1843,7 +1844,7 @@ document.getElementById('map-wrap').addEventListener('click', (e)=>{
     navigator.geolocation.getCurrentPosition(pos=>{
       const {latitude, longitude, accuracy} = pos.coords;
       if(accuracy > 20){
-        document.getElementById('place-status').textContent = `GPS noch zu ungenau (±${Math.round(accuracy)} m). Kurz warten, bis das GPS einen besseren Fix hat, dann denselben Punkt erneut antippen.`;
+        document.getElementById('place-status').textContent = `GPS noch zu ungenau (±${Math.round(accuracy)} m). Kurz warten, bis das GPS einen besseren Fix hat, dann denselben Punkt erneut doppelklicken.`;
         return;
       }
       const zuNah = calibTemp.points.find(p=>{
@@ -1851,7 +1852,7 @@ document.getElementById('map-wrap').addEventListener('click', (e)=>{
         return dm < 15;
       });
       if(zuNah){
-        document.getElementById('place-status').textContent = 'Diese GPS-Position liegt weniger als 15 m von einem bereits gesetzten Kalibrierpunkt entfernt — vermutlich hat das GPS noch nicht nachgezogen. Kurz warten und erneut antippen (oder wirklich zu einem weiter entfernten Punkt gehen).';
+        document.getElementById('place-status').textContent = 'Diese GPS-Position liegt weniger als 15 m von einem bereits gesetzten Kalibrierpunkt entfernt — vermutlich hat das GPS noch nicht nachgezogen. Kurz warten und erneut doppelklicken (oder wirklich zu einem weiter entfernten Punkt gehen).';
         return;
       }
       calibTemp.points.push({x, y, lat:latitude, lng:longitude});
