@@ -2159,7 +2159,7 @@ function openBaumAddForm(){
     <p style="font-size:.82rem;color:var(--muted);">Der neue Baum wird lokal gespeichert und erscheint sofort im Kataster. Bei Eingabe einer bekannten Sorte werden die Felder automatisch ausgefüllt.</p>
     <form id="baum-edit-form" oninput="autoFillSorte()">${buildEditForm(null, true)}</form>
     <div class="edit-actions">
-      <button class="btn" onclick="saveNewBaum()"><img src="icons/icon-192.png" width="13" height="13" style="vertical-align:-2px;margin-right:4px;" alt="">Baum anlegen</button>
+      <button class="btn" onclick="saveNewBaum()"><img src="icons/tree.svg" width="13" height="13" style="vertical-align:-2px;margin-right:4px;" alt="">Baum anlegen</button>
       <button class="btn secondary" onclick="closeModal()">Abbrechen</button>
     </div>`;
   document.getElementById('modal-content').innerHTML = html;
