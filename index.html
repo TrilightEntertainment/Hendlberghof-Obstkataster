@@ -449,6 +449,23 @@
 .welcome-banner .btn{background:rgba(255,255,255,.2);color:#fff;border:1px solid rgba(255,255,255,.4);padding:10px 24px;border-radius:8px;font-weight:600}
 .welcome-banner .btn:hover{background:rgba(255,255,255,.3)}
 .welcome-banner .btn.secondary{background:transparent;border-color:rgba(255,255,255,.3)}
+.import-dropzone{border:2px dashed var(--border);border-radius:12px;padding:2rem;text-align:center;cursor:pointer;transition:all .2s;background:var(--card-bg)}
+.import-dropzone:hover,.import-dropzone.dragover{border-color:var(--waldrand);background:#f8f6f0}
+.import-dropzone svg{color:var(--muted);margin-bottom:8px}
+.import-dropzone p{margin:0;font-size:.92rem;color:var(--muted)}
+.import-modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;padding-bottom:1rem;border-bottom:1px solid var(--border)}
+.import-modal-header h3{margin:0;font-family:Georgia,serif;font-size:1.2rem;color:var(--ackerde)}
+.import-step{margin-bottom:1.5rem}
+.import-step-title{font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px}
+.import-hint{font-size:.88rem;color:var(--muted);margin-bottom:12px}
+.import-mapping-row{display:grid;grid-template-columns:1fr 40px 1fr;gap:8px;align-items:center;margin-bottom:8px}
+.import-mapping-row label{font-size:.88rem;color:var(--text)}
+.import-mapping-row select{width:100%}
+.import-mapping-arrow{color:var(--muted);text-align:center}
+.import-preview-table{width:100%;border-collapse:collapse;font-size:.85rem}
+.import-preview-table th{background:#f8f6f0;padding:8px;text-align:left;font-weight:600;color:var(--muted);border-bottom:1px solid var(--border)}
+.import-preview-table td{padding:8px;border-bottom:1px solid var(--border)}
+.import-nav{display:flex;justify-content:space-between;margin-top:1.5rem;padding-top:1rem;border-top:1px solid var(--border)}
 </style>
 </head>
 <body>
@@ -556,6 +573,19 @@
       <h3>Daten importieren</h3>
       <p class="snippet">Vorsicht: überschreibt den aktuellen, mit allen Geräten synchronisierten Datenstand mit dem Inhalt der Datei. Nur zur Wiederherstellung aus einem Backup verwenden, nicht für den normalen Gebrauch.</p>
       <input type="file" id="file-import" accept="application/json">
+    </div>
+    <div class="card" style="max-width:640px;margin-top:16px;">
+      <h3>Sorten importieren (Excel/CSV)</h3>
+      <p class="snippet">Importiere Bäume und Sorten aus Excel (.xlsx, .xls) oder CSV (.csv, .tsv) Dateien. Du kannst eigene IDs vergeben.</p>
+      <div class="import-dropzone" id="import-dropzone">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+        <p>Datei hierher ziehen oder klicken</p>
+        <input type="file" id="file-excel-import" accept=".xlsx,.xls,.csv,.tsv" style="display:none">
+      </div>
+      <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="btn secondary" onclick="downloadExcelTemplate()">⬇ Leere Vorlage</button>
+        <button class="btn secondary" onclick="loadImportTemplate()">📋 Vorlage laden</button>
+      </div>
     </div>
   </section>
 
@@ -693,6 +723,61 @@
 <!-- MODAL -->
 <div class="overlay" id="overlay">
   <div class="modal" id="modal-content"></div>
+</div>
+
+<!-- IMPORT MODAL -->
+<div class="overlay" id="import-overlay" style="display:none;">
+  <div class="modal" style="max-width:700px;max-height:90vh;overflow-y:auto;">
+    <div class="import-modal-header">
+      <h3>Sorten importieren</h3>
+      <button class="btn secondary" onclick="closeImportModal()">✕ Schließen</button>
+    </div>
+    
+    <!-- Schritt 1: Datei wählen -->
+    <div class="import-step" id="import-step-1">
+      <div class="import-step-title">Schritt 1: Datei wählen</div>
+      <div class="import-dropzone" id="import-dropzone-modal">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        <p>Excel oder CSV Datei wählen</p>
+        <input type="file" id="file-import-excel" accept=".xlsx,.xls,.csv,.tsv" style="display:none">
+      </div>
+      <div id="import-file-info" style="display:none;margin-top:12px;"></div>
+    </div>
+    
+    <!-- Schritt 2: Blatt wählen (nur Excel) -->
+    <div class="import-step" id="import-step-2" style="display:none;">
+      <div class="import-step-title">Schritt 2: Blatt wählen</div>
+      <select id="import-sheet-select" style="width:100%;"></select>
+    </div>
+    
+    <!-- Schritt 3: Spalten zuordnen -->
+    <div class="import-step" id="import-step-3" style="display:none;">
+      <div class="import-step-title">Schritt 3: Spalten zuordnen</div>
+      <p class="import-hint">Ordne die Spalten aus deiner Datei den Feldern der App zu.</p>
+      <div id="import-mapping"></div>
+      <div style="margin-top:12px;display:flex;gap:8px;">
+        <button class="btn secondary" onclick="saveImportTemplate()">💾 Als Vorlage speichern</button>
+      </div>
+    </div>
+    
+    <!-- Schritt 4: Vorschau -->
+    <div class="import-step" id="import-step-4" style="display:none;">
+      <div class="import-step-title">Schritt 4: Vorschau</div>
+      <div id="import-preview"></div>
+    </div>
+    
+    <!-- Schritt 5: Ergebnis -->
+    <div class="import-step" id="import-step-5" style="display:none;">
+      <div class="import-step-title">Schritt 5: Ergebnis</div>
+      <div id="import-result"></div>
+    </div>
+    
+    <!-- Navigation -->
+    <div class="import-nav" id="import-nav">
+      <button class="btn secondary" id="import-back-btn" onclick="importPrevStep()" style="display:none;">← Zurück</button>
+      <button class="btn" id="import-next-btn" onclick="importNextStep()" disabled>Weiter →</button>
+    </div>
+  </div>
 </div>
 
 <div class="pdf-overlay" id="pdf-overlay" onclick="if(event.target===this)closeArcheViewer()">
@@ -2996,6 +3081,429 @@ function renderArche(){
 }
 function toggleAnAuswahl(name){const k='AN:'+name;if(ausgewählt[k])delete ausgewählt[k];else ausgewählt[k]=true;renderArche();}
 renderAnMonate();renderAnAbc();renderArche();
+
+// ─── IMPORT SYSTEM ──────────────────────────────────────────────────────────
+const IMPORT_FIELDS=[
+  {id:'id',label:'Eigene ID',required:false,autoDetect:['id','ID','Nr.','Nummer','baum_id','baum-id']},
+  {id:'sorte',label:'Sorte',required:true,autoDetect:['sorte','Sorte','name','Name','sorte_name','Sortenname']},
+  {id:'frucht',label:'Obstart',required:true,autoDetect:['frucht','Frucht','obstart','Obstart','art','Art','typ']},
+  {id:'ausgepflanzt',label:'Pflanzjahr',required:false,autoDetect:['ausgepflanzt','Pflanzjahr','pflanzjahr','jahr','Year','pflanzdatum']},
+  {id:'pflueckzeitpunkt',label:'Pflückzeit',required:false,autoDetect:['pflueckzeitpunkt','Pflückzeit','pflueck_reifezeit','erntemonat']},
+  {id:'geschmack',label:'Geschmack',required:false,autoDetect:['geschmack','Geschmack','aroma','Aroma']},
+  {id:'eigenschaften',label:'Eigenschaften',required:false,autoDetect:['eigenschaften','Eigenschaften','beschreibung','notes','Notizen']},
+  {id:'verwendung',label:'Verwendung',required:false,autoDetect:['verwendung','Verwendung','use','nutzung','Nutzung']}
+];
+
+let importState={
+  file:null,
+  workbook:null,
+  sheets:[],
+  selectedSheet:null,
+  headers:[],
+  rows:[],
+  mapping:{},
+  preview:[],
+  step:1
+};
+
+function openImportModal(){
+  importState={file:null,workbook:null,sheets:[],selectedSheet:null,headers:[],rows:[],mapping:{},preview:[],step:1};
+  document.getElementById('import-overlay').style.display='flex';
+  showImportStep(1);
+}
+
+function closeImportModal(){
+  document.getElementById('import-overlay').style.display='none';
+}
+
+function showImportStep(step){
+  importState.step=step;
+  for(let i=1;i<=5;i++){
+    const el=document.getElementById('import-step-'+i);
+    if(el) el.style.display=i===step?'block':'none';
+  }
+  document.getElementById('import-back-btn').style.display=step>1?'inline-block':'none';
+  const nextBtn=document.getElementById('import-next-btn');
+  if(step===4){
+    nextBtn.textContent='Importieren';
+    nextBtn.disabled=false;
+  } else if(step===5){
+    nextBtn.style.display='none';
+  } else {
+    nextBtn.textContent='Weiter →';
+    nextBtn.disabled=!canProceedImport();
+  }
+}
+
+function canProceedImport(){
+  switch(importState.step){
+    case 1:return importState.file!==null;
+    case 2:return importState.selectedSheet!==null;
+    case 3:return Object.values(importState.mapping).some(v=>v);
+    case 4:return importState.preview.length>0;
+    default:return false;
+  }
+}
+
+function importNextStep(){
+  if(importState.step===4){
+    executeImport();
+    return;
+  }
+  if(importState.step===1 && importState.file){
+    parseImportFile();
+    return;
+  }
+  if(importState.step===2 && importState.selectedSheet){
+    loadSheetData();
+    return;
+  }
+  if(importState.step===3){
+    generatePreview();
+    return;
+  }
+  showImportStep(importState.step+1);
+}
+
+function importPrevStep(){
+  if(importState.step>1) showImportStep(importState.step-1);
+}
+
+function parseImportFile(){
+  const file=importState.file;
+  const ext=file.name.split('.').pop().toLowerCase();
+  
+  if(ext==='csv'||ext==='tsv'){
+    const reader=new FileReader();
+    reader.onload=function(e){
+      const data=e.target.result;
+      const delimiter=ext==='tsv'?'\t':',';
+      const rows=parseCSV(data,delimiter);
+      importState.sheets=['CSV'];
+      importState.selectedSheet='CSV';
+      importState.headers=rows[0]||[];
+      importState.rows=rows.slice(1);
+      detectMapping();
+      showImportStep(3);
+    };
+    reader.readAsText(file);
+  } else {
+    const reader=new FileReader();
+    reader.onload=function(e){
+      try{
+        importState.workbook=XLSX.read(e.target.result,{type:'array'});
+        importState.sheets=importState.workbook.SheetNames;
+        importState.selectedSheet=importState.sheets[0];
+        
+        if(importState.sheets.length>1){
+          const select=document.getElementById('import-sheet-select');
+          select.innerHTML=importState.sheets.map(s=>'<option value="'+s+'">'+s+'</option>').join('');
+          select.onchange=function(){importState.selectedSheet=this.value;};
+          showImportStep(2);
+        } else {
+          loadSheetData();
+        }
+      }catch(err){
+        alert('Fehler beim Lesen der Datei: '+err.message);
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  }
+}
+
+function parseCSV(text,delimiter=','){
+  const lines=[];
+  let current=[];
+  let inQuotes=false;
+  let value='';
+  
+  for(let i=0;i<text.length;i++){
+    const c=text[i];
+    const next=text[i+1];
+    
+    if(inQuotes){
+      if(c==='"'&&next==='"'){
+        value+='"';
+        i++;
+      } else if(c==='"'){
+        inQuotes=false;
+      } else {
+        value+=c;
+      }
+    } else {
+      if(c==='"'){
+        inQuotes=true;
+      } else if(c===delimiter||c==='\n'||c==='\r'){
+        if(c==='\r'&&next==='\n') i++;
+        current.push(value.trim());
+        value='';
+        if(c===delimiter||c==='\n'){
+          if(current.length>0) lines.push(current);
+          current=[];
+        }
+      } else {
+        value+=c;
+      }
+    }
+  }
+  current.push(value.trim());
+  if(current.length>0&&current.some(v=>v)) lines.push(current);
+  return lines;
+}
+
+function loadSheetData(){
+  if(!importState.workbook||!importState.selectedSheet) return;
+  const sheet=importState.workbook.Sheets[importState.selectedSheet];
+  const data=XLSX.utils.sheet_to_json(sheet,{header:1});
+  importState.headers=data[0]||[];
+  importState.rows=data.slice(1);
+  detectMapping();
+  showImportStep(3);
+}
+
+function detectMapping(){
+  importState.mapping={};
+  const headers=importState.headers.map(h=>h.toString().toLowerCase());
+  
+  IMPORT_FIELDS.forEach(field=>{
+    const found=field.autoDetect.find(ad=>headers.includes(ad.toLowerCase()));
+    if(found){
+      const idx=headers.indexOf(found.toLowerCase());
+      importState.mapping[field.id]=importState.headers[idx];
+    }
+  });
+  
+  renderMappingUI();
+}
+
+function renderMappingUI(){
+  const container=document.getElementById('import-mapping');
+  const unusedHeaders=[...importState.headers];
+  
+  let html=IMPORT_FIELDS.map(field=>{
+    const options=importState.headers.map(h=>'<option value="'+h+'" '+(importState.mapping[field.id]===h?'selected':'')+'>'+h+'</option>').join('');
+    const required=field.required?'<span style="color:red">*</span>':'';
+    return '<div class="import-mapping-row">'+
+      '<label>'+field.label+required+'</label>'+
+      '<div class="import-mapping-arrow">←</div>'+
+      '<select onchange="importState.mapping[\''+field.id+'\']=this.value||null">'+ '<option value="">– Nicht zuordnen –</option>'+options+'</select>'+
+    '</div>';
+  }).join('');
+  
+  container.innerHTML=html;
+}
+
+function generatePreview(){
+  importState.preview=[];
+  const mapping=importState.mapping;
+  
+  importState.rows.slice(0,10).forEach(row=>{
+    const obj={};
+    IMPORT_FIELDS.forEach(field=>{
+      const header=mapping[field.id];
+      if(header){
+        const idx=importState.headers.indexOf(header);
+        if(idx>=0) obj[field.id]=row[idx]||'';
+      }
+    });
+    if(obj.sorte) importState.preview.push(obj);
+  });
+  
+  renderPreview();
+  showImportStep(4);
+}
+
+function renderPreview(){
+  const container=document.getElementById('import-preview');
+  
+  if(importState.preview.length===0){
+    container.innerHTML='<p class="import-hint">Keine Daten zur Vorschau vorhanden.</p>';
+    return;
+  }
+  
+  let html='<table class="import-preview-table"><thead><tr>';
+  html+='<th>ID</th><th>Sorte</th><th>Obstart</th><th>Pflanzjahr</th><th>Pflückzeit</th>';
+  html+='</tr></thead><tbody>';
+  
+  importState.preview.forEach(row=>{
+    html+='<tr>'+
+      '<td>'+(row.id||'–')+'</td>'+
+      '<td>'+(row.sorte||'–')+'</td>'+
+      '<td>'+(row.frucht||'–')+'</td>'+
+      '<td>'+(row.ausgepflanzt||'–')+'</td>'+
+      '<td>'+(row.pflueckzeitpunkt||'–')+'</td>'+
+    '</tr>';
+  });
+  
+  html+='</tbody></table>';
+  html+='<p class="import-hint" style="margin-top:12px;">'+importState.preview.length+' von '+importState.rows.length+' Zeilen angezeigt.</p>';
+  
+  container.innerHTML=html;
+}
+
+function executeImport(){
+  const result={imported:0,skipped:0,errors:[]};
+  const mapping=importState.mapping;
+  
+  importState.rows.forEach((row,idx)=>{
+    try{
+      const sorte=getValueByMapping(row,mapping,'sorte');
+      if(!sorte) return;
+      
+      const frucht=getValueByMapping(row,mapping,'frucht')||'Apfel';
+      const id=getValueByMapping(row,mapping,'id');
+      
+      const newTree={
+        id:id||'NEU-'+Date.now()+'-'+idx,
+        sorte:sorte,
+        frucht:normalizeFrucht(frucht),
+        ausgepflanzt:getValueByMapping(row,mapping,'ausgepflanzt')||'',
+        pflueckzeitpunkt:getValueByMapping(row,mapping,'pflueckzeitpunkt')||'',
+        geschmack:getValueByMapping(row,mapping,'geschmack')||'',
+        eigenschaften:getValueByMapping(row,mapping,'eigenschaften')||'',
+        quelle:'import',
+        importDatum:new Date().toISOString()
+      };
+      
+      if(!state.customTrees) state.customTrees=[];
+      const existingIdx=state.customTrees.findIndex(t=>t.id===newTree.id);
+      if(existingIdx>=0){
+        state.customTrees[existingIdx]={...state.customTrees[existingIdx],...newTree};
+      } else {
+        state.customTrees.push(newTree);
+      }
+      
+      result.imported++;
+    }catch(err){
+      result.errors.push('Zeile '+(idx+2)+': '+err.message);
+    }
+  });
+  
+  saveState();
+  showImportResult(result);
+}
+
+function getValueByMapping(row,mapping,fieldId){
+  const header=mapping[fieldId];
+  if(!header) return null;
+  const idx=importState.headers.indexOf(header);
+  return idx>=0?(row[idx]||null):null;
+}
+
+function normalizeFrucht(f){
+  const lower=(f||'').toLowerCase();
+  if(lower.includes('apfel')||lower.includes('apple')) return 'Apfel';
+  if(lower.includes('birne')||lower.includes('pear')) return 'Birne';
+  if(lower.includes('walnuss')||lower.includes('nuss')||lower.includes('walnut')) return 'Walnuss';
+  if(lower.includes('zwetsch')||lower.includes('pflaume')||lower.includes('plum')) return 'Zwetschke';
+  if(lower.includes('kirsch')||lower.includes('cherry')) return 'Kirsch';
+  return f||'Sonstige';
+}
+
+function showImportResult(result){
+  const container=document.getElementById('import-result');
+  let html='<div style="text-align:center;padding:1rem;">';
+  html+='<div style="font-size:2rem;margin-bottom:0.5rem;">✅</div>';
+  html+='<h4 style="margin:0 0 0.5rem;">Import abgeschlossen</h4>';
+  html+='<p>'+result.imported+' Sorten importiert</p>';
+  if(result.errors.length>0){
+    html+='<p style="color:var(--dachziegel);">'+result.errors.length+' Fehler</p>';
+    html+='<ul style="text-align:left;font-size:.85rem;max-height:100px;overflow-y:auto;">';
+    result.errors.slice(0,10).forEach(e=>html+='<li>'+e+'</li>');
+    html+='</ul>';
+  }
+  html+='<button class="btn" onclick="closeImportModal()" style="margin-top:1rem;">Schließen</button>';
+  html+='</div>';
+  container.innerHTML=html;
+  showImportStep(5);
+  
+  if(result.imported>0){
+    renderBaumTable();
+    renderSortenCards();
+  }
+}
+
+function downloadExcelTemplate(){
+  const ws=XLSX.utils.aoa_to_sheet([['ID','Sorte','Obstart','Pflanzjahr','Pflückzeit','Geschmack','Eigenschaften','Verwendung'],['A1','Boskoop','Apfel','2015','Oktober','Säuerlich','Robust, lagerfähig','Tafelobst']]);
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'Vorlage');
+  XLSX.writeFile(wb,'Obstdatenbank_Vorlage.xlsx');
+}
+
+function saveImportTemplate(){
+  const template={
+    name:'Meine Vorlage',
+    datum:new Date().toISOString(),
+    mapping:importState.mapping
+  };
+  const templates=JSON.parse(localStorage.getItem('import_templates')||'[]');
+  templates.push(template);
+  localStorage.setItem('import_templates',JSON.stringify(templates));
+  alert('Vorlage gespeichert!');
+}
+
+function loadImportTemplate(){
+  const templates=JSON.parse(localStorage.getItem('import_templates')||'[]');
+  if(templates.length===0){
+    alert('Keine Vorlagen gespeichert.');
+    return;
+  }
+  const last=templates[templates.length-1];
+  importState.mapping=last.mapping;
+  renderMappingUI();
+}
+
+// Dropzone Event Listener
+document.addEventListener('DOMContentLoaded',function(){
+  const dropzones=['import-dropzone','import-dropzone-modal'];
+  dropzones.forEach(id=>{
+    const dz=document.getElementById(id);
+    if(!dz) return;
+    
+    dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('dragover');});
+    dz.addEventListener('dragleave',()=>dz.classList.remove('dragover'));
+    dz.addEventListener('drop',e=>{
+      e.preventDefault();
+      dz.classList.remove('dragover');
+      const file=e.dataTransfer.files[0];
+      if(file) handleImportFile(file);
+    });
+    dz.addEventListener('click',()=>{
+      const input=dz.querySelector('input[type=file]')||document.getElementById('file-excel-import');
+      if(input) input.click();
+    });
+  });
+  
+  const fileInputs=['file-excel-import','file-import-excel'];
+  fileInputs.forEach(id=>{
+    const input=document.getElementById(id);
+    if(!input) return;
+    input.addEventListener('change',e=>{
+      if(e.target.files[0]) handleImportFile(e.target.files[0]);
+    });
+  });
+});
+
+function handleImportFile(file){
+  const ext=file.name.split('.').pop().toLowerCase();
+  if(!['xlsx','xls','csv','tsv'].includes(ext)){
+    alert('Nicht unterstütztes Dateiformat. Bitte Excel (.xlsx, .xls) oder CSV (.csv, .tsv) verwenden.');
+    return;
+  }
+  importState.file=file;
+  
+  const info=document.getElementById('import-file-info');
+  if(info){
+    info.style.display='block';
+    info.innerHTML='<strong>'+file.name+'</strong> ('+Math.round(file.size/1024)+' KB)';
+  }
+  
+  if(document.getElementById('import-overlay').style.display==='none'){
+    openImportModal();
+  } else {
+    document.getElementById('import-next-btn').disabled=false;
+  }
+}
 
 </script>
 </body>
