@@ -607,7 +607,6 @@
   <div class="sbr-tab active" onclick="sbrShowTab('berater')">Standort-Berater</div>
   <div class="sbr-tab" onclick="sbrShowTab('sorten')">Sortenübersicht</div>
 </div>
-<main>
 
 <!-- BERATER -->
 <div class="sbr-panel active" id="panel-berater">
@@ -654,9 +653,8 @@
 <div class="sl-grid" id="sl-grid"></div>
 </div>
   </section>
-</main>
 
-<section id="tab-hilfe" style="display:none;">
+  <section id="tab-hilfe" style="display:none;">
 <div style="max-width:760px;margin:0 auto;">
 <h2 style="font-family:Georgia,serif;color:var(--ackerde);margin:0 0 1.5rem;">Anleitung für neue Nutzer</h2>
 
@@ -749,6 +747,8 @@
 
 </div>
 </section>
+
+</main>
 
 <footer>Hendlberghof · Obstdatenbank · Grunddaten aus Numbers-Export (Apfel/Birne) · lokal, offline, ohne Cloud-Anbindung</footer>
 
@@ -852,7 +852,7 @@ function loadState(){
       return parsed;
     }
   }catch(e){}
-  return { positions: Object.assign({}, SEED_POSITIONS), sukzession:{}, ernten:{}, verifiziert:{}, customTrees:[], baumEdits:{}, sortenEdits:{}, gpsCalib:null };
+  return { positions: Object.assign({}, SEED_POSITIONS), sukzession:{}, ernten:{}, verifiziert:{}, customTrees:[], baumEdits:{}, sortenEdits:{}, gpsCalib:null, satPositions:{}, importLog:[], importSnapshots:[] };
 }
 let _saving = false;
 function saveState(){
@@ -870,6 +870,9 @@ function initState(){
   if(!state.baumEdits) state.baumEdits = {};
   if(!state.sortenEdits) state.sortenEdits = {};
   if(state.gpsCalib===undefined) state.gpsCalib = null;
+  if(!state.satPositions) state.satPositions = {};
+  if(!state.importLog) state.importLog = [];
+  if(!state.importSnapshots) state.importSnapshots = [];
 }
 
 function toggleVerifiziert(sorteName, context){
@@ -907,6 +910,9 @@ function applyRemoteState(remote){
   if(!state.baumEdits) state.baumEdits = {};
   if(!state.sortenEdits) state.sortenEdits = {};
   if(state.gpsCalib===undefined) state.gpsCalib = null;
+  if(!state.satPositions) state.satPositions = {};
+  if(!state.importLog) state.importLog = [];
+  if(!state.importSnapshots) state.importSnapshots = [];
   localStorage.setItem(LS_KEY, JSON.stringify(state));
   refreshFilterOptions();
   renderBaumTable();
@@ -974,7 +980,6 @@ function refreshFilterOptions(){
   const alle = getAllTrees();
   const fruchtArten = [...new Set(alle.map(t=>t.frucht))].sort();
   fillSelect(document.getElementById('baum-filter-frucht'), fruchtArten);
-  fillSelect(document.getElementById('sorten-filter-frucht'), fruchtArten);
 }
 
 /* ---------- Baumkataster Tabelle ---------- */
@@ -1429,36 +1434,8 @@ function exportLageplanPDF(){
   doc.save(`Lageplan_${new Date().toISOString().slice(0,10)}.pdf`);
 }
 
-function renderSortenCards(){
-  const wrap = document.getElementById('sorten-cards');
-  wrap.innerHTML = '';
-  const rows = getFilteredSortenRows();
-  if(rows.length===0){ wrap.innerHTML='<p class="empty">Keine Treffer.</p>'; return; }
-  rows.forEach(s=>{
-    const div = document.createElement('div');
-    div.className = 'card '+s.frucht.toLowerCase();
-    const snippet = s.geschmack || s.eigenschaften || s.frucht_beschreibung || 'Noch keine Sortenbeschreibung erfasst.';
-    const badge = state.verifiziert[s.sorte]
-      ? `<div class="badge-verifiziert">✓ Verifiziert am ${state.verifiziert[s.sorte]}</div>`
-      : (s.recherchiert ? '<div class="badge-recherche">🔍 Web-recherchiert – bitte prüfen</div>' : '');
-    div.innerHTML = `${badge}
-      <h3>${s.sorte}</h3>
-      <div class="meta">${s.frucht} · ${s.baum_ids.length} Baum/Bäume · ${s.pflueckzeitpunkt||s.pflueck_reifezeit||'Pflückzeit unbekannt'}</div>
-      <div class="snippet">${snippet.slice(0,140)}${snippet.length>140?'…':''}</div>`;
-    div.addEventListener('click', ()=>openSortenModal(s.sorte));
-    wrap.appendChild(div);
-  });
-}
-['sorten-search','sorten-filter-frucht','sorten-filter-verwendung'].forEach(id=>{
-  document.getElementById(id).addEventListener('input', renderSortenCards);
-  document.getElementById(id).addEventListener('change', renderSortenCards);
-});
-document.getElementById('btn-sorten-search-reset').addEventListener('click', ()=>{
-  document.getElementById('sorten-search').value = '';
-  document.getElementById('sorten-filter-frucht').value = '';
-  document.getElementById('sorten-filter-verwendung').value = '';
-  renderSortenCards();
-});
+// Legacy renderSortenCards no-op (Sortenübersicht uses renderSortenUebersicht)
+function renderSortenCards(){};
 
 /* ---------- Modal: Baum-Detail ---------- */
 function fieldRow(label, val){
@@ -1738,7 +1715,11 @@ function openSortenModal(sorteName){
   document.getElementById('overlay').classList.add('open');
 }
 
-function closeModal(){ document.getElementById('overlay').classList.remove('open'); }
+function closeModal(){ 
+  const o=document.getElementById('overlay');
+  o.classList.remove('open');
+  o.style.display='';
+}
 document.getElementById('overlay').addEventListener('click', (e)=>{ if(e.target.id==='overlay') closeModal(); });
 
 /* ---------- Lageplan ---------- */
@@ -2491,6 +2472,12 @@ function startApp(){
       if(BLACKLIST.has(k) || (!baumIds.has(k) && !k.startsWith('NEU-'))){ delete state.positions[k]; changed = true; }
     }
   }
+  /* Sat-Positionen für nicht mehr existierende IDs */
+  if(state.satPositions){
+    for(const k of Object.keys(state.satPositions)){
+      if(BLACKLIST.has(k) || (!baumIds.has(k) && !k.startsWith('NEU-'))){ delete state.satPositions[k]; changed = true; }
+    }
+  }
   if(changed) saveState();
   refreshFilterOptions();
   applyEditModeUI();
@@ -2775,7 +2762,7 @@ const AN_SORTEN=[
 ];
 
 // ─── STATUS ───────────────────────────────────────────────────────────────────
-let aktArt='apfel',slArt='apfel',slAktiveTags=new Set(),ausgewählt={},anBuchstabe=null,anMonat=null,anGenussMonat=null,anFilterModus='ernte';
+let aktArt='apfel';
 
 // ─── TABS ─────────────────────────────────────────────────────────────────────
 function sbrShowTab(t){
@@ -2788,6 +2775,29 @@ function sbrShowTab(t){
 }
 
 // ─── BERATER ──────────────────────────────────────────────────────────────────
+function hofpoolDaten(){
+  if(!window.__dataReady || typeof state==='undefined' || !state) return {liste:[], anzahl:{}};
+  const anzahl={};
+  const baeume=getAllTrees();
+  baeume.forEach(t=>{ if(t.sorte) anzahl[t.sorte]=(anzahl[t.sorte]||0)+1; });
+  const map=new Map();
+  SORTEN_DATA.forEach(s=>{ if(anzahl[s.sorte]) map.set(s.sorte, getSorte(s.sorte)||s); });
+  Object.keys(anzahl).forEach(name=>{
+    if(!map.has(name)){
+      const t=baeume.find(x=>x.sorte===name);
+      map.set(name,{sorte:name,frucht:t.frucht||'',pflueckzeitpunkt:t.pflueckzeitpunkt||t.pflueck_reifezeit||'',geschmack:t.geschmack||'',eigenschaften:t.eigenschaften||'',frucht_beschreibung:t.frucht_beschreibung||'',verwendung:getVerwendung(t),lagerfaehig:t.lagerfaehig||''});
+    }
+  });
+  return {liste:Array.from(map.values()), anzahl};
+}
+function hofTags(s){
+  const t=[...(s.verwendung||[])];
+  if(s.lagerfaehig) t.push('lagerfähig');
+  if(s.arche_pdf) t.push('Arche Noah');
+  if(state.verifiziert && state.verifiziert[s.sorte]) t.push('verifiziert');
+  else if(s.recherchiert) t.push('recherchiert');
+  return t;
+}
 function beraterPool(){return hofpoolDaten().liste.filter(s=>s.standort);}
 function renderSbArten(){
   const prio=['Apfel','Birne','Walnuss'];
@@ -2825,13 +2835,6 @@ function beraten(){
   });
   document.getElementById('res').innerHTML=html;
 }
-
-// ─── ARCHE NOAH TAG MAPPING ───────────────────────────────────────────────────
-const ARCHE_TAG_TO_VERWENDUNG={
-  'Tafelobst':'Tafelobst',
-  'Most':'Wirtschaftsobst',
-  'Lager':'Tafelobst'
-};
 
 // ─── SORTENÜBERSICHT ─────────────────────────────────────────────────────────
 const SORTEN_QUELLEN=['alle','arche','hof','import'];
@@ -2897,7 +2900,7 @@ function getAllSorten(){
     
     baumSorten.forEach(t=>{
       if(t.sorte && !sortenMap.has(t.sorte)){
-        const sorte=GET_SORTE?GET_SORTE(t.sorte):null;
+        const sorte=getSorte(t.sorte);
         sortenMap.set(t.sorte,{
           name:t.sorte,
           frucht:t.frucht||sorte?.frucht||'',
@@ -2926,7 +2929,7 @@ function getSortenQuelleLabel(q){
 }
 
 function renderSortenQuellenTabs(){
-  const html=SQELLEN.map(q=>'<div class="sl-art-tab'+(sortenQuelle===q?' active':'')+'" onclick="setSortenQuelle(\''+q+'\')">'+getSortenQuelleLabel(q)+'</div>').join('');
+  const html=SORTEN_QUELLEN.map(q=>'<div class="sl-art-tab'+(sortenQuelle===q?' active':'')+'" onclick="setSortenQuelle(\''+q+'\')">'+getSortenQuelleLabel(q)+'</div>').join('');
   document.getElementById('sl-art-tabs').innerHTML=html;
 }
 
@@ -3071,112 +3074,6 @@ function genussText(s){
   if(sorted.length===1) return MNAM[sorted[0]];
   return MNAM[sorted[0]]+'–'+MNAM[sorted[sorted.length-1]];
 }
-
-function renderAnMonate(){
-  const modus=anFilterModus;
-  const vorhandene=new Set();
-  AN_SORTEN.forEach(s=>{
-    const arr=modus==='genuss'?getGenussm(s):(s.erntem||[]);
-    arr.forEach(m=>vorhandene.add(m));
-  });
-  const aktiv=modus==='genuss'?anGenussMonat:anMonat;
-  const setter=modus==='genuss'?'anSetGenussMonat':'anSetMonat';
-  document.getElementById('an-monate').innerHTML=
-    '<button class="an-monat-btn'+(aktiv===null?' active':'')+'" onclick="'+setter+'(null)">Alle</button>'+
-    MONATE.filter(mo=>vorhandene.has(mo.m)).map(mo=>
-      '<button class="an-monat-btn '+(mo.cls)+(aktiv===mo.m?' active':'')+'" onclick="'+setter+'('+mo.m+')">'+mo.kz+'</button>'
-    ).join('');
-  // Titel aktualisieren
-  document.getElementById('an-filter-title').innerHTML=
-    modus==='ernte'
-      ? 'Erntemonat — Ernte erzielen &amp; Sukzession beobachten'
-      : 'Genussreife — Vom Rand zur Mitte nutzen &amp; Ernte einplanen';
-}
-
-function anSetModus(m){
-  anFilterModus=m;
-  anMonat=null; anGenussMonat=null;
-  ['ernte','genuss'].forEach(id=>document.getElementById('modus-'+id).classList.toggle('active',id===m));
-  renderAnMonate();renderArche();
-}
-function anSetMonat(m){anMonat=m;renderAnMonate();renderArche();}
-function anSetGenussMonat(m){anGenussMonat=m;renderAnMonate();renderArche();}
-
-function renderAnAbc(){
-  document.getElementById('an-abc').innerHTML=AN_BUCHSTABEN.map(b=>{
-    const cnt=AN_SORTEN.filter(s=>s.b===b).length;
-    return '<button class="an-abc-btn'+(anBuchstabe===b?' active':'')+'" onclick="anToggle(\''+b+'\')">'+b+' <span style="font-size:10px;font-weight:400">('+cnt+')</span></button>';
-  }).join('');
-}
-function anToggle(b){anBuchstabe=anBuchstabe===b?null:b;renderAnAbc();renderArche();}
-
-function ernteBar(s){
-  const gm=getGenussm(s);
-  const ord=m=>m>=6?m:m+12;
-  const gmSorted=[...gm].sort((a,b)=>ord(a)-ord(b));
-  const letzterGenuss=gmSorted.length?gmSorted[gmSorted.length-1]:null;
-  return '<div class="an-ernte-bar">'+MONATE.map(mo=>{
-    const istErnte=(s.erntem||[]).includes(mo.m);
-    const istLager=(s.lagerm||[]).includes(mo.m);
-    const istGenussOnly=gm.includes(mo.m)&&!istErnte&&!istLager;
-    const istLetzterGenuss=mo.m===letzterGenuss;
-    let cls,tip;
-    if(istErnte){cls='aktiv';tip='Ernte';}
-    else if(istLager){cls='lager';tip='Lager / Genuss';}
-    else if(istGenussOnly){cls='genuss';tip='Genuss';}
-    else{cls='inaktiv';tip='';}
-    const extra=istLetzterGenuss?' style="background:#3B6D11;color:#fff;border-color:#3B6D11"':'';
-    return '<div class="an-ernte-dot '+cls+'"'+extra+' title="'+MNAM[mo.m]+(tip?' – '+tip:'')+(istLetzterGenuss?' (Ende Genussreife)':'')+'">'+mo.kz[0]+'</div>';
-  }).join('')+'</div>';
-}
-
-function renderArche(){
-  const suche=(document.getElementById('an-search').value||'').toLowerCase();
-  let pool=AN_SORTEN;
-  if(anBuchstabe)pool=pool.filter(s=>s.b===anBuchstabe);
-  if(anFilterModus==='ernte'&&anMonat!==null)
-    pool=pool.filter(s=>(s.erntem||[]).includes(anMonat));
-  if(anFilterModus==='genuss'&&anGenussMonat!==null)
-    pool=pool.filter(s=>getGenussm(s).includes(anGenussMonat));
-  if(suche)pool=pool.filter(s=>s.name.toLowerCase().includes(suche)||s.beschreibung.toLowerCase().includes(suche)||s.tags.some(t=>t.toLowerCase().includes(suche)));
-  document.getElementById('an-count').textContent=pool.length+' von '+AN_SORTEN.length+' Sorten (A–Z)';
-  if(!pool.length){document.getElementById('an-grid').innerHTML='<p class="sl-empty">Keine Sorten gefunden.</p>';return;}
-  document.getElementById('an-grid').innerHTML=pool.map(s=>{
-    const sel=ausgewählt['AN:'+s.name];
-    const tags=s.tags.map(t=>'<span class="sb-tag '+tagCls(t)+'">'+t+'</span>').join('');
-    const ernteMonate=(s.erntem||[]).map(m=>MNAM[m]).join(', ');
-    const ord=m=>m>=6?m:m+12;
-    const lagerm=s.lagerm||[];
-    const lagermSorted=[...lagerm].sort((a,b)=>ord(a)-ord(b));
-    const lagerMonate=lagermSorted.length===0?'–':lagermSorted.length===1?MNAM[lagermSorted[0]]:MNAM[lagermSorted[0]]+' bis '+MNAM[lagermSorted[lagermSorted.length-1]];
-    const genuss=genussText(s);
-    const gm=getGenussm(s);
-    const gmSorted=[...gm].sort((a,b)=>ord(a)-ord(b));
-    const genussLang=gmSorted.length===0?'–':gmSorted.length===1?MNAM[gmSorted[0]]:MNAM[gmSorted[0]]+' bis '+MNAM[gmSorted[gmSorted.length-1]];
-    return '<div class="sl-card'+(sel?' selected':'')+'" onclick="toggleAnAuswahl(\''+s.name.replace(/'/g,"\\'")+'\')">'+
-      '<div class="sl-card-check"><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><polyline points="1.5,5 4,7.5 8.5,2.5" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>'+
-      '<span class="an-badge">Arche Noah</span>'+
-      '<div class="sl-card-name">'+s.name+'</div>'+
-      '<div class="an-ernte-zeile">'+
-        '<span>Ernte: <strong>'+ernteMonate+'</strong></span>'+
-      '</div>'+
-      ((s.lagerm||[]).length?
-        '<div class="an-lager-zeile">'+
-          '<span>Lager: '+lagerMonate+'</span>'+
-        '</div>'
-      :'')+
-      '<div class="an-genuss-zeile">'+
-        '<span>Genussreife: '+genussLang+'</span>'+
-      '</div>'+
-      ernteBar(s)+
-      '<div class="sb-tags" style="margin-top:6px">'+tags+'</div>'+
-      '<div class="sl-card-desc">'+s.beschreibung+'</div>'+
-      '<button class="an-pdf-link" onclick="event.stopPropagation();openArcheViewer(\''+s.pdf.replace(/'/g,"\\'")+'\',\''+s.name.replace(/'/g,"\\'")+'\')">Sortenblatt PDF</button>'+
-    '</div>';
-  }).join('');
-}
-function toggleAnAuswahl(name){const k='AN:'+name;if(ausgewählt[k])delete ausgewählt[k];else ausgewählt[k]=true;renderArche();}
-renderAnMonate();renderAnAbc();renderArche();
 
 // ─── IMPORT SYSTEM ──────────────────────────────────────────────────────────
 const IMPORT_FIELDS=[
@@ -3440,8 +3337,10 @@ function renderPreview(){
 function executeImport(){
   // Snapshot vor dem Import erstellen
   if(!state.importSnapshots) state.importSnapshots=[];
+  const importId='IMP-'+Date.now();
   state.importSnapshots.push({
     datum:new Date().toISOString(),
+    importId:importId,
     customTrees:JSON.parse(JSON.stringify(state.customTrees||[])),
     positions:JSON.parse(JSON.stringify(state.positions||{})),
     satPositions:JSON.parse(JSON.stringify(state.satPositions||{}))
@@ -3510,7 +3409,7 @@ function executeImport(){
   // Import protokollieren
   if(!state.importLog) state.importLog=[];
   state.importLog.push({
-    id:'IMP-'+Date.now(),
+    id:importId,
     datum:new Date().toISOString(),
     datei:importState.file?.name||'Unbekannt',
     anzahl:result.imported,
@@ -3567,15 +3466,10 @@ function showImportResult(result){
   container.innerHTML=html;
   showImportStep(5);
   
-  if(result.imported>0){
+  if(result.imported>0||result.updated>0){
     renderBaumTable();
-    renderSortenCards();
+    renderSortenUebersicht();
     renderImportLog();
-  }
-  
-  if(result.imported>0){
-    renderBaumTable();
-    renderSortenCards();
   }
 }
 
@@ -3693,16 +3587,10 @@ function undoImport(importId){
     return;
   }
   
-  // Finde den passenden Snapshot (vor diesem Import)
-  const importIdx=state.importLog.indexOf(importEntry);
-  if(importIdx<1){
-    alert('Kein Snapshot für diesen Import vorhanden.');
-    return;
-  }
-  
-  const snapshot=state.importSnapshots[importIdx-1];
+  // Finde den passenden Snapshot (hat die gleiche importId)
+  const snapshot=state.importSnapshots.find(s=>s.importId===importId);
   if(!snapshot){
-    alert('Kein Snapshot für diesen Import vorhanden.');
+    alert('Kein Snapshot für diesen Import vorhanden (evtl. älter als 5 Imports).');
     return;
   }
   
