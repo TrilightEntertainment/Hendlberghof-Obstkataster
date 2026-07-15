@@ -683,8 +683,8 @@
 <p>Markiere deine Bäume auf dem Luftbild oder nutze die Satellitenkarte.</p>
 <ul>
 <li>Wechsel zwischen Luftbild und Satellit</li>
-<li>Bäume per Doppelklick setzen</li>
-<li>GPS-Kalibrierung für Genauigkeit</li>
+<li>Bäume per Klick setzen (auf beiden Karten)</li>
+<li>GPS-Kalibrierung für Genauigkeit (optional)</li>
 </ul>
 </div>
 
@@ -693,8 +693,21 @@
 <p>Excel oder CSV Datei hochladen und Spalten automatisch zuordnen.</p>
 <ul>
 <li>Unterstützte Formate: .xlsx, .xls, .csv, .tsv</li>
-<li>Als Vorlage speichern für spätere Imports</li>
+<li>Drag & Drop oder Klick zum Hochladen</li>
+<li>Spalten werden automatisch erkannt</li>
 <li>Eigene IDs werden beibehalten</li>
+<li>Als Vorlage speichern für spätere Imports</li>
+<li>Re-Import: Gleiche Datei ergänzt vorhandene Daten</li>
+</ul>
+</div>
+
+<div class="hilfe-card">
+<h3>5. Import verwalten</h3>
+<p>Alle Imports werden protokolliert und können rückgängig gemacht werden.</p>
+<ul>
+<li><strong>Import-Details:</strong> Klick auf Import-Eintrag zeigt Details</li>
+<li><strong>Undo:</strong> Vor jedem Import wird ein Snapshot erstellt (max. 5)</li>
+<li><strong>Löschen:</strong> Importierte Bäume können entfernt werden</li>
 </ul>
 </div>
 
@@ -725,6 +738,12 @@
 
 <dt>Wie ändere ich meine eigene ID?</dt>
 <dd>Baum bearbeiten → ID-Feld ändern.</dd>
+
+<dt>Was passiert beim Re-Import?</dt>
+<dd>Bei erneutem Import der gleichen Datei werden nur leere Felder ausgefüllt. Vorhandene Daten bleiben erhalten.</dd>
+
+<dt>Kann ich einen Import rückgängig machen?</dt>
+<dd>Ja, im Import-Management kannst du "Undo" klicken. Es werden max. 5 Snapshots gespeichert.</dd>
 </dl>
 </div>
 
@@ -3429,9 +3448,13 @@ function executeImport(){
   });
   if(state.importSnapshots.length>5) state.importSnapshots.shift();
   
-  const result={imported:0,skipped:0,errors:[]};
+  const result={imported:0,updated:0,skipped:0,errors:[]};
   const mapping=importState.mapping;
   const importedIds=[];
+  
+  // Prüfe ob Re-Import (gleiche Datei bereits importiert)
+  const existingImport=state.importLog?.find(e=>e.datei===importState.file?.name);
+  const isReImport=existingImport&&existingImport.treeIds?.length>0;
   
   importState.rows.forEach((row,idx)=>{
     try{
@@ -3450,19 +3473,35 @@ function executeImport(){
         geschmack:getValueByMapping(row,mapping,'geschmack')||'',
         eigenschaften:getValueByMapping(row,mapping,'eigenschaften')||'',
         quelle:'import',
-        importDatum:new Date().toISOString()
+        importDatum:new Date().toISOString(),
+        quelleDatei:importState.file?.name||''
       };
       
       if(!state.customTrees) state.customTrees=[];
       const existingIdx=state.customTrees.findIndex(t=>t.id===newTree.id);
+      
       if(existingIdx>=0){
-        state.customTrees[existingIdx]={...state.customTrees[existingIdx],...newTree};
+        // Baum existiert bereits - nur leere Felder ausfüllen (ergänzen)
+        const existing=state.customTrees[existingIdx];
+        const merged={...existing};
+        
+        // Nur leere Felder ausfüllen
+        Object.keys(newTree).forEach(key=>{
+          if(key==='id'||key==='quelle'||key==='importDatum'||key==='quelleDatei') return;
+          if(!existing[key]&&newTree[key]){
+            merged[key]=newTree[key];
+          }
+        });
+        
+        state.customTrees[existingIdx]=merged;
+        result.updated++;
       } else {
+        // Neuer Baum
         state.customTrees.push(newTree);
+        result.imported++;
       }
       
       importedIds.push(newTree.id);
-      result.imported++;
     }catch(err){
       result.errors.push('Zeile '+(idx+2)+': '+err.message);
     }
@@ -3506,7 +3545,17 @@ function showImportResult(result){
   let html='<div style="text-align:center;padding:1rem;">';
   html+='<div style="font-size:2rem;margin-bottom:0.5rem;">✅</div>';
   html+='<h4 style="margin:0 0 0.5rem;">Import abgeschlossen</h4>';
-  html+='<p>'+result.imported+' Sorten importiert</p>';
+  
+  if(result.imported>0&&result.updated>0){
+    html+='<p>'+result.imported+' neue + '+result.updated+' aktualisierte Sorten</p>';
+  } else if(result.imported>0){
+    html+='<p>'+result.imported+' Sorten importiert</p>';
+  } else if(result.updated>0){
+    html+='<p>'+result.updated+' Sorten aktualisiert (ergänzt)</p>';
+  } else {
+    html+='<p>Keine neuen Sorten importiert</p>';
+  }
+  
   if(result.errors.length>0){
     html+='<p style="color:var(--dachziegel);">'+result.errors.length+' Fehler</p>';
     html+='<ul style="text-align:left;font-size:.85rem;max-height:100px;overflow-y:auto;">';
@@ -3574,12 +3623,12 @@ function renderImportLog(){
   let html='<div class="import-log-table">';
   state.importLog.slice().reverse().forEach(entry=>{
     const datum=new Date(entry.datum).toLocaleString('de-AT');
-    html+='<div class="import-log-entry">'+
+    html+='<div class="import-log-entry" onclick="showImportDetails(\''+entry.id+'\')" style="cursor:pointer;">'+
       '<div class="import-log-info">'+
         '<strong>'+entry.datei+'</strong>'+
         '<span>'+entry.anzahl+' Bäume &middot; '+datum+'</span>'+
       '</div>'+
-      '<div class="import-log-actions">'+
+      '<div class="import-log-actions" onclick="event.stopPropagation();">'+
         '<button class="btn secondary" onclick="undoImport(\''+entry.id+'\')" title="Rückgängig">↩ Undo</button>'+
         '<button class="btn secondary" onclick="deleteImport(\''+entry.id+'\')" title="Import löschen">✕ Löschen</button>'+
       '</div>'+
@@ -3589,6 +3638,42 @@ function renderImportLog(){
   container.innerHTML=html;
   
   updateSnapshotsInfo();
+}
+
+function showImportDetails(importId){
+  const entry=state.importLog?.find(e=>e.id===importId);
+  if(!entry) return;
+  
+  const datum=new Date(entry.datum).toLocaleString('de-AT');
+  const trees=entry.treeIds?.map(id=>getTree(id)).filter(Boolean)||[];
+  
+  let html='<div class="modal" style="max-width:500px;">';
+  html+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">';
+  html+='<h3 style="margin:0;font-family:Georgia,serif;">Import-Details</h3>';
+  html+='<button class="btn secondary" onclick="closeModal()">✕</button>';
+  html+='</div>';
+  
+  html+='<div class="card" style="margin-bottom:1rem;">';
+  html+='<p><strong>Datei:</strong> '+entry.datei+'</p>';
+  html+='<p><strong>Datum:</strong> '+datum+'</p>';
+  html+='<p><strong>Anzahl:</strong> '+entry.anzahl+' Bäume</p>';
+  html+='</div>';
+  
+  if(trees.length>0){
+    html+='<h4 style="margin:0 0 0.5rem;font-size:.9rem;color:var(--muted);">Importierte Bäume:</h4>';
+    html+='<div style="max-height:200px;overflow-y:auto;">';
+    trees.forEach(t=>{
+      html+='<div style="padding:6px 0;border-bottom:1px solid var(--border);font-size:.88rem;">';
+      html+='<strong>'+t.id+'</strong> — '+t.sorte+' ('+t.frucht+')';
+      html+='</div>';
+    });
+    html+='</div>';
+  }
+  
+  html+='</div>';
+  
+  document.getElementById('modal-content').innerHTML=html;
+  document.getElementById('overlay').style.display='flex';
 }
 
 function updateSnapshotsInfo(){
