@@ -361,7 +361,7 @@
     thead th, tbody td{padding:8px 8px;}
   }
 /* ===== Sortenberater (integriert, an App-Design angepasst) ===== */
-#tab-sortenberater{max-width:760px;margin:0 auto;--gruen:#2E3F2A;--gruen-hell:#eaf3de;--gruen-mid:#6E8A4E;--braun:#854F0B;--braun-hell:#FAEEDA;--rand:#E2DACB;--blau:#185FA5;--blau-hell:#E6F1FB;--lila:#993556;--lila-hell:#FBEAF0;--text:#2A231D;--text-mid:#5F5E5A;--text-leicht:#7A7168;--weiss:#ffffff;--stroh:#D9B458;--radius:10px}
+#tab-sortenberater{max-width:1300px;margin:0 auto;--gruen:#2E3F2A;--gruen-hell:#eaf3de;--gruen-mid:#6E8A4E;--braun:#854F0B;--braun-hell:#FAEEDA;--rand:#E2DACB;--blau:#185FA5;--blau-hell:#E6F1FB;--lila:#993556;--lila-hell:#FBEAF0;--text:#2A231D;--text-mid:#5F5E5A;--text-leicht:#7A7168;--weiss:#ffffff;--stroh:#D9B458;--radius:10px}
 #tab-sortenberater .sbr-tabs{display:flex;background:var(--weiss);border-bottom:1px solid var(--rand);max-width:760px;margin:0 auto}
 #tab-sortenberater .sbr-tab{flex:1;padding:12px 10px;text-align:center;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:500;color:var(--text-mid);cursor:pointer;border-bottom:2px solid transparent;transition:all .15s}
 #tab-sortenberater .sbr-tab:hover{color:var(--gruen)}
@@ -426,36 +426,29 @@
 #tab-sortenberater .sl-card-edit{position:absolute;top:10px;right:10px;width:28px;height:28px;border-radius:6px;border:1px solid var(--rand);background:var(--weiss);display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--text-leicht);transition:all .15s;z-index:2}
 #tab-sortenberater .sl-card-edit:hover{border-color:var(--gruen-mid);color:var(--gruen);background:var(--gruen-hell)}
 #tab-sortenberater .sl-empty{color:var(--text-leicht);font-style:italic;font-size:1rem;padding:1rem 0}
-#tab-sortenberater .sl-auswahl-bar{background:var(--gruen);color:#fff;border-radius:12px;padding:1rem 1.4rem;margin-bottom:1.5rem;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
-#tab-sortenberater .sl-auswahl-bar p{font-size:.95rem}
-#tab-sortenberater .sl-auswahl-bar button{padding:7px 16px;background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.4);border-radius:6px;color:#fff;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;cursor:pointer}
 #tab-sortenberater .sl-count{font-family:'DM Sans',sans-serif;font-size:12px;color:var(--text-leicht);margin-bottom:12px}
 #tab-sortenberater .an-badge{display:inline-block;font-family:'DM Sans',sans-serif;font-size:10px;padding:2px 7px;border-radius:20px;background:#FFF3CD;color:#7A5700;font-weight:600;margin-bottom:6px;border:1px solid #E8D48A}
-#tab-sortenberater .an-hint{font-family:'DM Sans',sans-serif;font-size:12px;color:var(--text-leicht);margin-bottom:1rem;line-height:1.6;padding:.75rem 1rem;background:var(--weiss);border:1px solid var(--rand);border-radius:8px}
-#tab-sortenberater .an-hint a{color:var(--gruen);text-decoration:none}
-#tab-sortenberater .an-abc{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:1rem}
-#tab-sortenberater .an-abc-btn{min-width:30px;height:30px;padding:0 6px;border:1px solid var(--rand);border-radius:6px;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;color:var(--text-mid);background:var(--weiss);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s}
-#tab-sortenberater .an-abc-btn:hover{border-color:var(--gruen-mid);color:var(--gruen)}
-#tab-sortenberater .an-abc-btn.active{border-color:var(--gruen);background:var(--gruen-hell);color:var(--gruen)}
-#tab-sortenberater .an-pdf-link{display:inline-block;margin-top:8px;font-family:'DM Sans',sans-serif;font-size:11px;color:var(--gruen);text-decoration:none;font-weight:600;border:1px solid var(--gruen-hell);padding:3px 8px;border-radius:4px;background:var(--gruen-hell)}
-#tab-sortenberater .an-monate{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:1rem}
-#tab-sortenberater .an-monat-btn{min-width:36px;height:30px;padding:0 6px;border:1px solid var(--rand);border-radius:6px;font-family:'DM Sans',sans-serif;font-size:11px;font-weight:600;color:var(--text-mid);background:var(--weiss);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s}
-#tab-sortenberater .an-monat-btn:hover{border-color:var(--gruen-mid);color:var(--gruen)}
-#tab-sortenberater .an-monat-btn.active{border-color:var(--gruen);background:var(--gruen-hell);color:var(--gruen)}
-#tab-sortenberater .an-ernte-bar{display:flex;gap:2px;margin:6px 0 4px}
-#tab-sortenberater .an-ernte-dot{width:14px;height:14px;border-radius:3px;font-family:'DM Sans',sans-serif;font-size:8px;font-weight:700;display:flex;align-items:center;justify-content:center;color:rgba(0,0,0,.35)}
-#tab-sortenberater .an-ernte-dot.aktiv{background:#C0392B;color:#fff}
-#tab-sortenberater .an-ernte-dot.lager{background:#FAEEDA;border:1px solid #854F0B;color:#854F0B}
-#tab-sortenberater .an-ernte-dot.inaktiv{background:var(--erde-hell);border:1px solid var(--rand)}
-#tab-sortenberater .an-ernte-dot.genuss{background:#EAF3DE;border:1px solid #3B6D11;color:#3B6D11}
-#tab-sortenberater .an-modus-btn{padding:7px 14px;border:1px solid var(--rand);border-radius:20px;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:500;color:var(--text-mid);background:var(--weiss);cursor:pointer;transition:all .15s}
-#tab-sortenberater .an-modus-btn:hover{border-color:var(--gruen-mid);color:var(--gruen)}
-#tab-sortenberater .an-modus-btn.active{border-color:var(--gruen);background:var(--gruen-hell);color:var(--gruen);font-weight:600}
-#tab-sortenberater .an-ernte-zeile{font-family:'DM Sans',sans-serif;font-size:11px;color:#C0392B;margin-bottom:2px;font-weight:600;display:flex;align-items:center;gap:5px}
-#tab-sortenberater .an-lager-zeile{font-family:'DM Sans',sans-serif;font-size:11px;color:#854F0B;margin-bottom:2px;font-weight:500;display:flex;align-items:center;gap:5px}
-#tab-sortenberater .an-genuss-zeile{font-family:'DM Sans',sans-serif;font-size:11px;color:#3B6D11;margin-top:1px;font-weight:600;display:flex;align-items:center;gap:5px}
-#tab-sortenberater .an-pdf-link:hover{background:var(--gruen);color:#fff}
-#tab-sortenberater .an-search-row{display:flex;gap:10px;margin-bottom:1rem;flex-wrap:wrap;align-items:center}
+#tab-sortenberater .hof-badge{background:#EAF3DE;color:#2E3F2A;border-color:#BCD9A8}
+#tab-sortenberater .sl-pagination{display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:16px;padding:8px 0}
+#tab-sortenberater .sl-page-btn{padding:6px 14px;border:1px solid var(--rand);border-radius:6px;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:500;color:var(--text-mid);background:var(--weiss);cursor:pointer;transition:all .15s}
+#tab-sortenberater .sl-page-btn:hover:not(:disabled){border-color:var(--gruen-mid);color:var(--gruen)}
+#tab-sortenberater .sl-page-btn:disabled{opacity:.4;cursor:not-allowed}
+#tab-sortenberater .sl-page-info{font-family:'DM Sans',sans-serif;font-size:12px;color:var(--text-mid)}
+#tab-hilfe .hilfe-card{background:var(--card-bg);border:1px solid var(--border);border-radius:12px;padding:1.5rem;margin-bottom:1.25rem}
+#tab-hilfe .hilfe-card h3{font-family:'DM Sans',sans-serif;font-size:1rem;color:var(--ackerde);margin:0 0 0.75rem;font-weight:600}
+#tab-hilfe .hilfe-card p{font-size:.92rem;color:var(--text);line-height:1.6;margin:0 0 0.75rem}
+#tab-hilfe .hilfe-card ul{margin:0;padding-left:1.25rem}
+#tab-hilfe .hilfe-card li{font-size:.88rem;color:var(--text);line-height:1.6;margin-bottom:0.5rem}
+#tab-hilfe .hilfe-card dl{margin:0}
+#tab-hilfe .hilfe-card dt{font-weight:600;color:var(--ackerde);margin-top:1rem;font-size:.92rem}
+#tab-hilfe .hilfe-card dd{margin:0.25rem 0 0;font-size:.88rem;color:var(--text)}
+.welcome-banner{background:linear-gradient(135deg,var(--waldrand),var(--wiesengras));color:#fff;border-radius:16px;padding:2rem;margin-bottom:2rem;text-align:center}
+.welcome-banner h2{font-family:Georgia,serif;font-size:1.5rem;margin:0 0 0.75rem;font-weight:400}
+.welcome-banner p{font-size:.95rem;margin:0 0 1.25rem;opacity:.9}
+.welcome-actions{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+.welcome-banner .btn{background:rgba(255,255,255,.2);color:#fff;border:1px solid rgba(255,255,255,.4);padding:10px 24px;border-radius:8px;font-weight:600}
+.welcome-banner .btn:hover{background:rgba(255,255,255,.3)}
+.welcome-banner .btn.secondary{background:transparent;border-color:rgba(255,255,255,.3)}
 </style>
 </head>
 <body>
@@ -476,9 +469,9 @@
 
 <nav>
   <button class="tab-btn active" data-tab="baumkataster">Baumkataster</button>
-  <button class="tab-btn" data-tab="sorten">Sorten</button>
-  <button class="tab-btn" data-tab="lageplan">Lageplan</button>
   <button class="tab-btn" data-tab="sortenberater">Sortenberater</button>
+  <button class="tab-btn" data-tab="lageplan">Lageplan</button>
+  <button class="tab-btn" data-tab="hilfe">Hilfe</button>
   <button class="tab-btn" id="tab-btn-daten" data-tab="daten" style="display:none;">Daten &amp; Sicherung</button>
 </nav>
 
@@ -529,34 +522,6 @@
     </div>
   </section>
 
-  <!-- SORTEN -->
-  <section id="tab-sorten" style="display:none;">
-    <div class="toolbar">
-      <div class="search-wrap">
-        <svg class="search-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-          <circle cx="10" cy="10" r="7" fill="none" stroke="currentColor" stroke-width="2"/>
-          <line x1="15" y1="15" x2="21" y2="21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-        </svg>
-        <input type="text" id="sorten-search" placeholder="Sorte suchen …">
-      </div>
-      <select id="sorten-filter-frucht">
-        <option value="">Obstarten</option>
-      </select>
-      <select id="sorten-filter-verwendung">
-        <option value="">Verwendung</option>
-        <option value="Tafelobst">Tafelobst</option>
-        <option value="Wirtschaftsobst">Wirtschaftsobst</option>
-        <option value="Saft/Most">Saft/Most</option>
-      </select>
-      <button type="button" class="btn field" id="btn-sorten-search-reset" title="Suche zurücksetzen">✕ Suche zurücksetzen</button>
-      <button class="btn field" onclick="openExportDialog('sorten','excel')" title="Gefilterte Auswahl als Excel exportieren">⬇ Excel</button>
-      <button class="btn field" onclick="openExportDialog('sorten','pdf')" title="Gefilterte Auswahl als PDF exportieren">⬇ PDF</button>
-      <button class="btn field" onclick="exportSortenbeschreibungenPDF()" title="Nur die Sortenbeschreibungen (Geschmack, Eigenschaften, Frucht) als PDF">⬇ Beschreibungen (PDF)</button>
-      <button class="btn field btn-login-toggle" onclick="handleLoginToggle()">Bearbeiten</button>
-    </div>
-    <div class="cards" id="sorten-cards"></div>
-  </section>
-
   <!-- LAGEPLAN -->
   <section id="tab-lageplan" style="display:none;">
     <div class="hint" id="lageplan-hint">
@@ -597,8 +562,7 @@
   <section id="tab-sortenberater" style="display:none;">
 <div class="sbr-tabs">
   <div class="sbr-tab active" onclick="sbrShowTab('berater')">Standort-Berater</div>
-  <div class="sbr-tab" onclick="sbrShowTab('liste')">Hofsortenpool</div>
-  <div class="sbr-tab" onclick="sbrShowTab('arche')">Arche Noah Sorten</div>
+  <div class="sbr-tab" onclick="sbrShowTab('sorten')">Sortenübersicht</div>
 </div>
 <main>
 
@@ -636,41 +600,93 @@
 <div id="res"><div class="sb-leer">Standort und Ziele wählen — der Berater empfiehlt aus deinen Hofsorten mit Standort-Daten aus den Arche-Noah-Sortenblättern.</div></div>
 </div>
 
-<!-- HOFSORTEN -->
-<div class="sbr-panel" id="panel-liste">
-<div id="auswahl-bar" style="display:none" class="sl-auswahl-bar">
-  <p><span id="auswahl-count">0</span> Sorten ausgewählt</p>
-  <button onclick="auswahl_leeren()">Auswahl leeren</button>
-</div>
+<!-- SORTENÜBERSICHT -->
+<div class="sbr-panel" id="panel-sorten">
 <div class="sl-art-tabs" id="sl-art-tabs"></div>
 <div class="sl-toolbar">
-  <input class="sl-search" type="text" id="sl-search" placeholder="Sorte suchen…" oninput="renderListe()">
+  <input class="sl-search" type="text" id="sl-search" placeholder="Sorte suchen…" oninput="renderSortenUebersicht()">
   <div id="sl-filter-buttons"></div>
 </div>
 <div id="sl-count" class="sl-count"></div>
 <div class="sl-grid" id="sl-grid"></div>
 </div>
-
-<!-- ARCHE NOAH A–F -->
-<div class="sbr-panel" id="panel-arche">
-<div class="an-hint">
-  Echte Sortenblätter von <a href="https://www.arche-noah.at/sortenerhaltung/obst-obstsammlung/sortenbeschreibungen/" target="_blank">Arche Noah, Schiltern</a> — Apfelsorten A bis Z &middot; <strong>Sortenblatt PDF</strong> öffnet das offizielle Dokument direkt. Klick auf Karte = zur Hofauswahl merken.
-</div>
-<div class="an-search-row">
-  <input class="sl-search" type="text" id="an-search" placeholder="Sortenname oder Stichwort…" oninput="renderArche()" style="flex:1">
-</div>
-<div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
-  <button class="an-modus-btn active" id="modus-ernte" onclick="anSetModus('ernte')">Erntemonat</button>
-  <button class="an-modus-btn" id="modus-genuss" onclick="anSetModus('genuss')">Genussreife</button>
-</div>
-<div class="sb-title" id="an-filter-title" style="margin-bottom:8px">Erntemonat — Ernte erzielen &amp; Sukzession beobachten</div>
-<div class="an-monate" id="an-monate"></div>
-<div class="an-abc" id="an-abc"></div>
-<div id="an-count" class="sl-count"></div>
-<div class="sl-grid" id="an-grid"></div>
-</div>
   </section>
 </main>
+
+<section id="tab-hilfe" style="display:none;">
+<div style="max-width:760px;margin:0 auto;">
+<h2 style="font-family:Georgia,serif;color:var(--ackerde);margin:0 0 1.5rem;">Anleitung für neue Nutzer</h2>
+
+<div class="hilfe-card">
+<h3>1. Sortenberater öffnen</h3>
+<p>145 Arche Noah Sorten sind bereits verfügbar. Lass dich beraten, welche Sorten für deinen Standort passen.</p>
+<ul>
+<li><strong>Standort-Berater:</strong> Wähle Höhenlage, Exposition und Spätfrostrisiko</li>
+<li><strong>Sortenübersicht:</strong> Durchsuche alle Sorten nach Quelle und Verwendung</li>
+</ul>
+</div>
+
+<div class="hilfe-card">
+<h3>2. Baumkataster anlegen</h3>
+<p>Trage deine Bäume ein oder importiere eine Excel-Datei.</p>
+<ul>
+<li>Eigene IDs können beim Import und Anlegen verwendetet werden</li>
+<li>Bäume können später im Lageplan positioniert werden</li>
+</ul>
+</div>
+
+<div class="hilfe-card">
+<h3>3. Lageplan erstellen</h3>
+<p>Markiere deine Bäume auf dem Luftbild oder nutze die Satellitenkarte.</p>
+<ul>
+<li>Wechsel zwischen Luftbild und Satellit</li>
+<li>Bäume per Doppelklick setzen</li>
+<li>GPS-Kalibrierung für Genauigkeit</li>
+</ul>
+</div>
+
+<div class="hilfe-card">
+<h3>4. Sorten importieren</h3>
+<p>Excel oder CSV Datei hochladen und Spalten automatisch zuordnen.</p>
+<ul>
+<li>Unterstützte Formate: .xlsx, .xls, .csv, .tsv</li>
+<li>Als Vorlage speichern für spätere Imports</li>
+<li>Eigene IDs werden beibehalten</li>
+</ul>
+</div>
+
+<div class="hilfe-card">
+<h3>Arche Noah Sorten</h3>
+<p>145 Sorten von <a href="https://www.arche-noah.at/sortenerhaltung/obst-obstsammlung/sortenbeschreibungen/" target="_blank" style="color:var(--waldrand);">Arche Noah, Schiltern</a></p>
+<ul>
+<li>Sortenbeschreibungen und Erntemonate</li>
+<li>PDF-Sortenblätter zum Herunterladen</li>
+<li>Kostenlos nutzbar für Sortenerhaltung</li>
+</ul>
+</div>
+
+<div class="hilfe-card">
+<h3>FAQ</h3>
+<dl>
+<dt>Wie installiere ich die App?</dt>
+<dd>URL aufrufen → "Zum Home-Bildschirm" (iOS: Safari Teilen → Android: Chrome Installieren)</dd>
+
+<dt>Funktioniert die App offline?</dt>
+<dd>Ja, nach dem ersten Laden.</dd>
+
+<dt>Wie sichere ich meine Daten?</dt>
+<dd>"Daten & Sicherung" → "Exportieren"</dd>
+
+<dt>Kann ich meine Daten auf ein anderes Gerät übertragen?</dt>
+<dd>Ja, als JSON exportieren und importieren.</dd>
+
+<dt>Wie ändere ich meine eigene ID?</dt>
+<dd>Baum bearbeiten → ID-Feld ändern.</dd>
+</dl>
+</div>
+
+</div>
+</section>
 
 <footer>Hendlberghof · Obstdatenbank · Grunddaten aus Numbers-Export (Apfel/Birne) · lokal, offline, ohne Cloud-Anbindung</footer>
 
@@ -2322,6 +2338,26 @@ function startApp(){
   renderSortenCards();
   renderUnplacedSelect();
   if(window.__pendingRemoteState){ const r = window.__pendingRemoteState; window.__pendingRemoteState = null; applyRemoteState(r); }
+  showWelcomeBannerIfNeeded();
+}
+
+function showWelcomeBannerIfNeeded(){
+  const trees=getAllTrees();
+  if(trees.length>0) return;
+  
+  const banner=document.createElement('div');
+  banner.className='welcome-banner';
+  banner.innerHTML=`
+    <h2>Willkommen bei der Obstdatenbank!</h2>
+    <p>Diese App hilft dir, deine Obstbäume zu verwalten.</p>
+    <div class="welcome-actions">
+      <button class="btn" onclick="activateTab('sortenberater')">Sortenberater öffnen</button>
+      <button class="btn secondary" onclick="activateTab('hilfe')">Hilfe anzeigen</button>
+    </div>
+  `;
+  
+  const main=document.querySelector('main');
+  if(main) main.prepend(banner);
 }
 window.__dataReady = false;
 window.__dataReadyPromise = Promise.all([
@@ -2583,13 +2619,12 @@ let aktArt='apfel',slArt='apfel',slAktiveTags=new Set(),ausgewählt={},anBuchsta
 
 // ─── TABS ─────────────────────────────────────────────────────────────────────
 function sbrShowTab(t){
-  ['berater','liste','arche'].forEach((id,i)=>{
+  ['berater','sorten'].forEach((id,i)=>{
     document.querySelectorAll('.sbr-tab')[i].classList.toggle('active',id===t);
     document.getElementById('panel-'+id).classList.toggle('active',id===t);
   });
   if(t==='berater'){renderSbArten();}
-  if(t==='liste'){renderSlArtTabs();renderFilterButtons();renderListe();}
-  if(t==='arche'){renderAnAbc();renderArche();}
+  if(t==='sorten'){renderSortenUebersicht();}
 }
 
 // ─── BERATER ──────────────────────────────────────────────────────────────────
@@ -2631,65 +2666,198 @@ function beraten(){
   document.getElementById('res').innerHTML=html;
 }
 
-// ─── HOFSORTENPOOL ────────────────────────────────────────────────────────────
-/* Hofsortenpool = alle Sorten aus dem Baumkataster (dynamisch, inkl. neu angelegter Bäume/Sorten) */
-function hofpoolDaten(){
-  if(!window.__dataReady || typeof state==='undefined' || !state) return {liste:[], anzahl:{}};
-  const anzahl={};
-  const baeume=getAllTrees();
-  baeume.forEach(t=>{ if(t.sorte) anzahl[t.sorte]=(anzahl[t.sorte]||0)+1; });
-  const map=new Map();
-  SORTEN_DATA.forEach(s=>{ if(anzahl[s.sorte]) map.set(s.sorte, getSorte(s.sorte)||s); });
-  Object.keys(anzahl).forEach(name=>{
-    if(!map.has(name)){
-      const t=baeume.find(x=>x.sorte===name);
-      map.set(name,{sorte:name,frucht:t.frucht||'',pflueckzeitpunkt:t.pflueckzeitpunkt||t.pflueck_reifezeit||'',geschmack:t.geschmack||'',eigenschaften:t.eigenschaften||'',frucht_beschreibung:t.frucht_beschreibung||'',verwendung:getVerwendung(t),lagerfaehig:t.lagerfaehig||''});
-    }
+// ─── ARCHE NOAH TAG MAPPING ───────────────────────────────────────────────────
+const ARCHE_TAG_TO_VERWENDUNG={
+  'Tafelobst':'Tafelobst',
+  'Most':'Wirtschaftsobst',
+  'Lager':'Tafelobst'
+};
+
+// ─── SORTENÜBERSICHT ─────────────────────────────────────────────────────────
+const SORTEN_QUELLEN=['alle','arche','hof','import'];
+const SORTEN_VERWENDUNG=['Tafelobst','Wirtschaftsobst','Saft/Most'];
+const ITEMS_PER_PAGE=20;
+
+// Status für Sortenübersicht
+let sortenQuelle='alle';
+let sortenVerwendung=new Set();
+let sortenSeite=1;
+let sortenSuche='';
+
+function getAllSorten(){
+  const result=[];
+  
+  // Arche Noah Sorten
+  AN_SORTEN.forEach(s=>{
+    const verwendung=[];
+    if(s.tags.includes('Tafelobst'))verwendung.push('Tafelobst');
+    if(s.tags.includes('Most'))verwendung.push('Wirtschaftsobst');
+    if(s.tags.some(t=>t.includes('Most')||t.includes('Saft')))verwendung.push('Saft/Most');
+    
+    result.push({
+      name:s.name,
+      frucht:'Apfel',
+      quelle:'arche',
+      quelleName:'Arche Noah',
+      verwendung,
+      beschreibung:s.beschreibung,
+      erntem:s.erntem||[],
+      lagerm:s.lagerm||[],
+      genuss:s.genuss,
+      tags:s.tags,
+      pdf:s.pdf
+    });
   });
-  return {liste:Array.from(map.values()), anzahl};
+  
+  // Hofsorten aus Baumkataster
+  if(window.__dataReady && typeof state!=='undefined' && state){
+    const baumSorten=getAllTrees();
+    const sortenMap=new Map();
+    
+    baumSorten.forEach(t=>{
+      if(t.sorte && !sortenMap.has(t.sorte)){
+        const sorte=GET_SORTE?GET_SORTE(t.sorte):null;
+        sortenMap.set(t.sorte,{
+          name:t.sorte,
+          frucht:t.frucht||sorte?.frucht||'',
+          quelle:'hof',
+          quelleName:'Hofsorten',
+          verwendung:getVerwendung(t),
+          beschreibung:sorte?.beschreibung||sorte?.geschmack||sorte?.eigenschaften||'',
+          erntem:sorte?.erntem||[],
+          lagerm:sorte?.lagerm||[],
+          genuss:sorte?.genuss||'',
+          tags:sorte?.tags||[],
+          pdf:sorte?.pdf||''
+        });
+      }
+    });
+    
+    sortenMap.forEach(s=>result.push(s));
+  }
+  
+  return result;
 }
-function hofTags(s){
-  const t=[...(s.verwendung||[])];
-  if(s.lagerfaehig) t.push('lagerfähig');
-  if(s.arche_pdf) t.push('Arche Noah');
-  if(state.verifiziert && state.verifiziert[s.sorte]) t.push('verifiziert');
-  else if(s.recherchiert) t.push('recherchiert');
-  return t;
+
+function getSortenQuelleLabel(q){
+  const labels={alle:'Alle Quellen',arche:'Arche Noah',hof:'Hofsorten',import:'Importe'};
+  return labels[q]||q;
 }
-function renderSlArtTabs(){
-  const arten=[...new Set(hofpoolDaten().liste.map(s=>s.frucht).filter(Boolean))];
-  const prio=['Apfel','Birne','Walnuss'];
-  arten.sort((a,b)=>{const ia=prio.indexOf(a),ib=prio.indexOf(b);return (ia<0?99:ia)-(ib<0?99:ib)||a.localeCompare(b,'de');});
-  if(arten.length && !arten.some(a=>a.toLowerCase()===slArt)) slArt=arten[0].toLowerCase();
-  document.getElementById('sl-art-tabs').innerHTML=arten.map(a=>'<div class="sl-art-tab'+(a.toLowerCase()===slArt?' active':'')+'" onclick="slSetArt(\''+a.toLowerCase().replace(/'/g,"\\'")+'\')">'+a+'</div>').join('');
+
+function renderSortenQuellenTabs(){
+  const html=SQELLEN.map(q=>'<div class="sl-art-tab'+(sortenQuelle===q?' active':'')+'" onclick="setSortenQuelle(\''+q+'\')">'+getSortenQuelleLabel(q)+'</div>').join('');
+  document.getElementById('sl-art-tabs').innerHTML=html;
 }
-const SL_FILTER_OPTIONS=['Arche Noah','lagerfähig','Saft/Most','Wirtschaftsobst'];
-function slSetArt(art){slArt=art;slAktiveTags.clear();document.getElementById('sl-search').value='';renderSlArtTabs();renderFilterButtons();renderListe();}
-function renderFilterButtons(){document.getElementById('sl-filter-buttons').innerHTML=SL_FILTER_OPTIONS.map(t=>'<button class="sl-filter-btn'+(slAktiveTags.has(t)?' active':'')+'" onclick="slToggleTag(\''+t+'\')">'+t+'</button>').join('')+'<button class="sl-filter-btn" onclick="slResetFilters()">✕ Zurücksetzen</button>';}
-function slToggleTag(t){if(slAktiveTags.has(t))slAktiveTags.delete(t);else slAktiveTags.add(t);renderFilterButtons();renderListe();}
-function slResetFilters(){slAktiveTags.clear();document.getElementById('sl-search').value='';renderFilterButtons();renderListe();}
-function renderListe(){
+
+function setSortenQuelle(q){
+  sortenQuelle=q;
+  sortenSeite=1;
+  renderSortenQuellenTabs();
+  renderSortenVerwendungsButtons();
+  renderSortenUebersicht();
+}
+
+function renderSortenVerwendungsButtons(){
+  const html=SORTEN_VERWENDUNG.map(v=>'<button class="sl-filter-btn'+(sortenVerwendung.has(v)?' active':'')+'" onclick="toggleSortenVerwendung(\''+v+'\')">'+v+'</button>').join('');
+  document.getElementById('sl-filter-buttons').innerHTML=html+'<button class="sl-filter-btn" onclick="resetSortenFilters()">✕ Zurücksetzen</button>';
+}
+
+function toggleSortenVerwendung(v){
+  if(sortenVerwendung.has(v))sortenVerwendung.delete(v);
+  else sortenVerwendung.add(v);
+  sortenSeite=1;
+  renderSortenVerwendungsButtons();
+  renderSortenUebersicht();
+}
+
+function resetSortenFilters(){
+  sortenQuelle='alle';
+  sortenVerwendung.clear();
+  sortenSuche='';
+  sortenSeite=1;
+  document.getElementById('sl-search').value='';
+  renderSortenQuellenTabs();
+  renderSortenVerwendungsButtons();
+  renderSortenUebersicht();
+}
+
+function renderSortenUebersicht(){
   const suche=(document.getElementById('sl-search').value||'').toLowerCase();
-  const {liste,anzahl}=hofpoolDaten();
-  const gesamt=liste.filter(s=>(s.frucht||'').toLowerCase()===slArt);
-  let pool=gesamt;
-  if(slAktiveTags.size>0)pool=pool.filter(s=>{const tags=hofTags(s);return Array.from(slAktiveTags).every(t=>tags.includes(t));});
-  if(suche)pool=pool.filter(s=>s.sorte.toLowerCase().includes(suche)||(s.geschmack||'').toLowerCase().includes(suche)||(s.eigenschaften||'').toLowerCase().includes(suche)||hofTags(s).some(t=>t.toLowerCase().includes(suche)));
-  pool=pool.slice().sort((a,b)=>a.sorte.localeCompare(b.sorte,'de'));
-  document.getElementById('sl-count').textContent=pool.length+' von '+gesamt.length+' Hofsorten (aus dem Baumkataster)';
-  if(!pool.length){document.getElementById('sl-grid').innerHTML='<p class="sl-empty">Keine Sorten gefunden.</p>';updateAuswahlBar();return;}
-  document.getElementById('sl-grid').innerHTML=pool.map(s=>{
-    const tags=hofTags(s).map(t=>'<span class="sb-tag '+tagCls(t)+'">'+t+'</span>').join('');
-    const snippet=s.geschmack||s.eigenschaften||s.frucht_beschreibung||'Noch keine Sortenbeschreibung erfasst.';
-    const reife=s.pflueckzeitpunkt||s.pflueck_reifezeit||'–';
-    const n=anzahl[s.sorte]||0;
-    return '<div class="sl-card" onclick="openSortenModal(\''+s.sorte.replace(/'/g,"\\'")+'\')"><div class="sl-card-edit" onclick="event.stopPropagation();openSortenModal(\''+s.sorte.replace(/'/g,"\\'")+'\')" title="Bearbeiten"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><line x1="4" y1="7" x2="20" y2="7"/><circle cx="14" cy="7" r="2.3"/><line x1="4" y1="14" x2="20" y2="14"/><circle cx="9" cy="14" r="2.3"/><line x1="4" y1="21" x2="20" y2="21"/><circle cx="16" cy="21" r="2.3"/></svg></div><div class="sl-card-name">'+s.sorte+'</div><div class="sl-card-reife">'+(s.frucht||'')+' &middot; '+n+' Baum/Bäume &middot; Pflückzeit '+reife+'</div><div class="sb-tags">'+tags+'</div><div class="sl-card-desc">'+snippet.slice(0,120)+(snippet.length>120?'…':'')+'</div></div>';
+  let pool=getAllSorten();
+  
+  // Quellen-Filter
+  if(sortenQuelle!=='alle'){
+    pool=pool.filter(s=>s.quelle===sortenQuelle);
+  }
+  
+  // Verwendungs-Filter
+  if(sortenVerwendung.size>0){
+    pool=pool.filter(s=>Array.from(sortenVerwendung).some(v=>s.verwendung.includes(v)));
+  }
+  
+  // Suche
+  if(suche){
+    pool=pool.filter(s=>
+      s.name.toLowerCase().includes(suche)||
+      (s.beschreibung||'').toLowerCase().includes(suche)||
+      (s.tags||[]).some(t=>t.toLowerCase().includes(suche))
+    );
+  }
+  
+  // Sortierung
+  pool.sort((a,b)=>a.name.localeCompare(b.name,'de'));
+  
+  // Pagination
+  const gesamt=pool.length;
+  const seiten=Math.ceil(gesamt/ITEMS_PER_PAGE);
+  if(sortenSeite>seiten)sortenSeite=seiten||1;
+  const start=(sortenSeite-1)*ITEMS_PER_PAGE;
+  const page=pool.slice(start,start+ITEMS_PER_PAGE);
+  
+  // Statistik
+  const stats={Apfel:0,Birne:0,Walnuss:0};
+  pool.forEach(s=>{if(stats[s.frucht]!==undefined)stats[s.frucht]++;});
+  const statsText=Object.entries(stats).filter(([,n])=>n>0).map(([f,n])=>n+' '+f).join(', ');
+  
+  document.getElementById('sl-count').textContent=gesamt+' Sorten'+(statsText?' ('+statsText+')':'');
+  
+  // Pagination HTML
+  let paginationHtml='';
+  if(seiten>1){
+    paginationHtml='<div class="sl-pagination">';
+    paginationHtml+='<button class="sl-page-btn" onclick="setSortenSeite('+(sortenSeite-1)+')" '+(sortenSeite===1?'disabled':'')+'>‹ Zurück</button>';
+    paginationHtml+='<span class="sl-page-info">Seite '+sortenSeite+' von '+seiten+'</span>';
+    paginationHtml+='<button class="sl-page-btn" onclick="setSortenSeite('+(sortenSeite+1)+')" '+(sortenSeite===seiten?'disabled':'')+'>Weiter ›</button>';
+    paginationHtml+='</div>';
+  }
+  
+  if(!page.length){
+    document.getElementById('sl-grid').innerHTML=paginationHtml+'<p class="sl-empty">Keine Sorten gefunden.</p>';
+    return;
+  }
+  
+  const html=page.map(s=>{
+    const tags=s.tags.map(t=>'<span class="sb-tag '+tagCls(t)+'">'+t+'</span>').join('');
+    const quelleBadge=s.quelle==='arche'?'<span class="an-badge">Arche Noah</span>':'<span class="an-badge hof-badge">Hofsorten</span>';
+    const ernteText=s.erntem.length>0?(s.erntem.map(m=>MONATE.find(mo=>mo.m===m)?.kz||m).join(', ')):'–';
+    
+    return '<div class="sl-card" onclick="openSortenModal(\''+s.name.replace(/'/g,"\\'")+'\')">'+quelleBadge+
+      '<div class="sl-card-name">'+s.name+'</div>'+
+      '<div class="sl-card-reife">'+s.frucht+' &middot; Ernte: '+ernteText+'</div>'+
+      '<div class="sb-tags">'+tags+'</div>'+
+      '<div class="sl-card-desc">'+(s.beschreibung||'').slice(0,120)+((s.beschreibung||'').length>120?'…':'')+'</div>'+
+    '</div>';
   }).join('');
-  updateAuswahlBar();
+  
+  document.getElementById('sl-grid').innerHTML=paginationHtml+html;
 }
-function updateAuswahlBar(){const n=Object.keys(ausgewählt).length;document.getElementById('auswahl-bar').style.display=n>0?'flex':'none';document.getElementById('auswahl-count').textContent=n;}
-function auswahl_leeren(){ausgewählt={};renderListe();if(document.getElementById('panel-arche').classList.contains('active'))renderArche();}
-if(window.__dataReadyPromise){window.__dataReadyPromise.then(()=>{renderSbArten();renderSlArtTabs();renderFilterButtons();renderListe();});}
+
+function setSortenSeite(n){
+  sortenSeite=n;
+  renderSortenUebersicht();
+}
+
+if(window.__dataReadyPromise){window.__dataReadyPromise.then(()=>{renderSbArten();renderSortenQuellenTabs();renderSortenVerwendungsButtons();renderSortenUebersicht();});}
 
 // ─── ARCHE NOAH ──────────────────────────────────────────────────────────────
 const AN_BUCHSTABEN=['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','W','Z'];
