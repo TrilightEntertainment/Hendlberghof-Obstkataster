@@ -1845,7 +1845,6 @@ let mapLayer = 'foto';
 
 function setMapLayer(layer){
   if(layer==='sat'){
-    if(!state.gpsCalib){ alert('Die Satellitenansicht benötigt die GPS-Kalibrierung (bereits im Lageplan unter „GPS kalibrieren").'); return; }
     if(typeof L === 'undefined'){ alert('Die Kartenbibliothek konnte nicht geladen werden – Internetverbindung nötig.'); return; }
   }
   mapLayer = layer;
@@ -1853,9 +1852,11 @@ function setMapLayer(layer){
   document.getElementById('sat-map').style.display = layer==='sat'? 'block' : 'none';
   document.getElementById('btn-layer-foto').classList.toggle('active', layer==='foto');
   document.getElementById('btn-layer-sat').classList.toggle('active', layer==='sat');
-  const editControls = ['btn-place-mode','unplaced-select','btn-gps-place','btn-gps-calib'];
+  
   if(layer==='sat'){
-    editControls.forEach(id=>{ const el=document.getElementById(id); if(el) el.style.display='none'; });
+    document.getElementById('btn-place-mode').style.display='';
+    document.getElementById('unplaced-select').style.display='';
+    document.getElementById('btn-gps-calib').style.display='';
     initSatMap();
   } else {
     applyEditModeUI();
@@ -1869,6 +1870,30 @@ function initSatMap(){
       maxZoom: 19,
       attribution: 'Esri, Maxar, Earthstar Geographics'
     }).addTo(satMap);
+    
+    satMap.on('click', function(e){
+      if(!placeMode || !selectedForPlacement) return;
+      const {lat, lng} = e.latlng;
+      if(!state.positions) state.positions = {};
+      
+      if(state.gpsCalib){
+        const imgXY = gpsToImageXY(lat, lng);
+        if(imgXY){
+          state.positions[selectedForPlacement] = {x: imgXY.x, y: imgXY.y};
+        }
+      } else {
+        if(!state.satPositions) state.satPositions = {};
+        state.satPositions[selectedForPlacement] = {lat, lng};
+      }
+      
+      saveState();
+      renderSatMarkers();
+      placeMode = false;
+      selectedForPlacement = null;
+      document.getElementById('place-mode-label').textContent = 'Position setzen';
+      document.getElementById('place-status').textContent = 'Position gesetzt!';
+      renderUnplacedSelect();
+    });
   }
   renderSatMarkers();
   setTimeout(()=>{ satMap.invalidateSize(); }, 50);
@@ -1880,11 +1905,13 @@ function renderSatMarkers(){
   satMarkers = [];
   const farben = {apfel:'#dc2626', birne:'#22c55e', walnuss:'#b98e1a'};
   const bounds = [];
+  
+  // Positionen aus GPS-Kalibrierung
   Object.entries(state.positions).forEach(([id,pos])=>{
     const g = imageXYtoGps(pos.x, pos.y);
     if(!g) return;
     const t = getTree(id);
-    const farbe = t? (farben[t.frucht.toLowerCase()]||'#B2543A') : '#B2543A';
+    const farbe = t? (farben[(t.frucht||'').toLowerCase()]||'#B2543A') : '#B2543A';
     const m = L.circleMarker([g.lat, g.lng], {radius:7, color:'#fff', weight:2, fillColor:farbe, fillOpacity:1});
     if(t) m.bindTooltip(`${id} — ${t.sorte}`);
     m.on('click', ()=>openBaumModal(id));
@@ -1892,6 +1919,22 @@ function renderSatMarkers(){
     satMarkers.push(m);
     bounds.push([g.lat, g.lng]);
   });
+  
+  // Direkt auf Satellitenkarte gesetzte Positionen
+  if(state.satPositions){
+    Object.entries(state.satPositions).forEach(([id,pos])=>{
+      if(state.positions && state.positions[id]) return;
+      const t = getTree(id);
+      const farbe = t? (farben[(t.frucht||'').toLowerCase()]||'#B2543A') : '#B2543A';
+      const m = L.circleMarker([pos.lat, pos.lng], {radius:7, color:'#fff', weight:2, fillColor:farbe, fillOpacity:1});
+      if(t) m.bindTooltip(`${id} — ${t.sorte}`);
+      m.on('click', ()=>openBaumModal(id));
+      m.addTo(satMap);
+      satMarkers.push(m);
+      bounds.push([pos.lat, pos.lng]);
+    });
+  }
+  
   if(bounds.length && !satFitted){
     satMap.fitBounds(bounds, {padding:[30,30]});
     satFitted = true;
@@ -2775,9 +2818,30 @@ function getAllSorten(){
   // Arche Noah Sorten
   AN_SORTEN.forEach(s=>{
     const verwendung=[];
-    if(s.tags.includes('Tafelobst'))verwendung.push('Tafelobst');
-    if(s.tags.includes('Most'))verwendung.push('Wirtschaftsobst');
-    if(s.tags.some(t=>t.includes('Most')||t.includes('Saft')))verwendung.push('Saft/Most');
+    const desc=(s.beschreibung||'').toLowerCase();
+    const tags=s.tags.map(t=>t.toLowerCase());
+    
+    // Tafelobst
+    if(tags.includes('tafelobst')||desc.includes('tafelobst')||desc.includes('frischobst')){
+      verwendung.push('Tafelobst');
+    }
+    
+    // Wirtschaftsobst
+    if(tags.includes('most')||desc.includes('most')||desc.includes('wirtschafts')||desc.includes('wirtschaftsapfel')){
+      verwendung.push('Wirtschaftsobst');
+    }
+    
+    // Saft/Most
+    if(tags.some(t=>t.includes('most')||t.includes('saft'))||desc.includes('saft')||desc.includes('most')){
+      verwendung.push('Saft/Most');
+    }
+    
+    // Wenn keine Verwendung erkannt, Standard setzen
+    if(verwendung.length===0){
+      if(desc.includes('streuobst')||desc.includes('hausgarten')){
+        verwendung.push('Tafelobst');
+      }
+    }
     
     result.push({
       name:s.name,
