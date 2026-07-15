@@ -139,6 +139,9 @@
   .pill.apfel{color:#991b1b;border-color:#991b1b;}
   .pill.birne{color:var(--waldrand);border-color:var(--waldrand);}
   .pill.walnuss{color:#92400e;border-color:#92400e;}
+  .pill.zwetschke{color:#6b21a8;border-color:#6b21a8;}
+  .pill.kirsch{color:#be185d;border-color:#be185d;}
+  .pill.sonstige{color:var(--muted);border-color:var(--muted);}
   .table-wrap{overflow-x:auto;border-radius:var(--radius);border:1px solid var(--border);}
   .table-wrap table{box-shadow:none;}
   table{width:100%;border-collapse:collapse;background:var(--card-bg);border-radius:var(--radius);overflow:hidden;}
@@ -181,6 +184,12 @@
   .card.birne:hover{border-left-color:#22c55e;}
   .card.walnuss{border-left-color:#b98e1a;}
   .card.walnuss:hover{border-left-color:#b98e1a;}
+  .card.zwetschke{border-left-color:#6b21a8;}
+  .card.zwetschke:hover{border-left-color:#6b21a8;}
+  .card.kirsch{border-left-color:#be185d;}
+  .card.kirsch:hover{border-left-color:#be185d;}
+  .card.sonstige{border-left-color:var(--muted);}
+  .card.sonstige:hover{border-left-color:var(--muted);}
   .card h3{margin:0 0 6px;font-family:'Cormorant Garamond',serif;font-size:1.3rem;color:var(--ackerde);}
   .card .meta{font-size:.78rem;color:var(--muted);margin-bottom:8px;}
   .badge-recherche{
@@ -298,6 +307,9 @@
   .pin.apfel{background:#dc2626;}
   .pin.birne{background:#22c55e;}
   .pin.walnuss{background:#b98e1a;}
+  .pin.zwetschke{background:#6b21a8;}
+  .pin.kirsch{background:#be185d;}
+  .pin.sonstige{background:var(--muted);}
   .pin:hover{outline:3px solid var(--muted);transform:translate(-50%,-50%) scale(1.6);z-index:6;}
   .pin.locked{cursor:pointer;}
   .pin.locked:hover{outline:3px solid var(--muted);}
@@ -2384,6 +2396,7 @@ function confirmDeleteBaum(id){
   }
   if(state.baumEdits && state.baumEdits[id]) delete state.baumEdits[id];
   if(state.positions && state.positions[id]) delete state.positions[id];
+  if(state.satPositions && state.satPositions[id]) delete state.satPositions[id];
   saveState();
   closeModal();
   refreshFilterOptions();
