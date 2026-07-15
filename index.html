@@ -660,6 +660,7 @@
 <div class="sl-toolbar">
   <input class="sl-search" type="text" id="sl-search" placeholder="Sorte suchen…" oninput="renderSortenUebersicht()">
   <div id="sl-filter-buttons"></div>
+  <button class="btn secondary" style="padding:6px 12px;font-size:11px;" onclick="exportSortenbeschreibungenPDF()" title="Sortenbeschreibungen der aktuellen Filterauswahl als PDF exportieren">⬇ Beschreibungen (PDF)</button>
 </div>
 <div id="sl-count" class="sl-count"></div>
 <div class="sl-grid" id="sl-grid"></div>
@@ -1333,6 +1334,57 @@ function exportSortenKartePDF(sorteName){
 
   const safeSorte = (s.sorte||'Sorte').replace(/[^A-Za-z0-9ÄÖÜäöüß]+/g,'_').replace(/^_+|_+$/g,'');
   doc.save(`Sortenkarte_${safeSorte}.pdf`);
+}
+
+function exportSortenbeschreibungenPDF(){
+  if(!window.jspdf){ alert('PDF-Bibliothek konnte nicht geladen werden – Internetverbindung nötig.'); return; }
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const margin = 16;
+  const maxWidth = pageWidth - margin*2;
+  let y = 20;
+  const suche=(document.getElementById('sl-search').value||'').toLowerCase();
+  let pool=getAllSorten();
+  if(sortenQuelle!=='alle') pool=pool.filter(s=>s.quelle===sortenQuelle);
+  if(sortenVerwendung.size>0) pool=pool.filter(s=>Array.from(sortenVerwendung).some(v=>s.verwendung.includes(v)));
+  if(suche) pool=pool.filter(s=>s.name.toLowerCase().includes(suche)||(s.beschreibung||'').toLowerCase().includes(suche)||(s.tags||[]).some(t=>t.toLowerCase().includes(suche)));
+  pool.sort((a,b)=>a.name.localeCompare(b.name,'de'));
+  if(!pool.length){ alert('Keine Sorten zum Exportieren gefunden.'); return; }
+  doc.setFontSize(16);
+  doc.text('Hendlberghof – Sortenbeschreibungen', margin, y); y+=10;
+  doc.setFontSize(9);
+  doc.text(pool.length+' Sorten · '+new Date().toLocaleDateString('de-AT'), margin, y); y+=8;
+  const ensureSpace = (needed)=>{
+    if(y + needed > pageHeight - margin){ doc.addPage(); y = 20; }
+  };
+  const addParagraph = (label, text)=>{
+    if(!text) return;
+    ensureSpace(10);
+    doc.setFont(undefined,'bold');
+    doc.setFontSize(9);
+    doc.text(label+':', margin, y); y+=5;
+    doc.setFont(undefined,'normal');
+    const lines = doc.splitTextToSize(text, maxWidth);
+    lines.forEach(line=>{ ensureSpace(5); doc.text(line, margin, y); y+=5; });
+    y+=2;
+  };
+  pool.forEach(s=>{
+    ensureSpace(16);
+    doc.setFont(undefined,'bold');
+    doc.setFontSize(13);
+    doc.text(s.name, margin, y); y+=6;
+    doc.setFont(undefined,'normal');
+    doc.setFontSize(9);
+    const metaLine = s.frucht + ((s.verwendung&&s.verwendung.length)? ' · '+s.verwendung.join(', ') : '');
+    doc.text(metaLine, margin, y); y+=6;
+    addParagraph('Geschmack', s.geschmack);
+    addParagraph('Eigenschaften', s.eigenschaften);
+    addParagraph('Frucht', s.beschreibung||s.frucht_beschreibung);
+    y += 6;
+  });
+  doc.save(`Sortenbeschreibungen_${new Date().toISOString().slice(0,10)}.pdf`);
 }
 
 function exportLageplanPDF(){
@@ -2863,6 +2915,8 @@ function getAllSorten(){
           quelleName:'Hofsorten',
           verwendung:getVerwendung(t),
           beschreibung:sorte?.beschreibung||sorte?.geschmack||sorte?.eigenschaften||'',
+          geschmack:sorte?.geschmack,
+          eigenschaften:sorte?.eigenschaften,
           erntem:sorte?.erntem||[],
           lagerm:sorte?.lagerm||[],
           genuss:sorte?.genuss||'',
