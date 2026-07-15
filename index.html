@@ -466,6 +466,13 @@
 .import-preview-table th{background:#f8f6f0;padding:8px;text-align:left;font-weight:600;color:var(--muted);border-bottom:1px solid var(--border)}
 .import-preview-table td{padding:8px;border-bottom:1px solid var(--border)}
 .import-nav{display:flex;justify-content:space-between;margin-top:1.5rem;padding-top:1rem;border-top:1px solid var(--border)}
+.import-log-table{display:flex;flex-direction:column;gap:8px}
+.import-log-entry{display:flex;justify-content:space-between;align-items:center;padding:12px;background:var(--kalkstein);border-radius:8px;gap:12px;flex-wrap:wrap}
+.import-log-info{display:flex;flex-direction:column;gap:2px}
+.import-log-info strong{font-size:.92rem;color:var(--text)}
+.import-log-info span{font-size:.82rem;color:var(--muted)}
+.import-log-actions{display:flex;gap:6px}
+.import-log-actions .btn{padding:5px 10px;font-size:.78rem}
 </style>
 </head>
 <body>
@@ -586,6 +593,12 @@
         <button class="btn secondary" onclick="downloadExcelTemplate()">⬇ Leere Vorlage</button>
         <button class="btn secondary" onclick="loadImportTemplate()">📋 Vorlage laden</button>
       </div>
+    </div>
+    <div class="card" style="max-width:640px;margin-top:16px;">
+      <h3>Import-Management</h3>
+      <p class="snippet">Übersicht aller bisherigen Imports. Du kannst Imports rückgängig machen oder löschen.</p>
+      <div id="import-log-list"></div>
+      <div id="import-snapshots-info" style="margin-top:12px;font-size:.85rem;color:var(--muted);"></div>
     </div>
   </section>
 
@@ -3406,8 +3419,19 @@ function renderPreview(){
 }
 
 function executeImport(){
+  // Snapshot vor dem Import erstellen
+  if(!state.importSnapshots) state.importSnapshots=[];
+  state.importSnapshots.push({
+    datum:new Date().toISOString(),
+    customTrees:JSON.parse(JSON.stringify(state.customTrees||[])),
+    positions:JSON.parse(JSON.stringify(state.positions||{})),
+    satPositions:JSON.parse(JSON.stringify(state.satPositions||{}))
+  });
+  if(state.importSnapshots.length>5) state.importSnapshots.shift();
+  
   const result={imported:0,skipped:0,errors:[]};
   const mapping=importState.mapping;
+  const importedIds=[];
   
   importState.rows.forEach((row,idx)=>{
     try{
@@ -3437,14 +3461,27 @@ function executeImport(){
         state.customTrees.push(newTree);
       }
       
+      importedIds.push(newTree.id);
       result.imported++;
     }catch(err){
       result.errors.push('Zeile '+(idx+2)+': '+err.message);
     }
   });
   
+  // Import protokollieren
+  if(!state.importLog) state.importLog=[];
+  state.importLog.push({
+    id:'IMP-'+Date.now(),
+    datum:new Date().toISOString(),
+    datei:importState.file?.name||'Unbekannt',
+    anzahl:result.imported,
+    treeIds:importedIds,
+    mapping:{...mapping}
+  });
+  
   saveState();
   showImportResult(result);
+  renderImportLog();
 }
 
 function getValueByMapping(row,mapping,fieldId){
@@ -3484,6 +3521,12 @@ function showImportResult(result){
   if(result.imported>0){
     renderBaumTable();
     renderSortenCards();
+    renderImportLog();
+  }
+  
+  if(result.imported>0){
+    renderBaumTable();
+    renderSortenCards();
   }
 }
 
@@ -3515,6 +3558,110 @@ function loadImportTemplate(){
   const last=templates[templates.length-1];
   importState.mapping=last.mapping;
   renderMappingUI();
+}
+
+// ─── IMPORT MANAGEMENT ──────────────────────────────────────────────────────
+function renderImportLog(){
+  const container=document.getElementById('import-log-list');
+  if(!container) return;
+  
+  if(!state.importLog||state.importLog.length===0){
+    container.innerHTML='<p style="color:var(--muted);font-size:.9rem;">Noch keine Imports durchgeführt.</p>';
+    updateSnapshotsInfo();
+    return;
+  }
+  
+  let html='<div class="import-log-table">';
+  state.importLog.slice().reverse().forEach(entry=>{
+    const datum=new Date(entry.datum).toLocaleString('de-AT');
+    html+='<div class="import-log-entry">'+
+      '<div class="import-log-info">'+
+        '<strong>'+entry.datei+'</strong>'+
+        '<span>'+entry.anzahl+' Bäume &middot; '+datum+'</span>'+
+      '</div>'+
+      '<div class="import-log-actions">'+
+        '<button class="btn secondary" onclick="undoImport(\''+entry.id+'\')" title="Rückgängig">↩ Undo</button>'+
+        '<button class="btn secondary" onclick="deleteImport(\''+entry.id+'\')" title="Import löschen">✕ Löschen</button>'+
+      '</div>'+
+    '</div>';
+  });
+  html+='</div>';
+  container.innerHTML=html;
+  
+  updateSnapshotsInfo();
+}
+
+function updateSnapshotsInfo(){
+  const container=document.getElementById('import-snapshots-info');
+  if(!container) return;
+  
+  const count=state.importSnapshots?state.importSnapshots.length:0;
+  container.textContent=count>0?count+' Snapshots verfügbar (max. 5)':'Keine Snapshots vorhanden';
+}
+
+function undoImport(importId){
+  if(!state.importLog||!state.importSnapshots) return;
+  
+  const importEntry=state.importLog.find(e=>e.id===importId);
+  if(!importEntry){
+    alert('Import nicht gefunden.');
+    return;
+  }
+  
+  // Finde den passenden Snapshot (vor diesem Import)
+  const importIdx=state.importLog.indexOf(importEntry);
+  if(importIdx<1){
+    alert('Kein Snapshot für diesen Import vorhanden.');
+    return;
+  }
+  
+  const snapshot=state.importSnapshots[importIdx-1];
+  if(!snapshot){
+    alert('Kein Snapshot für diesen Import vorhanden.');
+    return;
+  }
+  
+  if(!confirm('Import rückgängig machen? '+importEntry.anzahl+' Bäume werden entfernt.')) return;
+  
+  // Snapshot wiederherstellen
+  state.customTrees=snapshot.customTrees;
+  state.positions=snapshot.positions;
+  state.satPositions=snapshot.satPositions;
+  
+  // Import aus Log entfernen
+  state.importLog=state.importLog.filter(e=>e.id!==importId);
+  
+  saveState();
+  renderImportLog();
+  renderBaumTable();
+  renderSortenCards();
+  alert('Import rückgängig gemacht!');
+}
+
+function deleteImport(importId){
+  if(!state.importLog) return;
+  
+  const importEntry=state.importLog.find(e=>e.id===importId);
+  if(!importEntry){
+    alert('Import nicht gefunden.');
+    return;
+  }
+  
+  if(!confirm(importEntry.anzahl+' importierte Bäume löschen?')) return;
+  
+  // Importierte Bäume entfernen
+  if(state.customTrees&&importEntry.treeIds){
+    state.customTrees=state.customTrees.filter(t=>!importEntry.treeIds.includes(t.id));
+  }
+  
+  // Import aus Log entfernen
+  state.importLog=state.importLog.filter(e=>e.id!==importId);
+  
+  saveState();
+  renderImportLog();
+  renderBaumTable();
+  renderSortenCards();
+  alert('Import gelöscht!');
 }
 
 // Dropzone Event Listener
