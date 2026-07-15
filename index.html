@@ -24,6 +24,19 @@
     --muted:#7A7168;
     --border:#E2DACB;
     --radius:10px;
+    --weiss:#ffffff;
+    --rand:#E2DACB;
+    --gruen:#2E3F2A;
+    --gruen-mid:#4a6336;
+    --gruen-hell:#e8f0e0;
+    --text-mid:#7A7168;
+    --text-leicht:#A09888;
+    --blau:#2563eb;
+    --blau-hell:#dbeafe;
+    --braun:#92400e;
+    --braun-hell:#fef3c7;
+    --lila:#7c3aed;
+    --lila-hell:#ede9fe;
   }
   *{box-sizing:border-box;}
   body{
@@ -1060,6 +1073,19 @@ function getFilteredBaumRows(){
 
 function baumMerged(t){ return Object.assign({}, getSorte(t.sorte)||{}, t); }
 
+function getFilteredSortenExportRows(){
+  let pool = getAllSorten();
+  if(sortenQuelle!=='alle') pool = pool.filter(s=>s.quelle===sortenQuelle);
+  if(sortenVerwendung.size>0) pool = pool.filter(s=>Array.from(sortenVerwendung).some(v=>s.verwendung.includes(v)));
+  const q = (document.getElementById('sl-search')?.value||'').toLowerCase();
+  if(q) pool = pool.filter(s=>s.name.toLowerCase().includes(q)||(s.beschreibung||'').toLowerCase().includes(q)||(s.tags||[]).some(t=>t.toLowerCase().includes(q)));
+  pool.sort((a,b)=>a.name.localeCompare(b.name,'de'));
+  return pool.map(s=>{
+    const full = getSorte(s.name) || {};
+    return Object.assign({}, full, {sorte:s.name, frucht:s.frucht, verwendung:s.verwendung, baum_ids:full.baum_ids||[]});
+  });
+}
+
 const EXPORT_SPALTEN = {
   baum: [
     {key:'ID', get:t=> t.id_placeholder? '(offen)' : t.id},
@@ -1129,7 +1155,7 @@ function runExport(){
   if(selected.length===0){ alert('Bitte mindestens eine Spalte auswählen.'); return; }
   localStorage.setItem('hendlberghof_export_cols_'+exportContext.typ, JSON.stringify(selected));
   const spalten = EXPORT_SPALTEN[exportContext.typ].filter(c=>selected.includes(c.key));
-  const rows = exportContext.typ==='baum'? getFilteredBaumRows() : getFilteredSortenRows();
+  const rows = exportContext.typ==='baum'? getFilteredBaumRows() : getFilteredSortenExportRows();
   const data = rows.map(r=>{ const o={}; spalten.forEach(c=>o[c.key]=c.get(r)); return o; });
   const stem = exportContext.typ==='baum'? 'Baumkataster' : 'Sortenuebersicht';
   const titel = exportContext.typ==='baum'? 'Hendlberghof – Baumkataster' : 'Hendlberghof – Sortenübersicht';
