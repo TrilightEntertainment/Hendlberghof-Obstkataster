@@ -446,6 +446,7 @@
 #tab-sortenberater .sl-card-check svg{display:none}
 #tab-sortenberater .sl-card.selected .sl-card-check svg{display:block}
 #tab-sortenberater .sl-card-name{font-size:1.05rem;font-weight:600;color:var(--text);margin-bottom:2px;padding-right:28px}
+#tab-sortenberater .sl-card-ids{font-size:.78rem;font-weight:400;color:var(--gruen);margin-left:4px}
 #tab-sortenberater .sl-card-reife{font-family:'DM Sans',sans-serif;font-size:11px;color:var(--text-leicht);margin-bottom:8px}
 #tab-sortenberater .sl-card-desc{font-size:.88rem;color:var(--text-mid);line-height:1.55;margin-top:6px}
 #tab-sortenberater .sl-card-edit{position:absolute;top:10px;right:10px;width:28px;height:28px;border-radius:6px;border:1px solid var(--rand);background:var(--weiss);display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--text-leicht);transition:all .15s;z-index:2}
@@ -596,17 +597,6 @@
   <!-- DATEN & SICHERUNG -->
   <section id="tab-daten" style="display:none;">
     <div class="card" style="max-width:640px;">
-      <h3>Daten exportieren</h3>
-      <p class="snippet">Lädt eine Sicherungskopie (JSON) aller Positionen, Sukzessions- und Ernteeinträge herunter.
-      Alle Geräte sind bereits automatisch über die Cloud synchronisiert – dieser Export dient als unabhängiges Backup, falls damit einmal etwas schiefgehen sollte.</p>
-      <button class="btn" id="btn-export">⬇ Daten exportieren (JSON)</button>
-    </div>
-    <div class="card" style="max-width:640px;margin-top:16px;">
-      <h3>Daten importieren</h3>
-      <p class="snippet">Vorsicht: überschreibt den aktuellen, mit allen Geräten synchronisierten Datenstand mit dem Inhalt der Datei. Nur zur Wiederherstellung aus einem Backup verwenden, nicht für den normalen Gebrauch.</p>
-      <input type="file" id="file-import" accept="application/json">
-    </div>
-    <div class="card" style="max-width:640px;margin-top:16px;">
       <h3>Sorten importieren (Excel/CSV)</h3>
       <p class="snippet">Importiere Bäume und Sorten aus Excel (.xlsx, .xls) oder CSV (.csv, .tsv) Dateien. Du kannst eigene IDs vergeben.</p>
       <div class="import-dropzone" id="import-dropzone">
@@ -628,6 +618,17 @@
       <p class="snippet">Übersicht aller bisherigen Imports. Du kannst Imports rückgängig machen oder löschen.</p>
       <div id="import-log-list"></div>
       <div id="import-snapshots-info" style="margin-top:12px;font-size:.85rem;color:var(--muted);"></div>
+    </div>
+    <div class="card" style="max-width:640px;margin-top:16px;">
+      <h3>Daten exportieren</h3>
+      <p class="snippet">Lädt eine Sicherungskopie (JSON) aller Positionen, Sukzessions- und Ernteeinträge herunter.
+      Alle Geräte sind bereits automatisch über die Cloud synchronisiert – dieser Export dient als unabhängiges Backup, falls damit einmal etwas schiefgehen sollte.</p>
+      <button class="btn" id="btn-export">⬇ Daten exportieren (JSON)</button>
+    </div>
+    <div class="card" style="max-width:640px;margin-top:16px;">
+      <h3>Daten importieren</h3>
+      <p class="snippet">Vorsicht: überschreibt den aktuellen, mit allen Geräten synchronisierten Datenstand mit dem Inhalt der Datei. Nur zur Wiederherstellung aus einem Backup verwenden, nicht für den normalen Gebrauch.</p>
+      <input type="file" id="file-import" accept="application/json">
     </div>
   </section>
 
@@ -1718,12 +1719,12 @@ function openSortenModal(sorteName){
       <button class="btn-verify" onclick="toggleVerifiziert('${s.sorte.replace(/'/g,"\\'")}')">✓ Als verifiziert markieren</button>`
       : (state.verifiziert[s.sorte]? `<div class="badge-verifiziert">✓ Verifiziert am ${state.verifiziert[s.sorte]}</div>
       <button class="btn-verify done" onclick="toggleVerifiziert('${s.sorte.replace(/'/g,"\\'")}')">Verifizierung zurücknehmen</button>` : '')}
-    <h2>${s.sorte}</h2>
+    <h2>${s.sorte}${s.baum_ids&&s.baum_ids.length?' <span style="font-size:.7em;font-weight:400;color:var(--gruen);">'+s.baum_ids.join(', ')+'</span>':''}</h2>
     ${archeNoahLink(s)}
     <div class="grid2">
       ${fieldRow('Obstart', s.frucht)}
       ${fieldRow('Pflückreife', s.pflueckzeitpunkt||s.pflueck_reifezeit)}
-      ${verwendungField(s.sorte, s.verwendung)}
+      ${fieldRow('Verwendung', (s.verwendung||[]).join(', '))}
       ${fieldRow('Genussreife', s.genuss_von&&s.genuss_bis? s.genuss_von+' – '+s.genuss_bis+' Monate ab Ernte' : s.genussreife)}
       ${fieldRow('Pflanzjahr', s.ausgepflanzt)}
       ${fieldRow('Ertrag', s.ertrag)}
@@ -2917,6 +2918,7 @@ function getAllSorten(){
       }
     }
     
+    const full=getSorte(s.name);
     result.push({
       name:s.name,
       frucht:'Apfel',
@@ -2928,7 +2930,9 @@ function getAllSorten(){
       lagerm:s.lagerm||[],
       genuss:s.genuss,
       tags:s.tags,
-      pdf:s.pdf
+      pdf:s.pdf,
+      baum_ids:full?full.baum_ids||[]:[],
+      pflueckzeitpunkt:full?(full.pflueckzeitpunkt||full.pflueck_reifezeit||''):''
     });
   });
   
@@ -2953,7 +2957,9 @@ function getAllSorten(){
           lagerm:sorte?.lagerm||[],
           genuss:sorte?.genuss||'',
           tags:sorte?.tags||[],
-          pdf:sorte?.pdf||''
+          pdf:sorte?.pdf||'',
+          baum_ids:sorte?.baum_ids||[],
+          pflueckzeitpunkt:sorte?(sorte.pflueckzeitpunkt||sorte.pflueck_reifezeit||''):''
         });
       }
     });
@@ -3065,10 +3071,13 @@ function renderSortenUebersicht(){
     const tags=s.tags.map(t=>'<span class="sb-tag '+tagCls(t)+'">'+t+'</span>').join('');
     const quelleBadge=s.quelle==='arche'?'<span class="an-badge">Arche Noah</span>':'<span class="an-badge hof-badge">Hofsorten</span>';
     const ernteText=s.erntem.length>0?(s.erntem.map(m=>MONATE.find(mo=>mo.m===m)?.kz||m).join(', ')):'–';
+    const verwendungText=(s.verwendung&&s.verwendung.length)?s.verwendung.join(', '):'';
+    const pflText=s.pflueckzeitpunkt||'';
+    const idsText=(s.baum_ids&&s.baum_ids.length)?' · '+s.baum_ids.join(', '):'';
     
     return '<div class="sl-card" onclick="openSortenModal(\''+s.name.replace(/'/g,"\\'")+'\')">'+quelleBadge+
-      '<div class="sl-card-name">'+s.name+'</div>'+
-      '<div class="sl-card-reife">'+s.frucht+' &middot; Ernte: '+ernteText+'</div>'+
+      '<div class="sl-card-name">'+s.name+'<span class="sl-card-ids">'+idsText+'</span></div>'+
+      '<div class="sl-card-reife">'+s.frucht+(pflText?' · Pflückzeit: '+pflText:'')+(verwendungText?' · '+verwendungText:'')+'</div>'+
       '<div class="sb-tags">'+tags+'</div>'+
       '<div class="sl-card-desc">'+(s.beschreibung||'').slice(0,120)+((s.beschreibung||'').length>120?'…':'')+'</div>'+
     '</div>';
