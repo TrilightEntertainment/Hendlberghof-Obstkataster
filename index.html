@@ -963,6 +963,7 @@ function applyRemoteState(remote){
     for(const k of Object.keys(remote.positions)){ if(!isAlive(k)) delete remote.positions[k]; }
   }
   Object.assign(state, remote);
+  _mittelCache=null;
   if(!state.verifiziert) state.verifiziert = {};
   if(!state.customTrees) state.customTrees = [];
   if(!state.baumEdits) state.baumEdits = {};
@@ -1600,7 +1601,6 @@ function openBaumModal(id){
   const originalPW = merged.pflueckzeitpunkt||merged.pflueck_reifezeit||'';
   const mittel = t.sorte ? calcPfluckMittel(t.sorte) : null;
   const prediction = t.sorte ? predictErnte(t.sorte) : null;
-  const diff = mittel && originalPW ? pfluckWertDiff(originalPW, mittel.wert) : 0;
   const mittelText = mittel ? `<b style="color:var(--gruen);">→ ${mittel.wert}</b> <span style="font-size:.75rem;color:var(--text-mid,#6B7280);">(${mittel.anzahl} Ernten, ${mittel.jahre.join(', ')})</span>` : '';
   let predictionHtml = '';
   if(prediction){
@@ -1676,7 +1676,8 @@ function openBaumModal(id){
       <button class="btn secondary" onclick="addErnte('${t.id}')">+ Eintrag</button>
     </div>` : ''}
 
-    <div class="section-title">Phänologie-Ereignisse</div>
+    ${(isEditMode() || (state.phaenologie && Object.keys(state.phaenologie).some(y=>Object.keys(state.phaenologie[y]).length>0)))
+      ? `<div class="section-title">Phänologie-Ereignisse</div>
     <div class="field" id="phaeno-display"></div>
     ${isEditMode()? `<div class="addlog" style="flex-wrap:wrap;">
       <select id="phaeno-key" class="txt" style="width:200px;">
@@ -1686,7 +1687,8 @@ function openBaumModal(id){
       </select>
       <input type="date" id="phaeno-datum">
       <button class="btn secondary" onclick="addPhaenoEreignis()">+ Eintrag</button>
-    </div>` : ''}
+    </div>` : ''}`
+      : ''}
   `;
   document.getElementById('modal-content').innerHTML = html;
   document.getElementById('modal-content').dataset.modalType = 'baum';
@@ -1741,12 +1743,14 @@ function addErnte(id){
   if(!state.ernten[id]) state.ernten[id]=[];
   state.ernten[id].forEach((it,i)=>it._idx=i);
   state.ernten[id].push({datum, menge, bemerkung, _idx: state.ernten[id].length});
+  _mittelCache=null;
   saveState(); renderErnteList(id);
   document.getElementById('ernte-datum').value=''; document.getElementById('ernte-menge').value=''; document.getElementById('ernte-bem').value='';
 }
 function delErnte(id, idx){
   state.ernten[id] = (state.ernten[id]||[]).filter((it,i)=>i!==idx);
   state.ernten[id].forEach((it,i)=>it._idx=i);
+  _mittelCache=null;
   saveState(); renderErnteList(id);
 }
 
@@ -1755,8 +1759,8 @@ function renderPhaenoDisplay(){
   const el=document.getElementById('phaeno-display');
   if(!el) return;
   const jahr=new Date().getFullYear();
-  const phaeno=getPhaeno(jahr);
-  const entries=Object.entries(phaeno).filter(([,v])=>v);
+  const phaeno=state.phaenologie&&state.phaenologie[jahr]?state.phaenologie[jahr]:null;
+  const entries=phaeno?Object.entries(phaeno).filter(([,v])=>v):[];
   if(!entries.length){ el.innerHTML='<span style="color:var(--text-mid,#6B7280);font-size:.85rem;">Noch keine Phänologie-Ereignisse für '+jahr+' eingetragen.</span>'; return; }
   el.innerHTML=entries.map(([k,v])=>{
     const tag=tagDesJahres(v);
@@ -3116,6 +3120,7 @@ function pfluckWertToTag(wert,jahr){
 
 function tagToPfluckWert(tag,jahr){
   if(!tag || !jahr) return '';
+  tag=Math.max(1,Math.min(tag,365));
   let monat=1, rest=tag;
   for(let m=1;m<=12;m++){
     const dim=_daysInMonth(m,jahr);
@@ -3128,8 +3133,11 @@ function tagToPfluckWert(tag,jahr){
   return monat+','+Math.min(9,Math.max(1,pos));
 }
 
+let _mittelCache=null;
 function calcPfluckMittel(sorteName){
   if(!sorteName || !state.ernten) return null;
+  if(!_mittelCache) _mittelCache={};
+  if(_mittelCache[sorteName]!==undefined) return _mittelCache[sorteName];
   const jahrJetzt=new Date().getFullYear();
   const jahre=[];
   for(let y=jahrJetzt;y>=jahrJetzt-2 && y>=2020;y--) jahre.push(y);
@@ -3150,13 +3158,15 @@ function calcPfluckMittel(sorteName){
       });
     });
   });
-  if(!werte.length) return null;
+  if(!werte.length){ _mittelCache[sorteName]=null; return null; }
   const avg=werte.reduce((s,v)=>s+v.numerisch,0)/werte.length;
   const avgMonat=Math.floor(avg);
   const avgPos=Math.round((avg-avgMonat)*10);
   const mittelwert=avgMonat+','+Math.min(9,Math.max(1,avgPos));
   const uniqueJahre=[...new Set(werte.map(v=>v.jahr))].sort();
-  return {wert:mittelwert, numerisch:avg, anzahl:werte.length, jahre:uniqueJahre, eintraege:werte};
+  const result={wert:mittelwert, numerisch:avg, anzahl:werte.length, jahre:uniqueJahre, eintraege:werte};
+  _mittelCache[sorteName]=result;
+  return result;
 }
 
 // ─── PHÄNOLOGIE: TRACKER & VORHERSAGE ───────────────────────────────────────
@@ -3181,8 +3191,8 @@ function setPhaenoEreignis(jahr, key, datum){
 
 function predictErnte(sorteName){
   const jahr=new Date().getFullYear();
-  const phaeno=getPhaeno(jahr);
-  if(!phaeno.holunder_bluete) return null;
+  const phaeno=state.phaenologie&&state.phaenologie[jahr]?state.phaenologie[jahr]:null;
+  if(!phaeno||!phaeno.holunder_bluete) return null;
   const aktTag=tagDesJahres(phaeno.holunder_bluete);
   const stdTag=PHAENO_STANDARDS.holunder_bluete;
   if(!aktTag || !stdTag) return null;
@@ -3195,12 +3205,6 @@ function predictErnte(sorteName){
   const vorhergesagt=tagToPfluckWert(vorhergesagtTag,jahr);
   if(!vorhergesagt) return null;
   return {wert:vorhergesagt, abweichungTage:abweichung, quelle:'phaenologie', mittelwert:mittel.wert, phaenoDaten:phaeno};
-}
-
-function pfluckWertDiff(w1,w2){
-  if(!w1||!w2) return 0;
-  const t1=w1.split(','), t2=w2.split(',');
-  return (parseInt(t2[0])+parseInt(t2[1])/10)-(parseInt(t1[0])+parseInt(t1[1])/10);
 }
 
 function getSortenQuelleLabel(q){
@@ -3312,7 +3316,7 @@ function renderSortenUebersicht(){
     
     return '<div class="sl-card" onclick="openSortenModal(\''+s.name.replace(/'/g,"\\'")+'\')">'+quelleBadge+
       '<div class="sl-card-name">'+s.name+'<span class="sl-card-ids">'+idsText+'</span></div>'+
-      '<div class="sl-card-reife">'+s.frucht+(pflText?' · Pflückzeit: '+pflText+mittelText:'')+(verwendungText?' · '+verwendungText:'')+'</div>'+
+      '<div class="sl-card-reife">'+s.frucht+(pflText?' · Pflückzeit: '+pflText+mittelText:(mittelText?' · Mittelwert:'+mittelText:''))+(verwendungText?' · '+verwendungText:'')+'</div>'+
       '<div class="sb-tags">'+tags+'</div>'+
       '<div class="sl-card-desc">'+(s.beschreibung||'').slice(0,120)+((s.beschreibung||'').length>120?'…':'')+'</div>'+
     '</div>';
