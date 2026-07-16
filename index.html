@@ -2983,10 +2983,11 @@ function beraten(){
     const s=e.s;
     const tags=hofTags(s).map(t=>'<span class="sb-tag '+tagCls(t)+'">'+t+'</span>').join('');
     const reife=s.pflueckzeitpunkt||s.pflueck_reifezeit||'–';
-    const n=anzahl[s.sorte]||0;
+    const sn=s.sorte||s.name||'';
+    const n=anzahl[sn]||0;
     const nTxt=n?' · '+n+' Baum/Bäume am Hof':'';
     const quelleLabel=s.quelle==='arche'?'Arche Noah':'Hofsorte';
-    html+='<div class="sb-sorte" style="cursor:pointer" onclick="openSortenModal(\''+s.sorte.replace(/'/g,"\\'")+'\')"><div class="sb-sorte-name">'+s.sorte+'<span class="sb-reife">Pflückzeit: '+reife+nTxt+' &middot; bis '+s.standort.hmax+'m</span></div><div class="sb-tags">'+tags+'</div><div class="sb-gilde"><strong>'+quelleLabel+'</strong> '+s.standort.basis+'</div></div>';
+    html+='<div class="sb-sorte" style="cursor:pointer" onclick="openSortenModal(\''+sn.replace(/'/g,"\\'")+'\')"><div class="sb-sorte-name">'+sn+'<span class="sb-reife">Pflückzeit: '+reife+nTxt+' &middot; bis '+s.standort.hmax+'m</span></div><div class="sb-tags">'+tags+'</div><div class="sb-gilde"><strong>'+quelleLabel+'</strong> '+s.standort.basis+'</div></div>';
   });
   document.getElementById('res').innerHTML=html;
 }
