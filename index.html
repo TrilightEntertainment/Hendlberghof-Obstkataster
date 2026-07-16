@@ -614,9 +614,13 @@
         <p>Datei hierher ziehen oder klicken</p>
         <input type="file" id="file-excel-import" accept=".xlsx,.xls,.csv,.tsv" style="display:none">
       </div>
-      <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;">
-        <button class="btn secondary" onclick="downloadExcelTemplate()">⬇ Leere Vorlage</button>
-        <button class="btn secondary" onclick="loadImportTemplate()">📋 Vorlage laden</button>
+      <div style="margin-top:14px;">
+        <div style="font-size:.8rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">Meine Vorlagen</div>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+          <button class="btn secondary" onclick="downloadExcelTemplate()" style="font-size:.82rem;">⬇ Excel-Vorlage (leer)</button>
+          <span style="font-size:.78rem;color:var(--muted);">Spalten: ID, Sorte, Obstart, Pflanzjahr, Pflückzeit, Geschmack, Eigenschaften, Verwendung</span>
+        </div>
+        <div id="import-templates-list"></div>
       </div>
     </div>
     <div class="card" style="max-width:640px;margin-top:16px;">
@@ -861,6 +865,7 @@
 let BAUM_DATA = [];
 let SORTEN_DATA = [];
 const BLACKLIST = new Set(['W20','W21','W22']);
+function escHtml(s){return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 
 const LS_KEY = "hendlberghof_obstdb_v1";
 
@@ -2517,6 +2522,7 @@ function startApp(){
   renderBaumTable();
   renderSortenUebersicht();
   renderUnplacedSelect();
+  renderImportTemplates();
   if(window.__pendingRemoteState){ const r = window.__pendingRemoteState; window.__pendingRemoteState = null; applyRemoteState(r); }
   showWelcomeBannerIfNeeded();
 }
@@ -3293,7 +3299,20 @@ function detectMapping(){
   importState.mapping={};
   const headers=importState.headers.map(h=>h.toString().toLowerCase());
   
+  const tpls=getImportTemplates();
+  if(tpls.length>0){
+    const last=tpls[tpls.length-1];
+    if(last.headerAliases){
+      importState.headers.forEach(h=>{
+        if(last.headerAliases[h]) importState.mapping[last.headerAliases[h]]=h;
+      });
+    } else if(last.mapping){
+      importState.mapping=Object.assign({},last.mapping);
+    }
+  }
+  
   IMPORT_FIELDS.forEach(field=>{
+    if(importState.mapping[field.id]) return;
     const found=field.autoDetect.find(ad=>headers.includes(ad.toLowerCase()));
     if(found){
       const idx=headers.indexOf(found.toLowerCase());
@@ -3455,6 +3474,10 @@ function executeImport(){
   saveState();
   showImportResult(result);
   renderImportLog();
+  renderImportTemplates();
+  if(result.imported>0||result.updated>0){
+    showSaveTemplateDialog();
+  }
 }
 
 function getValueByMapping(row,mapping,fieldId){
@@ -3515,27 +3538,109 @@ function downloadExcelTemplate(){
   XLSX.writeFile(wb,'Obstdatenbank_Vorlage.xlsx');
 }
 
-function saveImportTemplate(){
-  const template={
-    name:'Meine Vorlage',
-    datum:new Date().toISOString(),
-    mapping:importState.mapping
-  };
-  const templates=JSON.parse(localStorage.getItem('import_templates')||'[]');
-  templates.push(template);
-  localStorage.setItem('import_templates',JSON.stringify(templates));
-  alert('Vorlage gespeichert!');
+function getImportTemplates(){
+  return JSON.parse(localStorage.getItem('import_templates')||'[]');
+}
+function setImportTemplates(tpls){
+  localStorage.setItem('import_templates',JSON.stringify(tpls));
 }
 
-function loadImportTemplate(){
-  const templates=JSON.parse(localStorage.getItem('import_templates')||'[]');
-  if(templates.length===0){
-    alert('Keine Vorlagen gespeichert.');
+function renderImportTemplates(){
+  const el=document.getElementById('import-templates-list');
+  if(!el) return;
+  const tpls=getImportTemplates();
+  if(tpls.length===0){
+    el.innerHTML='<p style="font-size:.82rem;color:var(--muted);font-style:italic;">Noch keine Vorlagen. Erst eine Datei importieren und Mapping speichern.</p>';
     return;
   }
-  const last=templates[templates.length-1];
-  importState.mapping=last.mapping;
+  el.innerHTML=tpls.map((t,i)=>{
+    const d=new Date(t.datum);
+    const datum=d.toLocaleDateString('de-AT',{day:'2-digit',month:'2-digit',year:'2-digit'});
+    const mapCount=Object.keys(t.mapping||{}).filter(k=>t.mapping[k]).length;
+    return '<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);font-size:.85rem;">'+
+      '<span style="flex:1;"><b>'+escHtml(t.name)+'</b> <span style="color:var(--muted);font-size:.78rem;">('+datum+' · '+mapCount+' Felder)</span></span>'+
+      '<button class="btn secondary" style="padding:4px 10px;font-size:.75rem;" onclick="loadImportTemplate('+i+')">Laden</button>'+
+      '<button class="btn secondary" style="padding:4px 10px;font-size:.75rem;color:var(--dachziegel);border-color:var(--dachziegel);" onclick="deleteImportTemplate('+i+')">Löschen</button>'+
+    '</div>';
+  }).join('');
+}
+
+function deleteImportTemplate(idx){
+  const tpls=getImportTemplates();
+  if(idx<0||idx>=tpls.length) return;
+  if(!confirm('Vorlage "'+tpls[idx].name+'" wirklich löschen?')) return;
+  tpls.splice(idx,1);
+  setImportTemplates(tpls);
+  renderImportTemplates();
+}
+
+function saveImportTemplate(name){
+  if(!name||!name.trim()) return;
+  const mapping=importState?Object.assign({},importState.mapping):{};
+  const headerAliases={};
+  if(importState&&importState.headers){
+    Object.keys(mapping).forEach(fieldId=>{
+      const header=mapping[fieldId];
+      if(header) headerAliases[header]=fieldId;
+    });
+  }
+  const template={
+    name:name.trim(),
+    datum:new Date().toISOString(),
+    mapping:mapping,
+    headerAliases:headerAliases
+  };
+  const tpls=getImportTemplates();
+  tpls.push(template);
+  setImportTemplates(tpls);
+  renderImportTemplates();
+}
+
+function loadImportTemplate(idx){
+  const tpls=getImportTemplates();
+  if(idx<0||idx>=tpls.length) return;
+  const tpl=tpls[idx];
+  if(importState){
+    importState.mapping=Object.assign({},tpl.mapping);
+  }
   renderMappingUI();
+}
+
+function applyLastTemplateMapping(){
+  const tpls=getImportTemplates();
+  if(tpls.length===0||!importState) return;
+  const last=tpls[tpls.length-1];
+  if(last.headerAliases&&importState.headers){
+    const newMapping={};
+    IMPORT_FIELDS.forEach(f=>{ newMapping[f.id]=null; });
+    importState.headers.forEach(h=>{
+      if(last.headerAliases[h]) newMapping[last.headerAliases[h]]=h;
+    });
+    importState.mapping=newMapping;
+  } else if(last.mapping){
+    importState.mapping=Object.assign({},last.mapping);
+  }
+}
+
+function showSaveTemplateDialog(){
+  const html='<button class="close" onclick="closeModal()">&times;</button>'+
+    '<h2>Mapping speichern?</h2>'+
+    '<p style="font-size:.88rem;color:var(--muted);margin:8px 0 16px;">Dieses Mapping als Vorlage speichern? Beim nächsten Import gleicher Datei wird die Zuordnung automatisch übernommen.</p>'+
+    '<input type="text" id="tpl-name-input" placeholder="Name der Vorlage…" style="width:100%;margin-bottom:16px;" value="Meine Vorlage">'+
+    '<div class="edit-actions">'+
+      '<button class="btn" onclick="confirmSaveTemplate()">Speichern</button>'+
+      '<button class="btn secondary" onclick="closeModal()">Nein, danke</button>'+
+    '</div>';
+  document.getElementById('modal-content').innerHTML=html;
+  document.getElementById('overlay').classList.add('open');
+  document.getElementById('tpl-name-input').focus();
+}
+
+function confirmSaveTemplate(){
+  const input=document.getElementById('tpl-name-input');
+  const name=input?input.value:'';
+  saveImportTemplate(name);
+  closeModal();
 }
 
 // ─── IMPORT MANAGEMENT ──────────────────────────────────────────────────────
