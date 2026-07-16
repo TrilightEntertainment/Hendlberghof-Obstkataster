@@ -751,6 +751,31 @@
 </div>
 
 <div class="hilfe-card">
+<h3>Pflückzeit & Erntevorhersage</h3>
+<p>Jede Sorte hat einen <strong>Original-Pflückzeitpunkt</strong> (z.B. 10,5 = Mitte Oktober). Aus deinen Ernte-Einträgen der letzten 3 Jahre berechnet die App einen <strong>Mittelwert</strong> (z.B. 9,8 = Anfang Oktober).</p>
+<dl>
+<dt>Original-Pflückzeit</dt>
+<dd>Der historische Referenzwert aus der Sortenbeschreibung. Bleibt unverändert.</dd>
+
+<dt>Mittelwert (→ 9,8)</dt>
+<dd>Berechnet aus deinen tatsächlichen Ernte-Dokumentationen. Zeigt, wann die Sorte bei dir am Hof tatsächlich reif wird.</dd>
+
+<dt>Erntevorhersage (📊)</dt>
+<dd>Wenn du das Phänologie-Ereignis "Schwarzer Holunder – Blühbeginn" einträgst, wird eine <strong>Vorhersage für das aktuelle Jahr</strong> berechnet. Der Holunder-Blühbeginn verschiebt sich durch den Klimawandel – und damit auch deine Ernte.</dd>
+</dl>
+
+<p><strong>So funktioniert's:</strong></p>
+<ol style="padding-left:1.25rem;margin:0.5rem 0;">
+<li>Trage Ernten mit Datum ein (Baum öffnen → Ernte-Dokumentation)</li>
+<li>Ab 1 Ernte wird der Mittelwert berechnet</li>
+<li>Optional: Trage den Holunder-Blühbeginn ein (Baum öffnen → Phänologie)</li>
+<li>Die Vorhersage zeigt: Original → Mittelwert → 📊 Vorhersage</li>
+</ol>
+
+<p style="font-size:.82rem;color:var(--text-mid,#6B7280);">Quelle Phänologie: <a href="https://www.naturschutzmonitoring.at/de/phaenoflex/" target="_blank" style="color:var(--waldrand);">Naturschutzmonitoring.at – Phänoflex</a> (ÖPUL-Programm)</p>
+</div>
+
+<div class="hilfe-card">
 <h3>FAQ</h3>
 <dl>
 <dt>Wie installiere ich die App?</dt>
@@ -884,7 +909,7 @@ function loadState(){
       return parsed;
     }
   }catch(e){}
-  return { positions: Object.assign({}, SEED_POSITIONS), sukzession:{}, ernten:{}, verifiziert:{}, customTrees:[], baumEdits:{}, sortenEdits:{}, gpsCalib:null, satPositions:{}, importLog:[], importSnapshots:[] };
+  return { positions: Object.assign({}, SEED_POSITIONS), sukzession:{}, ernten:{}, verifiziert:{}, customTrees:[], baumEdits:{}, sortenEdits:{}, gpsCalib:null, satPositions:{}, importLog:[], importSnapshots:[], phaenologie:{} };
 }
 let _saving = false;
 function saveState(){
@@ -905,6 +930,7 @@ function initState(){
   if(!state.satPositions) state.satPositions = {};
   if(!state.importLog) state.importLog = [];
   if(!state.importSnapshots) state.importSnapshots = [];
+  if(!state.phaenologie) state.phaenologie = {};
 }
 
 function toggleVerifiziert(sorteName, context){
@@ -945,6 +971,7 @@ function applyRemoteState(remote){
   if(!state.satPositions) state.satPositions = {};
   if(!state.importLog) state.importLog = [];
   if(!state.importSnapshots) state.importSnapshots = [];
+  if(!state.phaenologie) state.phaenologie = {};
   localStorage.setItem(LS_KEY, JSON.stringify(state));
   refreshFilterOptions();
   renderBaumTable();
@@ -1570,6 +1597,16 @@ function openBaumModal(id){
   const ausSorte = sorteInfo && sorteInfo.recherchiert;
   const sukz = state.sukzession[id] || [];
   const ernten = state.ernten[id] || [];
+  const originalPW = merged.pflueckzeitpunkt||merged.pflueck_reifezeit||'';
+  const mittel = t.sorte ? calcPfluckMittel(t.sorte) : null;
+  const prediction = t.sorte ? predictErnte(t.sorte) : null;
+  const diff = mittel && originalPW ? pfluckWertDiff(originalPW, mittel.wert) : 0;
+  const mittelText = mittel ? `<b style="color:var(--gruen);">→ ${mittel.wert}</b> <span style="font-size:.75rem;color:var(--text-mid,#6B7280);">(${mittel.anzahl} Ernten, ${mittel.jahre.join(', ')})</span>` : '';
+  let predictionHtml = '';
+  if(prediction){
+    const sign = prediction.abweichungTage>0 ? '+' : '';
+    predictionHtml = `<div style="margin-top:4px;font-size:.82rem;"><b>📊 Vorhersage ${new Date().getFullYear()}:</b> <b style="color:var(--waldrand);">${prediction.wert}</b> ${pfluckWertToText(prediction.wert)} <span style="color:var(--text-mid,#6B7280);font-size:.75rem;">(${sign}${prediction.abweichungTage} Tage vs. Standard)</span></div>`;
+  }
   const html = `
     <button class="close" onclick="closeModal()">&times;</button>
     <button class="close" style="right:44px;" title="Bearbeiten" onclick="editBaumWithLogin('${id}')">
@@ -1597,7 +1634,7 @@ function openBaumModal(id){
     ${archeNoahLink(merged)}
     <div class="grid2">
       ${fieldRow('Obstart', t.frucht)}
-      ${fieldRow('Pflückreife', merged.pflueckzeitpunkt||merged.pflueck_reifezeit)}
+      <div class="field"><b>Pflückreife</b><div>${originalPW||'–'}${mittelText}</div>${predictionHtml}</div>
       ${verwendungField(t.sorte, merged.verwendung)}
       ${fieldRow('Genussreife', merged.genuss_von&&merged.genuss_bis ? merged.genuss_von+' – '+merged.genuss_bis+' Monate ab Ernte' : merged.genussreife)}
       ${fieldRow('Pflanzjahr', t.ausgepflanzt)}
@@ -1638,12 +1675,24 @@ function openBaumModal(id){
       <input type="text" class="txt" id="ernte-bem" placeholder="Bemerkung">
       <button class="btn secondary" onclick="addErnte('${t.id}')">+ Eintrag</button>
     </div>` : ''}
+
+    <div class="section-title">Phänologie-Ereignisse</div>
+    <div class="field" id="phaeno-display"></div>
+    ${isEditMode()? `<div class="addlog" style="flex-wrap:wrap;">
+      <select id="phaeno-key" class="txt" style="width:200px;">
+        <option value="holunder_bluete">Schwarzer Holunder – Blühbeginn</option>
+        <option value="holunder_vollbluete">Schwarzer Holunder – Vollblüte</option>
+        <option value="knaeulgras_rispenschieben">Wiesen-Knäuelgras – Rispenschieben</option>
+      </select>
+      <input type="date" id="phaeno-datum">
+      <button class="btn secondary" onclick="addPhaenoEreignis()">+ Eintrag</button>
+    </div>` : ''}
   `;
   document.getElementById('modal-content').innerHTML = html;
   document.getElementById('modal-content').dataset.modalType = 'baum';
   document.getElementById('modal-content').dataset.modalId = id;
   document.getElementById('overlay').classList.add('open');
-  renderSukzList(id); renderErnteList(id);
+  renderSukzList(id); renderErnteList(id); renderPhaenoDisplay();
 }
 
 function renderSukzList(id){
@@ -1701,11 +1750,46 @@ function delErnte(id, idx){
   saveState(); renderErnteList(id);
 }
 
+const _PHAENO_LABELS={holunder_bluete:'Holunder-Blühbeginn',holunder_vollbluete:'Holunder-Vollblüte',knaeulgras_rispenschieben:'Knäuelgras-Rispenschieben'};
+function renderPhaenoDisplay(){
+  const el=document.getElementById('phaeno-display');
+  if(!el) return;
+  const jahr=new Date().getFullYear();
+  const phaeno=getPhaeno(jahr);
+  const entries=Object.entries(phaeno).filter(([,v])=>v);
+  if(!entries.length){ el.innerHTML='<span style="color:var(--text-mid,#6B7280);font-size:.85rem;">Noch keine Phänologie-Ereignisse für '+jahr+' eingetragen.</span>'; return; }
+  el.innerHTML=entries.map(([k,v])=>{
+    const tag=tagDesJahres(v);
+    const std=PHAENO_STANDARDS[k];
+    const diff=std? tag-std : null;
+    const diffText=diff!==null?` <span style="font-size:.78rem;color:${diff<0?'var(--gruen)':'var(--dachziegel)'};">(${diff>0?'+':''}${diff} Tage vs. Standard)</span>`:'';
+    return `<div style="margin-bottom:4px;"><b>${_PHAENO_LABELS[k]||k}:</b> ${v}${diffText}</div>`;
+  }).join('');
+}
+function addPhaenoEreignis(){
+  const key=document.getElementById('phaeno-key').value;
+  const datum=document.getElementById('phaeno-datum').value;
+  if(!key||!datum) return;
+  const jahr=new Date().getFullYear();
+  setPhaenoEreignis(jahr, key, datum);
+  renderPhaenoDisplay();
+  document.getElementById('phaeno-datum').value='';
+}
+
 /* ---------- Modal: Sorten-Detail ---------- */
 function openSortenModal(sorteName){
   const s = getSorte(sorteName);
   if(!s) return;
   const safeName = sorteName.replace(/'/g,"\\'");
+  const originalPW = s.pflueckzeitpunkt||s.pflueck_reifezeit||'';
+  const mittel = calcPfluckMittel(sorteName);
+  const prediction = predictErnte(sorteName);
+  const mittelText = mittel ? `<b style="color:var(--gruen);">→ ${mittel.wert}</b> <span style="font-size:.75rem;color:var(--text-mid,#6B7280);">(${mittel.anzahl} Ernten, ${mittel.jahre.join(', ')})</span>` : '';
+  let predictionHtml = '';
+  if(prediction){
+    const sign = prediction.abweichungTage>0 ? '+' : '';
+    predictionHtml = `<div style="margin-top:4px;font-size:.82rem;"><b>📊 Vorhersage ${new Date().getFullYear()}:</b> <b style="color:var(--waldrand);">${prediction.wert}</b> ${pfluckWertToText(prediction.wert)} <span style="color:var(--text-mid,#6B7280);font-size:.75rem;">(${sign}${prediction.abweichungTage} Tage vs. Standard)</span></div>`;
+  }
   const html = `
     <button class="close" onclick="closeModal()">&times;</button>
     <button class="close" style="right:44px;" title="Als PDF speichern" onclick="exportSortenKartePDF('${safeName}')">
@@ -1723,7 +1807,7 @@ function openSortenModal(sorteName){
     ${archeNoahLink(s)}
     <div class="grid2">
       ${fieldRow('Obstart', s.frucht)}
-      ${fieldRow('Pflückreife', s.pflueckzeitpunkt||s.pflueck_reifezeit)}
+      <div class="field"><b>Pflückreife</b><div>${originalPW||'–'}${mittelText}</div>${predictionHtml}</div>
       ${fieldRow('Verwendung', (s.verwendung||[]).join(', '))}
       ${fieldRow('Genussreife', s.genuss_von&&s.genuss_bis? s.genuss_von+' – '+s.genuss_bis+' Monate ab Ernte' : s.genussreife)}
       ${fieldRow('Pflanzjahr', s.ausgepflanzt)}
@@ -2970,6 +3054,155 @@ function getAllSorten(){
   return result;
 }
 
+// ─── PFLÜCKZEIT: HILFSFUNKTIONEN ────────────────────────────────────────────
+// pflueckzeitpunkt Format: "Monat,Position" (z.B. "10,5" = Mitte Oktober)
+// Position: 1=Anfang, 3=1st Drittel, 5=Mitte, 7=letztes Drittel, 9=Ende
+const _TAGE_IM_MONAT=[0,31,28,31,30,31,30,31,31,30,31,30,31];
+const _MONAT_NAMEN=['','Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];
+
+function _daysInMonth(m,jahr){
+  if(m===2 && jahr%4===0 && (jahr%100!==0 || jahr%400===0)) return 29;
+  return _TAGE_IM_MONAT[m]||30;
+}
+
+function ernteToPfluckwert(datum){
+  if(!datum) return '';
+  const teile=String(datum).split('-');
+  if(teile.length<3) return '';
+  const jahr=parseInt(teile[0]), monat=parseInt(teile[1]), tag=parseInt(teile[2]);
+  if(!monat || !tag) return '';
+  const dim=_daysInMonth(monat,jahr);
+  const pos=Math.round(1 + (tag-1)/(dim-1) * 8);
+  return monat+','+Math.min(9,Math.max(1,pos));
+}
+
+function pfluckWertToText(wert){
+  if(!wert) return '';
+  const teile=String(wert).split(',');
+  if(teile.length<2) return '';
+  const monat=parseInt(teile[0]), pos=parseInt(teile[1]);
+  if(!monat || !_MONAT_NAMEN[monat]) return wert;
+  let prefix='';
+  if(pos<=1) prefix='Anfang ';
+  else if(pos<=3) prefix='erstes Drittel ';
+  else if(pos<=6) prefix='Mitte ';
+  else if(pos<=8) prefix='letztes Drittel ';
+  else prefix='Ende ';
+  return prefix+_MONAT_NAMEN[monat];
+}
+
+function tagDesJahres(datum){
+  if(!datum) return 0;
+  const teile=String(datum).split('-');
+  if(teile.length<3) return 0;
+  const jahr=parseInt(teile[0]), monat=parseInt(teile[1]), tag=parseInt(teile[2]);
+  let tage=tag;
+  for(let m=1;m<monat;m++) tage+=_daysInMonth(m,jahr);
+  return tage;
+}
+
+function pfluckWertToTag(wert,jahr){
+  if(!wert) return 0;
+  if(!jahr) jahr=new Date().getFullYear();
+  const teile=String(wert).split(',');
+  if(teile.length<2) return 0;
+  const monat=parseInt(teile[0]), pos=parseInt(teile[1]);
+  if(!monat) return 0;
+  const dim=_daysInMonth(monat,jahr);
+  // pos 1=Tag1, pos 9=letzter Tag
+  const tag=Math.round(1 + (pos-1)/8 * (dim-1));
+  return tagDesJahres(jahr+'-'+String(monat).padStart(2,'0')+'-'+String(Math.min(dim,Math.max(1,tag))).padStart(2,'0'));
+}
+
+function tagToPfluckWert(tag,jahr){
+  if(!tag || !jahr) return '';
+  let monat=1, rest=tag;
+  for(let m=1;m<=12;m++){
+    const dim=_daysInMonth(m,jahr);
+    if(rest<=dim){ monat=m; break; }
+    rest-=dim;
+    if(m===12) monat=12;
+  }
+  const dim=_daysInMonth(monat,jahr);
+  const pos=Math.round(1 + (rest-1)/Math.max(1,dim-1) * 8);
+  return monat+','+Math.min(9,Math.max(1,pos));
+}
+
+function calcPfluckMittel(sorteName){
+  if(!sorteName || !state.ernten) return null;
+  const jahrJetzt=new Date().getFullYear();
+  const jahre=[];
+  for(let y=jahrJetzt;y>=jahrJetzt-2 && y>=2020;y--) jahre.push(y);
+  // Alle Bäume dieser Sorte finden
+  const baeume=getAllTrees().filter(t=>t.sorte===sorteName);
+  if(!baeume.length) return null;
+  // Ernten der letzten 3 Jahre sammeln
+  const werte=[];
+  jahre.forEach(j=>{
+    baeume.forEach(b=>{
+      const ernten=(state.ernten[b.id]||[]).filter(e=>e.datum && e.datum.startsWith(String(j)));
+      ernten.forEach(e=>{
+        const pw=ernteToPfluckwert(e.datum);
+        if(pw){
+          const teile=pw.split(',');
+          werte.push({wert:pw, numerisch:parseInt(teile[0])+parseInt(teile[1])/10, jahr:j, baumId:b.id, datum:e.datum});
+        }
+      });
+    });
+  });
+  if(!werte.length) return null;
+  const avg=werte.reduce((s,v)=>s+v.numerisch,0)/werte.length;
+  const avgMonat=Math.floor(avg);
+  const avgPos=Math.round((avg-avgMonat)*10);
+  const mittelwert=avgMonat+','+Math.min(9,Math.max(1,avgPos));
+  const uniqueJahre=[...new Set(werte.map(v=>v.jahr))].sort();
+  return {wert:mittelwert, numerisch:avg, anzahl:werte.length, jahre:uniqueJahre, eintraege:werte};
+}
+
+// ─── PHÄNOLOGIE: TRACKER & VORHERSAGE ───────────────────────────────────────
+// state.phaenologie = { "2026": { holunder_bluete: "2026-04-12", ... } }
+const PHAENO_STANDARDS = {
+  holunder_bluete: 110,       // 20. April = Tag 110
+  holunder_vollbluete: 125,   // 5. Mai = Tag 125
+  knaeulgras_rispenschieben: 115 // 25. April = Tag 115
+};
+
+function getPhaeno(jahr){
+  if(!state.phaenologie) state.phaenologie={};
+  if(!state.phaenologie[jahr]) state.phaenologie[jahr]={};
+  return state.phaenologie[jahr];
+}
+
+function setPhaenoEreignis(jahr, key, datum){
+  const phaeno=getPhaeno(jahr);
+  phaeno[key]=datum||null;
+  saveState();
+}
+
+function predictErnte(sorteName){
+  const jahr=new Date().getFullYear();
+  const phaeno=getPhaeno(jahr);
+  if(!phaeno.holunder_bluete) return null;
+  const aktTag=tagDesJahres(phaeno.holunder_bluete);
+  const stdTag=PHAENO_STANDARDS.holunder_bluete;
+  if(!aktTag || !stdTag) return null;
+  const abweichung=aktTag-stdTag;
+  const mittel=calcPfluckMittel(sorteName);
+  if(!mittel) return null;
+  const stdPfluckTag=pfluckWertToTag(mittel.wert,jahr);
+  if(!stdPfluckTag) return null;
+  const vorhergesagtTag=stdPfluckTag+abweichung;
+  const vorhergesagt=tagToPfluckWert(vorhergesagtTag,jahr);
+  if(!vorhergesagt) return null;
+  return {wert:vorhergesagt, abweichungTage:abweichung, quelle:'phaenologie', mittelwert:mittel.wert, phaenoDaten:phaeno};
+}
+
+function pfluckWertDiff(w1,w2){
+  if(!w1||!w2) return 0;
+  const t1=w1.split(','), t2=w2.split(',');
+  return (parseInt(t2[0])+parseInt(t2[1])/10)-(parseInt(t1[0])+parseInt(t1[1])/10);
+}
+
 function getSortenQuelleLabel(q){
   const labels={alle:'Alle Quellen',arche:'Arche Noah',hof:'Hofsorten',import:'Importe'};
   return labels[q]||q;
@@ -3073,11 +3306,13 @@ function renderSortenUebersicht(){
     const ernteText=s.erntem.length>0?(s.erntem.map(m=>MONATE.find(mo=>mo.m===m)?.kz||m).join(', ')):'–';
     const verwendungText=(s.verwendung&&s.verwendung.length)?s.verwendung.join(', '):'';
     const pflText=s.pflueckzeitpunkt||'';
+    const mittel=s.baum_ids&&s.baum_ids.length?calcPfluckMittel(s.name):null;
+    const mittelText=mittel?' <span style="color:var(--gruen);font-weight:600;">→ '+mittel.wert+'</span>':'';
     const idsText=(s.baum_ids&&s.baum_ids.length)?' · '+s.baum_ids.join(', '):'';
     
     return '<div class="sl-card" onclick="openSortenModal(\''+s.name.replace(/'/g,"\\'")+'\')">'+quelleBadge+
       '<div class="sl-card-name">'+s.name+'<span class="sl-card-ids">'+idsText+'</span></div>'+
-      '<div class="sl-card-reife">'+s.frucht+(pflText?' · Pflückzeit: '+pflText:'')+(verwendungText?' · '+verwendungText:'')+'</div>'+
+      '<div class="sl-card-reife">'+s.frucht+(pflText?' · Pflückzeit: '+pflText+mittelText:'')+(verwendungText?' · '+verwendungText:'')+'</div>'+
       '<div class="sb-tags">'+tags+'</div>'+
       '<div class="sl-card-desc">'+(s.beschreibung||'').slice(0,120)+((s.beschreibung||'').length>120?'…':'')+'</div>'+
     '</div>';
