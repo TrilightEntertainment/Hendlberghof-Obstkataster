@@ -2963,7 +2963,7 @@ function renderSbArten(){
 }
 function setArt(art){aktArt=art;renderSbArten();}
 function renderZiele(){const zdef=ZIELE_DEF[aktArt]||ZIELE_DEF.apfel;document.getElementById('ziele-box').innerHTML=zdef.map(z=>'<label class="sb-check"><input type="checkbox" id="z-'+z.id+'" checked> '+z.label+'</label>').join('');}
-renderZiele();
+setTimeout(renderZiele,100);
 function tagCls(t){const tl=t.toLowerCase();if(['pilzresistent','robust','winterhart','resistent','feuerbrand','scharka','bio','schorfresistent'].some(k=>tl.includes(k)))return 'tg';if(['most','cider','einkochen','schnaps','destillat','saft'].some(k=>tl.includes(k)))return 'ta';if(['bestäuber','wildtier','streuobst','historisch','österreichisch','rarität'].some(k=>tl.includes(k)))return 'tp';return 'tb';}
 function beraten(){
   const hoehe=parseInt(document.getElementById('hoehe').value),expo=document.getElementById('expo').value,frost=document.getElementById('frost').value,ns=document.getElementById('ns').value;
@@ -2971,7 +2971,8 @@ function beraten(){
   const gZ=zdef.filter(z=>{var e=document.getElementById('z-'+z.id);return e&&e.checked;}).map(z=>z.id);
   const anzahl={}; getAllTrees().forEach(t=>{if(t.sorte) anzahl[t.sorte]=(anzahl[t.sorte]||0)+1;});
   const pool=beraterPoolFiltered().filter(s=>(s.frucht||'').toLowerCase()===aktArt);
-  const scored=pool.filter(s=>{const st=s.standort;return hoehe<=st.hmax&&st.expo.includes(expo)&&st.ns.includes(ns)&&!(frost==='hoch'&&st.frost==='gering');})
+  const toArr=v=>Array.isArray(v)?[v]:[v];
+  const scored=pool.filter(s=>{const st=s.standort;return hoehe<=st.hmax&&toArr(st.expo).includes(expo)&&toArr(st.ns).includes(ns)&&!(frost==='hoch'&&st.frost==='gering');})
     .map(s=>({s, score:gZ.filter(z=>s.standort.ziele.includes(z)).length}))
     .sort((a,b)=>b.score-a.score).slice(0,4);
   const lbl=aktArt.charAt(0).toUpperCase()+aktArt.slice(1);
