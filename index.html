@@ -641,6 +641,10 @@
 <!-- BERATER -->
 <div class="sbr-panel active" id="panel-berater">
 <div class="sb-sec">
+  <div class="sb-title">Quelle</div>
+  <div class="sb-arten" id="sb-quellen"></div>
+</div>
+<div class="sb-sec">
   <div class="sb-title">Obstart</div>
   <div class="sb-arten" id="sb-arten"></div>
 </div>
@@ -669,7 +673,7 @@
   <div class="sb-checks" id="ziele-box"></div>
 </div>
 <button class="sbr-btn" onclick="beraten()">Sorten empfehlen</button>
-<div id="res"><div class="sb-leer">Standort und Ziele wählen — der Berater empfiehlt aus deinen Hofsorten mit Standort-Daten aus den Arche-Noah-Sortenblättern.</div></div>
+<div id="res"><div class="sb-leer">Standort und Ziele wählen — der Berater empfiehlt Sorten mit passenden Standort-Daten.</div></div>
 </div>
 
 <!-- SORTENÜBERSICHT -->
@@ -2898,7 +2902,7 @@ function sbrShowTab(t){
     document.querySelectorAll('.sbr-tab')[i].classList.toggle('active',id===t);
     document.getElementById('panel-'+id).classList.toggle('active',id===t);
   });
-  if(t==='berater'){renderSbArten();}
+  if(t==='berater'){renderBeraterQuellen();renderSbArten();}
   if(t==='sorten'){renderSortenUebersicht();}
 }
 
@@ -2926,15 +2930,35 @@ function hofTags(s){
   else if(s.recherchiert) t.push('recherchiert');
   return t;
 }
-function beraterPool(){return hofpoolDaten().liste.filter(s=>s.standort);}
+let beraterQuelle='alle';
+function beraterPool(){
+  const all=getAllSorten();
+  return all.map(s=>{
+    const full=getSorte(s.name);
+    const standort=full?.standort||null;
+    return Object.assign({}, s, standort?{standort}:null);
+  }).filter(s=>s.standort);
+}
+function beraterPoolFiltered(){
+  let pool=beraterPool();
+  if(beraterQuelle!=='alle') pool=pool.filter(s=>s.quelle===beraterQuelle);
+  return pool;
+}
+function renderBeraterQuellen(){
+  const el=document.getElementById('sb-quellen');
+  if(!el) return;
+  const opts=[{id:'alle',label:'Alle Quellen'},{id:'hof',label:'Hofsorten'},{id:'arche',label:'Arche Noah'}];
+  el.innerHTML=opts.map(o=>'<div class="sb-art'+(beraterQuelle===o.id?' active':'')+'" onclick="setBeraterQuelle(\''+o.id+'\')">'+o.label+'</div>').join('');
+}
+function setBeraterQuelle(q){beraterQuelle=q;renderBeraterQuellen();renderSbArten();}
 function renderSbArten(){
   const prio=['Apfel','Birne','Walnuss'];
-  const arten=[...new Set(beraterPool().map(s=>s.frucht).filter(Boolean))];
+  const arten=[...new Set(beraterPoolFiltered().map(s=>s.frucht).filter(Boolean))];
   arten.sort((a,b)=>{const ia=prio.indexOf(a),ib=prio.indexOf(b);return (ia<0?99:ia)-(ib<0?99:ib)||a.localeCompare(b,'de');});
   if(arten.length && !arten.some(a=>a.toLowerCase()===aktArt)) aktArt=arten[0].toLowerCase();
   document.getElementById('sb-arten').innerHTML = arten.length
     ? arten.map(a=>'<div class="sb-art'+(a.toLowerCase()===aktArt?' active':'')+'" onclick="setArt(\''+a.toLowerCase().replace(/'/g,"\\'")+'\')">'+a+'</div>').join('')
-    : '<div class="sl-empty">Noch keine Hofsorten mit Standort-Daten vorhanden.</div>';
+    : '<div class="sl-empty">Keine Sorten mit Standort-Daten vorhanden.</div>';
   renderZiele();
 }
 function setArt(art){aktArt=art;renderSbArten();}
@@ -2945,21 +2969,23 @@ function beraten(){
   const hoehe=parseInt(document.getElementById('hoehe').value),expo=document.getElementById('expo').value,frost=document.getElementById('frost').value,ns=document.getElementById('ns').value;
   const zdef=ZIELE_DEF[aktArt]||ZIELE_DEF.apfel;
   const gZ=zdef.filter(z=>{var e=document.getElementById('z-'+z.id);return e&&e.checked;}).map(z=>z.id);
-  const {anzahl}=hofpoolDaten();
-  const pool=beraterPool().filter(s=>(s.frucht||'').toLowerCase()===aktArt);
+  const anzahl={}; getAllTrees().forEach(t=>{if(t.sorte) anzahl[t.sorte]=(anzahl[t.sorte]||0)+1;});
+  const pool=beraterPoolFiltered().filter(s=>(s.frucht||'').toLowerCase()===aktArt);
   const scored=pool.filter(s=>{const st=s.standort;return hoehe<=st.hmax&&st.expo.includes(expo)&&st.ns.includes(ns)&&!(frost==='hoch'&&st.frost==='gering');})
     .map(s=>({s, score:gZ.filter(z=>s.standort.ziele.includes(z)).length}))
     .sort((a,b)=>b.score-a.score).slice(0,4);
   const lbl=aktArt.charAt(0).toUpperCase()+aktArt.slice(1);
   const expoEl=document.getElementById('expo');
-  if(!scored.length){document.getElementById('res').innerHTML='<div class="sb-leer">Keine passende Hofsorte für diesen Standort gefunden. Hinweis: Standort-Daten aus Arche-Noah-Sortenblättern liegen derzeit für '+pool.length+' '+lbl+'-Hofsorten vor.</div>';return;}
-  let html='<p class="res-header">'+lbl+' &middot; '+hoehe+'m &middot; '+expoEl.options[expoEl.selectedIndex].text+' &middot; '+scored.length+' Empfehlung'+(scored.length>1?'en':'')+' aus '+pool.length+' Hofsorten mit Standort-Daten</p>';
+  if(!scored.length){document.getElementById('res').innerHTML='<div class="sb-leer">Keine passende Sorte für diesen Standort gefunden. Aktuell liegen Standort-Daten für '+pool.length+' '+lbl+'-Sorten vor.</div>';return;}
+  let html='<p class="res-header">'+lbl+' &middot; '+hoehe+'m &middot; '+expoEl.options[expoEl.selectedIndex].text+' &middot; '+scored.length+' Empfehlung'+(scored.length>1?'en':'')+' aus '+pool.length+' Sorten mit Standort-Daten</p>';
   scored.forEach(e=>{
     const s=e.s;
     const tags=hofTags(s).map(t=>'<span class="sb-tag '+tagCls(t)+'">'+t+'</span>').join('');
     const reife=s.pflueckzeitpunkt||s.pflueck_reifezeit||'–';
     const n=anzahl[s.sorte]||0;
-    html+='<div class="sb-sorte" style="cursor:pointer" onclick="openSortenModal(\''+s.sorte.replace(/'/g,"\\'")+'\')"><div class="sb-sorte-name">'+s.sorte+'<span class="sb-reife">Pflückzeit: '+reife+' &middot; '+n+' Baum/Bäume am Hof &middot; bis '+s.standort.hmax+'m</span></div><div class="sb-tags">'+tags+'</div><div class="sb-gilde"><strong>Arche Noah</strong>'+s.standort.basis+'</div></div>';
+    const nTxt=n?' · '+n+' Baum/Bäume am Hof':'';
+    const quelleLabel=s.quelle==='arche'?'Arche Noah':'Hofsorte';
+    html+='<div class="sb-sorte" style="cursor:pointer" onclick="openSortenModal(\''+s.sorte.replace(/'/g,"\\'")+'\')"><div class="sb-sorte-name">'+s.sorte+'<span class="sb-reife">Pflückzeit: '+reife+nTxt+' &middot; bis '+s.standort.hmax+'m</span></div><div class="sb-tags">'+tags+'</div><div class="sb-gilde"><strong>'+quelleLabel+'</strong> '+s.standort.basis+'</div></div>';
   });
   document.getElementById('res').innerHTML=html;
 }
@@ -3330,7 +3356,7 @@ function setSortenSeite(n){
   renderSortenUebersicht();
 }
 
-if(window.__dataReadyPromise){window.__dataReadyPromise.then(()=>{renderSbArten();renderSortenQuellenTabs();renderSortenVerwendungsButtons();renderSortenUebersicht();});}
+if(window.__dataReadyPromise){window.__dataReadyPromise.then(()=>{renderBeraterQuellen();renderSbArten();renderSortenQuellenTabs();renderSortenVerwendungsButtons();renderSortenUebersicht();});}
 
 // ─── ARCHE NOAH ──────────────────────────────────────────────────────────────
 const AN_BUCHSTABEN=['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','W','Z'];
