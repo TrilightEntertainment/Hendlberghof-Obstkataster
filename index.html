@@ -514,6 +514,7 @@
       <h1>Hendlberghof</h1>
       <div class="header-sub">OBSTDATENBANK</div>
     </div>
+    <button class="btn-login-toggle" onclick="handleLoginToggle()" style="position:absolute;top:22px;right:28px;background:transparent;border:1px solid rgba(255,255,255,.35);color:#B7C4B4;padding:6px 14px;border-radius:7px;font-size:12px;font-weight:500;cursor:pointer;font-family:inherit;">Anmelden</button>
   </div>
 </header>
 
@@ -554,8 +555,7 @@
       <button type="button" class="btn field" id="btn-baum-search-reset" title="Suche zurücksetzen">✕ Suche zurücksetzen</button>
       <button class="btn field" onclick="openExportDialog('baum','excel')" title="Gefilterte Auswahl als Excel exportieren">⬇ Excel</button>
       <button class="btn field" onclick="openExportDialog('baum','pdf')" title="Gefilterte Auswahl als PDF exportieren">⬇ PDF</button>
-      <button class="btn field btn-login-toggle" onclick="handleLoginToggle()">Bearbeiten</button>
-      <button class="btn accent" id="btn-add-baum" style="display:none;" onclick="openBaumAddForm()"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="vertical-align:-2px;margin-right:4px;"><path d="M12 22V12"/><path d="M5 12l7-8 7 8"/><path d="M7 16l5-5 5 5"/></svg>Neuer Baum</button>
+      <button class="btn accent" id="btn-add-baum" style="display:none;" onclick="openBaumAddForm()">Neuer Baum</button>
     </div>
     <div class="table-wrap">
     <table>
@@ -575,17 +575,17 @@
   <!-- LAGEPLAN -->
   <section id="tab-lageplan" style="display:none;">
     <div class="hint" id="lageplan-hint">
-      <b>So funktioniert's:</b> „Position setzen" → Baum wählen → auf die Karte klicken. Gesetzte Pins lassen sich ziehen oder per Doppelklick entfernen.
+      <b>So funktioniert's:</b> Foto wählen → „Position setzen" → Baum wählen → auf die Karte klicken. Gesetzte Pins lassen sich ziehen oder per Doppelklick entfernen.
     </div>
     <div class="map-toolbar">
-      <button class="btn field layer-btn active" id="btn-layer-foto" onclick="setMapLayer('foto')">Foto</button>
+      <select id="foto-select" onchange="switchToImage(this.value)" style="min-width:160px;">
+        <option value="lageplan">Foto: Gesamtansicht</option>
+      </select>
       <button class="btn field layer-btn" id="btn-layer-sat" onclick="setMapLayer('sat')">Satellit</button>
-      <button class="btn field" onclick="exportLageplanPDF()" title="Lageplan (Foto mit allen Stecknadeln) als PDF speichern">⬇ PDF</button>
-      <button class="btn field btn-login-toggle" onclick="handleLoginToggle()">Bearbeiten</button>
-      <button class="btn" id="btn-place-mode"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false" style="vertical-align:-2px;margin-right:4px;"><path d="M12 21s-7-6.5-7-11a7 7 0 0 1 14 0c0 4.5-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg><span id="place-mode-label">Position setzen</span></button>
+      <button class="btn field" onclick="exportLageplanPDF()">PDF</button>
+      <button class="btn" id="btn-place-mode"><span id="place-mode-label">Position setzen</span></button>
       <select id="unplaced-select"><option value="">– Baum wählen –</option></select>
-      <button class="btn secondary" id="btn-gps-place" title="Aktuelle GPS-Position für den gewählten Baum übernehmen">🛰️ Per GPS setzen</button>
-      <button class="btn secondary" id="btn-gps-calib" title="Karte einmalig mit zwei GPS-Referenzpunkten kalibrieren">🛰️ GPS kalibrieren</button>
+      <button class="btn secondary" id="btn-gps-place" title="Aktuelle GPS-Position für den gewählten Baum übernehmen">Per GPS setzen</button>
       <span id="place-status" style="font-size:.85rem;color:var(--muted);"></span>
     </div>
     <div class="map-wrap" id="map-wrap">
@@ -629,6 +629,11 @@
       <h3>Daten importieren</h3>
       <p class="snippet">Vorsicht: überschreibt den aktuellen, mit allen Geräten synchronisierten Datenstand mit dem Inhalt der Datei. Nur zur Wiederherstellung aus einem Backup verwenden, nicht für den normalen Gebrauch.</p>
       <input type="file" id="file-import" accept="application/json">
+    </div>
+    <div class="card" style="max-width:640px;margin-top:16px;" id="card-sortenlisten-sichtbar">
+      <h3>Sortenlisten-Sichtbarkeit</h3>
+      <p class="snippet">Wähle welche Sortenlisten im Sortenberater und in der Sortenübersicht angezeigt werden. Sortenblätter (PDF) bleiben immer verfügbar.</p>
+      <div id="sortenlisten-sichtbar-ctrl"></div>
     </div>
   </section>
 
@@ -913,7 +918,7 @@ function loadState(){
       return parsed;
     }
   }catch(e){}
-  return { positions: Object.assign({}, SEED_POSITIONS), sukzession:{}, ernten:{}, verifiziert:{}, customTrees:[], baumEdits:{}, sortenEdits:{}, gpsCalib:null, satPositions:{}, importLog:[], importSnapshots:[], phaenologie:{} };
+  return { positions: Object.assign({}, SEED_POSITIONS), sukzession:{}, ernten:{}, verifiziert:{}, customTrees:[], baumEdits:{}, sortenEdits:{}, importLog:[], importSnapshots:[], phaenologie:{}, sortenSichtbar:{} };
 }
 let _saving = false;
 function saveState(){
@@ -930,11 +935,17 @@ function initState(){
   if(!state.customTrees) state.customTrees = [];
   if(!state.baumEdits) state.baumEdits = {};
   if(!state.sortenEdits) state.sortenEdits = {};
-  if(state.gpsCalib===undefined) state.gpsCalib = null;
-  if(!state.satPositions) state.satPositions = {};
   if(!state.importLog) state.importLog = [];
   if(!state.importSnapshots) state.importSnapshots = [];
   if(!state.phaenologie) state.phaenologie = {};
+  if(!state.sortenSichtbar) state.sortenSichtbar = {};
+  if(state.satPositions && Object.keys(state.satPositions).length){
+    Object.entries(state.satPositions).forEach(([id,pos])=>{
+      if(!state.positions[id]) state.positions[id] = pos;
+    });
+    state.satPositions = undefined;
+    saveState();
+  }
 }
 
 function toggleVerifiziert(sorteName, context){
@@ -972,11 +983,14 @@ function applyRemoteState(remote){
   if(!state.customTrees) state.customTrees = [];
   if(!state.baumEdits) state.baumEdits = {};
   if(!state.sortenEdits) state.sortenEdits = {};
-  if(state.gpsCalib===undefined) state.gpsCalib = null;
-  if(!state.satPositions) state.satPositions = {};
   if(!state.importLog) state.importLog = [];
   if(!state.importSnapshots) state.importSnapshots = [];
   if(!state.phaenologie) state.phaenologie = {};
+  if(!state.sortenSichtbar) state.sortenSichtbar = {};
+  if(state.satPositions && Object.keys(state.satPositions).length){
+    Object.entries(state.satPositions).forEach(([id,pos])=>{ if(!state.positions[id]) state.positions[id] = pos; });
+    state.satPositions = undefined;
+  }
   localStorage.setItem(LS_KEY, JSON.stringify(state));
   refreshFilterOptions();
   renderBaumTable();
@@ -1040,6 +1054,45 @@ function fillSelect(sel, values){
   });
   if(values.includes(current)) sel.value = current;
 }
+
+function renderSortenlistenSichtbar(){
+  const el=document.getElementById('sortenlisten-sichtbar-ctrl');
+  if(!el) return;
+  if(!isAdmin()){
+    document.getElementById('card-sortenlisten-sichtbar').style.display='none';
+    return;
+  }
+  document.getElementById('card-sortenlisten-sichtbar').style.display='';
+  const quellen=[
+    {key:'arche',label:'Arche Noah'},
+    {key:'hof',label:'Hofsorten'}
+  ];
+  // Zähle Sorten pro Quelle
+  const counts={arche:AN_SORTEN.length,hof:0};
+  if(window.__dataReady && state){
+    const seen=new Set();
+    getAllTrees().forEach(t=>{if(t.sorte&&!seen.has(t.sorte)){seen.add(t.sorte);counts.hof=(counts.hof||0)+1;}});
+  }
+  el.innerHTML=quellen.map(q=>{
+    const visible=state.sortenSichtbar[q.key]!==false;
+    const count=counts[q.key]||0;
+    return '<label style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);cursor:pointer;font-size:.9rem;">'+
+      '<input type="checkbox" '+(visible?'checked':'')+' onchange="toggleSortenSichtbar(\''+q.key+'\',this.checked)" style="width:18px;height:18px;">'+
+      '<span><b>'+q.label+'</b> — '+count+' Sorten</span>'+
+      '<span style="font-size:.78rem;color:var(--muted);margin-left:auto;">Sortenblätter (PDF) bleiben immer verfügbar</span>'+
+    '</label>';
+  }).join('');
+}
+
+function toggleSortenSichtbar(key, visible){
+  if(!state.sortenSichtbar) state.sortenSichtbar={};
+  state.sortenSichtbar[key]=visible;
+  saveState();
+  renderSortenlistenSichtbar();
+  renderSortenUebersicht();
+  renderSbArten();
+}
+
 function refreshFilterOptions(){
   const alle = getAllTrees();
   const fruchtArten = [...new Set(alle.map(t=>t.frucht))].sort();
@@ -1577,7 +1630,7 @@ function toggleVerwendung(sorteName, cat){
 }
 
 function verwendungField(sorteName, arr){
-  if(!isEditMode()){
+  if(!isAdmin()){
     return fieldRow('Verwendung', (arr||[]).join(', '));
   }
   const safeName = sorteName.replace(/'/g,"\\'");
@@ -1613,7 +1666,7 @@ function openBaumModal(id){
   }
   const html = `
     <button class="close" onclick="closeModal()">&times;</button>
-    <button class="close" style="right:44px;" title="Bearbeiten" onclick="editBaumWithLogin('${id}')">
+    ${isAdmin()? `<button class="close" style="right:44px;" title="Bearbeiten" onclick="editBaumWithLogin('${id}')">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" focusable="false" style="vertical-align:middle;">
         <line x1="4" y1="7" x2="20" y2="7"/>
         <circle cx="14" cy="7" r="2.3"/>
@@ -1622,7 +1675,7 @@ function openBaumModal(id){
         <line x1="4" y1="21" x2="20" y2="21"/>
         <circle cx="16" cy="21" r="2.3"/>
       </svg>
-    </button>
+    </button>` : ''}
     <button class="close" style="right:76px;" title="Als PDF speichern" onclick="exportBaumKartePDF('${id}')">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false" style="vertical-align:middle;">
         <path d="M6 9V3h12v6"/>
@@ -1653,6 +1706,7 @@ function openBaumModal(id){
       ${fieldRow('Herkunft', merged.herkunft_jahr||merged.herkunft)}
     </div>
     ${merged.geschmack? `<div class="section-title">Geschmack / Nutzung</div><div class="field">${merged.geschmack}</div>`:''}
+    ${merged.frucht_beschreibung? `<div class="section-title">Frucht</div><div class="field">${merged.frucht_beschreibung}</div>`:''}
     ${merged.eigenschaften? `<div class="section-title">Eigenschaften / Standortansprüche</div><div class="field">${merged.eigenschaften} ${merged.standort_anspruch||''}</div>`:''}
     ${ausSorte? `<div class="quelle-hinweis"><b>Quelle(n):</b> ${sorteInfo.quelle}<br>Sortenangaben aus Web-Recherche, nicht aus deiner Numbers-Tabelle – bitte am Baum verifizieren.</div>`:''}
 
@@ -1660,13 +1714,13 @@ function openBaumModal(id){
     ${state.positions[id]
       ? `<div class="field">
           <button class="btn-verify" onclick="showOnLageplan('${id}')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false" style="vertical-align:-2px;margin-right:4px;"><path d="M12 21s-7-6.5-7-11a7 7 0 0 1 14 0c0 4.5-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>Im Lageplan anzeigen</button>
-          ${isEditMode()? `<button class="btn-verify" style="border-color:var(--dachziegel);color:var(--dachziegel);" onclick="removePosition('${id}')">🗑 Stecknadel entfernen</button>`:''}
+          ${isAdmin()? `<button class="btn-verify" style="border-color:var(--dachziegel);color:var(--dachziegel);" onclick="removePosition('${id}')">Stecknadel entfernen</button>`:''}
         </div>`
       : `<div class="field empty">Noch keine Position im Lageplan gesetzt.</div>`}
     <div class="section-title">Sukzessions-Dokumentation</div>
     <ul class="log-list" id="sukz-list"></ul>
     ${isEditMode()? `<div class="addlog">
-      <input type="number" class="txt" id="sukz-jahr" placeholder="Jahr" style="width:80px;">
+      <input type="date" id="sukz-datum">
       <input type="text" class="txt" id="sukz-text" placeholder="Beobachtung / Ereignis">
       <button class="btn secondary" onclick="addSukz('${t.id}')">+ Eintrag</button>
     </div>` : ''}
@@ -1675,7 +1729,7 @@ function openBaumModal(id){
     <ul class="log-list" id="ernte-list"></ul>
     ${isEditMode()? `<div class="addlog">
       <input type="date" id="ernte-datum">
-      <input type="text" class="txt" id="ernte-menge" placeholder="Menge (z.B. 12 kg)">
+      <input type="number" step="0.001" min="0" class="txt" id="ernte-menge" placeholder="Menge in kg" style="width:120px;">
       <input type="text" class="txt" id="ernte-bem" placeholder="Bemerkung">
       <button class="btn secondary" onclick="addErnte('${t.id}')">+ Eintrag</button>
     </div>` : ''}
@@ -1703,12 +1757,16 @@ function openBaumModal(id){
 
 function renderSukzList(id){
   const list = document.getElementById('sukz-list');
-  const items = (state.sukzession[id]||[]).slice().sort((a,b)=>b.jahr-a.jahr);
+  const items = (state.sukzession[id]||[]).slice().sort((a,b)=>{
+    const da=String(a.jahr||''), db=String(b.jahr||'');
+    return db.localeCompare(da);
+  });
   list.innerHTML = items.length? '' : '<li class="empty" style="background:none;">Noch keine Einträge.</li>';
   const editing = isEditMode();
   items.forEach((it,idx)=>{
     const li = document.createElement('li');
-    li.innerHTML = `<span><b>${it.jahr}</b> — ${it.text}</span>${editing? `<span class="del" onclick="delSukz('${id}', ${it._idx})">✕</span>`:''}`;
+    const datumAnzeige = it.jahr? new Date(it.jahr).toLocaleDateString('de-AT',{day:'2-digit',month:'2-digit',year:'numeric'}) : '–';
+    li.innerHTML = `<span><b>${datumAnzeige}</b> — ${it.text}</span>${editing? `<span class="del" onclick="delSukz('${id}', ${it._idx})">✕</span>`:''}`;
     list.appendChild(li);
   });
 }
@@ -1719,20 +1777,29 @@ function renderErnteList(id){
   const editing = isEditMode();
   items.forEach((it)=>{
     const li = document.createElement('li');
-    li.innerHTML = `<span><b>${it.datum||'–'}</b> — ${it.menge||''} ${it.bemerkung? '('+it.bemerkung+')':''}</span>${editing? `<span class="del" onclick="delErnte('${id}', ${it._idx})">✕</span>`:''}`;
+    let mengeText = '';
+    if(it.menge !== null && it.menge !== undefined && it.menge !== ''){
+      const m = typeof it.menge === 'string' ? parseFloat(it.menge) : it.menge;
+      if(!isNaN(m)){
+        mengeText = m >= 1 ? m.toFixed(3)+' kg' : Math.round(m*1000)+' g';
+      } else {
+        mengeText = String(it.menge);
+      }
+    }
+    li.innerHTML = `<span><b>${it.datum||'–'}</b> — ${mengeText} ${it.bemerkung? '('+it.bemerkung+')':''}</span>${editing? `<span class="del" onclick="delErnte('${id}', ${it._idx})">✕</span>`:''}`;
     list.appendChild(li);
   });
 }
 
 function addSukz(id){
-  const jahr = document.getElementById('sukz-jahr').value;
+  const datum = document.getElementById('sukz-datum').value;
   const text = document.getElementById('sukz-text').value.trim();
-  if(!jahr || !text) return;
+  if(!datum || !text) return;
   if(!state.sukzession[id]) state.sukzession[id]=[];
   state.sukzession[id].forEach((it,i)=>it._idx=i);
-  state.sukzession[id].push({jahr:parseInt(jahr), text, _idx: state.sukzession[id].length});
+  state.sukzession[id].push({jahr:datum, text, _idx: state.sukzession[id].length});
   saveState(); renderSukzList(id);
-  document.getElementById('sukz-jahr').value=''; document.getElementById('sukz-text').value='';
+  document.getElementById('sukz-datum').value=''; document.getElementById('sukz-text').value='';
 }
 function delSukz(id, idx){
   state.sukzession[id] = (state.sukzession[id]||[]).filter((it,i)=>i!==idx);
@@ -1741,13 +1808,14 @@ function delSukz(id, idx){
 }
 function addErnte(id){
   const datum = document.getElementById('ernte-datum').value;
-  const menge = document.getElementById('ernte-menge').value.trim();
+  const mengeRaw = document.getElementById('ernte-menge').value.trim();
   const bemerkung = document.getElementById('ernte-bem').value.trim();
-  if(!datum && !menge) return;
+  if(!datum && !mengeRaw) return;
+  const menge = mengeRaw ? parseFloat(mengeRaw) : null;
+  if(mengeRaw && isNaN(menge)) return;
   if(!state.ernten[id]) state.ernten[id]=[];
   state.ernten[id].forEach((it,i)=>it._idx=i);
   state.ernten[id].push({datum, menge, bemerkung, _idx: state.ernten[id].length});
-  _mittelCache=null;
   saveState(); renderErnteList(id);
   document.getElementById('ernte-datum').value=''; document.getElementById('ernte-menge').value=''; document.getElementById('ernte-bem').value='';
 }
@@ -1853,9 +1921,69 @@ document.getElementById('overlay').addEventListener('click', (e)=>{ if(e.target.
 /* ---------- Lageplan ---------- */
 let placeMode = false;
 let selectedForPlacement = '';
-let calibMode = false;
-let calibStep = 0;
-let calibTemp = {};
+let currentImage = 'lageplan';
+
+const SECTION_PHOTOS = [
+  // { id: 'swale', label: 'Swale', src: 'assets/images/swale.jpg', row: 'Swale' },
+  // { id: 'weg1', label: 'Weg 1', src: 'assets/images/weg1.jpg', row: 'Weg1 Oben' },
+];
+
+/* ---------- Naive GPS → % Conversion ---------- */
+const NAIVE_GPS_REF = { lat: 48.1541, lng: 16.2801, xPct: 50, yPct: 50, scaleM: 120 };
+
+function gpsToPercent(lat, lng) {
+  const R = 6371000;
+  const dLat = (lat - NAIVE_GPS_REF.lat) * Math.PI / 180;
+  const dLng = (lng - NAIVE_GPS_REF.lng) * Math.PI / 180;
+  const a = Math.sin(dLat/2)**2 + Math.cos(NAIVE_GPS_REF.lat*Math.PI/180) * Math.cos(lat*Math.PI/180) * Math.sin(dLng/2)**2;
+  const dist = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  const bearing = Math.atan2(
+    Math.sin(dLng) * Math.cos(lat*Math.PI/180),
+    Math.cos(NAIVE_GPS_REF.lat*Math.PI/180) * Math.sin(lat*Math.PI/180) -
+    Math.sin(NAIVE_GPS_REF.lat*Math.PI/180) * Math.cos(lat*Math.PI/180) * Math.cos(dLng)
+  );
+  const dx = dist * Math.sin(bearing);
+  const dy = -dist * Math.cos(bearing);
+  return { x: NAIVE_GPS_REF.xPct + (dx / NAIVE_GPS_REF.scaleM) * 100, y: NAIVE_GPS_REF.yPct + (dy / NAIVE_GPS_REF.scaleM) * 100 };
+}
+
+function percentToGps(xPct, yPct) {
+  const dx = (xPct - NAIVE_GPS_REF.xPct) / 100 * NAIVE_GPS_REF.scaleM;
+  const dy = (yPct - NAIVE_GPS_REF.yPct) / 100 * NAIVE_GPS_REF.scaleM;
+  const lat = NAIVE_GPS_REF.lat - dy / 110540;
+  const lng = NAIVE_GPS_REF.lng + dx / (111320 * Math.cos(NAIVE_GPS_REF.lat * Math.PI / 180));
+  return { lat, lng };
+}
+
+/* ---------- Foto-Select (Dropdown) ---------- */
+function initFotoSelect() {
+  const sel = document.getElementById('foto-select');
+  if (!sel) return;
+  sel.innerHTML = '<option value="lageplan">Foto: Gesamtansicht</option>';
+  SECTION_PHOTOS.forEach(s => {
+    const o = document.createElement('option');
+    o.value = s.id;
+    o.textContent = 'Foto: ' + s.label;
+    sel.appendChild(o);
+  });
+}
+
+function switchToImage(imgId) {
+  if (imgId === 'sat') { setMapLayer('sat'); return; }
+  currentImage = imgId;
+  if (mapLayer === 'sat') {
+    document.getElementById('map-wrap').style.display = '';
+    document.getElementById('sat-map').style.display = 'none';
+    document.getElementById('btn-layer-sat').classList.remove('active');
+  }
+  mapLayer = 'foto';
+  const img = document.getElementById('map-img');
+  const src = imgId === 'lageplan' ? 'assets/images/lageplan.jpg' : (SECTION_PHOTOS.find(s => s.id === imgId)?.src || 'assets/images/lageplan.jpg');
+  img.style.transition = 'opacity 0.15s';
+  img.style.opacity = '0.3';
+  setTimeout(() => { img.src = src; img.onload = () => { img.style.opacity = '1'; renderPins(); }; }, 150);
+  applyEditModeUI();
+}
 
 function renderUnplacedSelect(){
   const sel = document.getElementById('unplaced-select');
@@ -1871,10 +1999,9 @@ document.getElementById('unplaced-select').addEventListener('change', e=>{
   selectedForPlacement = e.target.value;
 });
 document.getElementById('btn-place-mode').addEventListener('click', ()=>{
-  calibMode = false; calibStep = 0;
   placeMode = !placeMode;
-  document.getElementById('place-mode-label').textContent = placeMode? 'Modus aktiv – Doppelklick auf Karte' : 'Position setzen';
-  document.getElementById('place-status').textContent = placeMode? 'Baum auswählen, dann auf die Karte doppelklicken.' : '';
+  document.getElementById('place-mode-label').textContent = placeMode? 'Modus aktiv – Klick auf Karte' : 'Position setzen';
+  document.getElementById('place-status').textContent = placeMode? 'Baum auswählen, dann auf die Karte klicken.' : '';
   if(placeMode) renderUnplacedSelect();
 });
 
@@ -1883,102 +2010,7 @@ function mapAspect(){
   return (img && img.naturalWidth>0 && img.naturalHeight>0)? img.naturalWidth/img.naturalHeight : 1;
 }
 
-function getCalibPoints(){
-  const c = state.gpsCalib;
-  if(!c) return null;
-  if(c.points && c.points.length>=2) return c.points;
-  if(c.p1 && c.p2) return [c.p1, c.p2];
-  return null;
-}
-
-function gauss3(Min, bin){
-  const M = Min.map((r,i)=>r.concat([bin[i]]));
-  for(let col=0;col<3;col++){
-    let piv=col;
-    for(let r=col+1;r<3;r++) if(Math.abs(M[r][col])>Math.abs(M[piv][col])) piv=r;
-    if(Math.abs(M[piv][col])<1e-12) return null;
-    const tmp=M[col]; M[col]=M[piv]; M[piv]=tmp;
-    for(let r=0;r<3;r++){
-      if(r===col) continue;
-      const fkt=M[r][col]/M[col][col];
-      for(let cc=col;cc<4;cc++) M[r][cc]-=fkt*M[col][cc];
-    }
-  }
-  return [M[0][3]/M[0][0], M[1][3]/M[1][1], M[2][3]/M[2][2]];
-}
-
-function buildCalibTransform(){
-  const pts = getCalibPoints();
-  if(!pts || pts.length<2) return null;
-  const ref = pts[0];
-  const cosLat = Math.cos(ref.lat*Math.PI/180);
-  const toLocal = (lt, lg) => ({
-    mx: (lg - ref.lng) * 111320 * cosLat,
-    my: (ref.lat - lt) * 110540
-  });
-  if(pts.length===2){
-    const A = mapAspect();
-    const p2 = pts[1];
-    const g2 = toLocal(p2.lat, p2.lng);
-    const img2re = (p2.x - ref.x)*A, img2im = p2.y - ref.y;
-    const denom = g2.mx*g2.mx + g2.my*g2.my;
-    if(denom === 0) return null;
-    const kre = (img2re*g2.mx + img2im*g2.my) / denom;
-    const kim = (img2im*g2.mx - img2re*g2.my) / denom;
-    return { toLocal, ref, cosLat, a:kre/A, b:-kim/A, c:ref.x, d:kim, e:kre, f:ref.y };
-  }
-  const rows = pts.map(p=>{ const l=toLocal(p.lat,p.lng); return {mx:l.mx, my:l.my, x:p.x, y:p.y}; });
-  let Sxx=0,Sxy=0,Sx1=0,Syy=0,Sy1=0;
-  let Txx=0,Txy=0,Tx1=0, Tyx=0,Tyy=0,Ty1=0;
-  rows.forEach(r=>{
-    Sxx+=r.mx*r.mx; Sxy+=r.mx*r.my; Sx1+=r.mx;
-    Syy+=r.my*r.my; Sy1+=r.my;
-    Txx+=r.mx*r.x; Txy+=r.my*r.x; Tx1+=r.x;
-    Tyx+=r.mx*r.y; Tyy+=r.my*r.y; Ty1+=r.y;
-  });
-  const M=[[Sxx,Sxy,Sx1],[Sxy,Syy,Sy1],[Sx1,Sy1,rows.length]];
-  const solX = gauss3(M,[Txx,Txy,Tx1]);
-  const solY = gauss3(M,[Tyx,Tyy,Ty1]);
-  if(!solX || !solY) return null;
-  return { toLocal, ref, cosLat, a:solX[0], b:solX[1], c:solX[2], d:solY[0], e:solY[1], f:solY[2] };
-}
-
-function gpsToImageXY(lat, lng){
-  const T = buildCalibTransform();
-  if(!T) return null;
-  const l = T.toLocal(lat, lng);
-  return { x: T.c + T.a*l.mx + T.b*l.my, y: T.f + T.d*l.mx + T.e*l.my };
-}
-
-function imageXYtoGps(x, y){
-  const T = buildCalibTransform();
-  if(!T) return null;
-  const det = T.a*T.e - T.b*T.d;
-  if(Math.abs(det)<1e-12) return null;
-  const u = x - T.c, v = y - T.f;
-  const mx = (u*T.e - T.b*v)/det;
-  const my = (T.a*v - T.d*u)/det;
-  return { lat: T.ref.lat - my/110540, lng: T.ref.lng + mx/(111320*T.cosLat) };
-}
-
-function calibResidualMeters(){
-  const pts = getCalibPoints();
-  const T = buildCalibTransform();
-  if(!pts || pts.length<3 || !T) return null;
-  const det = T.a*T.e - T.b*T.d;
-  if(Math.abs(det)<1e-12) return null;
-  let sum = 0;
-  pts.forEach(p=>{
-    const pred = gpsToImageXY(p.lat, p.lng);
-    const dx = pred.x - p.x, dy = pred.y - p.y;
-    const mx = (dx*T.e - T.b*dy)/det;
-    const my = (T.a*dy - T.d*dx)/det;
-    sum += mx*mx + my*my;
-  });
-  return Math.sqrt(sum/pts.length);
-}
-
-/* ---------- Satelliten-Ebene (Esri World Imagery, nur Ansicht) ---------- */
+/* ---------- Satelliten-Ebene ---------- */
 let satMap = null;
 let satMarkers = [];
 let satFitted = false;
@@ -1991,17 +2023,13 @@ function setMapLayer(layer){
   mapLayer = layer;
   document.getElementById('map-wrap').style.display = layer==='foto'? '' : 'none';
   document.getElementById('sat-map').style.display = layer==='sat'? 'block' : 'none';
-  document.getElementById('btn-layer-foto').classList.toggle('active', layer==='foto');
   document.getElementById('btn-layer-sat').classList.toggle('active', layer==='sat');
-  
+  const fotoSel = document.getElementById('foto-select');
+  if(fotoSel) fotoSel.style.display = layer==='sat'? 'none' : '';
   if(layer==='sat'){
-    document.getElementById('btn-place-mode').style.display='';
-    document.getElementById('unplaced-select').style.display='';
-    document.getElementById('btn-gps-calib').style.display='';
     initSatMap();
-  } else {
-    applyEditModeUI();
   }
+  applyEditModeUI();
 }
 
 function initSatMap(){
@@ -2011,22 +2039,12 @@ function initSatMap(){
       maxZoom: 19,
       attribution: 'Esri, Maxar, Earthstar Geographics'
     }).addTo(satMap);
-    
     satMap.on('click', function(e){
       if(!placeMode || !selectedForPlacement) return;
       const {lat, lng} = e.latlng;
       if(!state.positions) state.positions = {};
-      
-      if(state.gpsCalib){
-        const imgXY = gpsToImageXY(lat, lng);
-        if(imgXY){
-          state.positions[selectedForPlacement] = {x: imgXY.x, y: imgXY.y};
-        }
-      } else {
-        if(!state.satPositions) state.satPositions = {};
-        state.satPositions[selectedForPlacement] = {lat, lng};
-      }
-      
+      const xy = gpsToPercent(lat, lng);
+      state.positions[selectedForPlacement] = {x: Math.round(xy.x*100)/100, y: Math.round(xy.y*100)/100};
       saveState();
       renderSatMarkers();
       placeMode = false;
@@ -2046,157 +2064,77 @@ function renderSatMarkers(){
   satMarkers = [];
   const farben = {apfel:'#dc2626', birne:'#22c55e', walnuss:'#b98e1a'};
   const bounds = [];
-  
-  // Positionen aus GPS-Kalibrierung
   Object.entries(state.positions).forEach(([id,pos])=>{
-    const g = imageXYtoGps(pos.x, pos.y);
-    if(!g) return;
     const t = getTree(id);
     const farbe = t? (farben[(t.frucht||'').toLowerCase()]||'#B2543A') : '#B2543A';
-    const m = L.circleMarker([g.lat, g.lng], {radius:7, color:'#fff', weight:2, fillColor:farbe, fillOpacity:1});
+    let gps;
+    if(pos.lat && pos.lng) { gps = {lat: pos.lat, lng: pos.lng}; }
+    else { gps = percentToGps(pos.x, pos.y); }
+    const m = L.circleMarker([gps.lat, gps.lng], {radius:7, color:'#fff', weight:2, fillColor:farbe, fillOpacity:1});
     if(t) m.bindTooltip(`${id} — ${t.sorte}`);
     m.on('click', ()=>openBaumModal(id));
     m.addTo(satMap);
     satMarkers.push(m);
-    bounds.push([g.lat, g.lng]);
+    bounds.push([gps.lat, gps.lng]);
   });
-  
-  // Direkt auf Satellitenkarte gesetzte Positionen
-  if(state.satPositions){
-    Object.entries(state.satPositions).forEach(([id,pos])=>{
-      if(state.positions && state.positions[id]) return;
-      const t = getTree(id);
-      const farbe = t? (farben[(t.frucht||'').toLowerCase()]||'#B2543A') : '#B2543A';
-      const m = L.circleMarker([pos.lat, pos.lng], {radius:7, color:'#fff', weight:2, fillColor:farbe, fillOpacity:1});
-      if(t) m.bindTooltip(`${id} — ${t.sorte}`);
-      m.on('click', ()=>openBaumModal(id));
-      m.addTo(satMap);
-      satMarkers.push(m);
-      bounds.push([pos.lat, pos.lng]);
-    });
-  }
-  
   if(bounds.length && !satFitted){
     satMap.fitBounds(bounds, {padding:[30,30]});
     satFitted = true;
   }
 }
 
-const CALIB_PUNKTE = 4;
-
-document.getElementById('btn-gps-calib').addEventListener('click', ()=>{
-  if(!navigator.geolocation){ alert('Dieses Gerät/Dieser Browser unterstützt keine GPS-Standortermittlung.'); return; }
-  placeMode = false;
-  document.getElementById('place-mode-label').textContent = 'Position setzen';
-  calibMode = true;
-  calibStep = 1;
-  calibTemp = {points: []};
-  document.getElementById('place-status').textContent = `Kalibrierung Schritt 1/${CALIB_PUNKTE}: Auf der Karte den Punkt doppelklicken, an dem du gerade mit dem Handy stehst. Wähle 4 weit verteilte Punkte, die nicht auf einer Linie liegen (z.B. die vier Ecken des Geländes).`;
-});
-
+/* ---------- GPS Place Button ---------- */
 document.getElementById('btn-gps-place').addEventListener('click', ()=>{
   if(!navigator.geolocation){ alert('Dieses Gerät/Dieser Browser unterstützt keine GPS-Standortermittlung.'); return; }
-  if(!state.gpsCalib){ alert('Die Karte ist noch nicht GPS-kalibriert. Bitte zuerst „🛰️ GPS kalibrieren" einmalig durchführen.'); return; }
   if(!selectedForPlacement){ alert('Bitte zuerst einen Baum aus der Liste auswählen.'); return; }
   document.getElementById('place-status').textContent = 'GPS-Position wird ermittelt …';
   navigator.geolocation.getCurrentPosition(pos=>{
     const {latitude, longitude, accuracy} = pos.coords;
-    const xy = gpsToImageXY(latitude, longitude);
-    if(!xy || xy.x<0 || xy.x>100 || xy.y<0 || xy.y>100){
+    const xy = gpsToPercent(latitude, longitude);
+    if(xy.x<0 || xy.x>100 || xy.y<0 || xy.y>100){
       alert('Die ermittelte GPS-Position liegt außerhalb des kartierten Bereichs. Bitte stattdessen manuell auf die Karte klicken.');
       document.getElementById('place-status').textContent = '';
       return;
     }
-    state.positions[selectedForPlacement] = {x: Math.round(xy.x*100)/100, y: Math.round(xy.y*100)/100, gpsAccuracy: Math.round(accuracy)};
+    state.positions[selectedForPlacement] = {x: Math.round(xy.x*100)/100, y: Math.round(xy.y*100)/100, gpsAccuracy: Math.round(accuracy), lat: latitude, lng: longitude};
     saveState();
     renderPins(); renderUnplacedSelect();
     selectedForPlacement = '';
     document.getElementById('unplaced-select').value='';
-    document.getElementById('place-status').textContent = `Position per GPS gesetzt ✓ (Genauigkeit ±${Math.round(accuracy)} m)`;
+    document.getElementById('place-status').textContent = `Position per GPS gesetzt (Genauigkeit ±${Math.round(accuracy)} m)`;
   }, err=>{
     alert('GPS-Standort konnte nicht ermittelt werden: '+err.message);
     document.getElementById('place-status').textContent = '';
   }, {enableHighAccuracy:true, timeout:25000, maximumAge:0});
 });
 
-document.getElementById('map-wrap').addEventListener('dblclick', (e)=>{
-  e.preventDefault();
+/* ---------- Map Click (Platzieren) ---------- */
+document.getElementById('map-wrap').addEventListener('click', (e)=>{
+  if(!placeMode) return;
+  if(!selectedForPlacement){ alert('Bitte zuerst einen Baum aus der Liste auswählen.'); return; }
   const rect = e.currentTarget.getBoundingClientRect();
   const x = parseFloat(((e.clientX-rect.left)/rect.width*100).toFixed(2));
   const y = parseFloat(((e.clientY-rect.top)/rect.height*100).toFixed(2));
-
-  if(calibMode){
-    document.getElementById('place-status').textContent = 'GPS-Position wird für diesen Punkt ermittelt (kann 10–20 s dauern) …';
-    navigator.geolocation.getCurrentPosition(pos=>{
-      const {latitude, longitude, accuracy} = pos.coords;
-      if(accuracy > 20){
-        document.getElementById('place-status').textContent = `GPS noch zu ungenau (±${Math.round(accuracy)} m). Kurz warten, bis das GPS einen besseren Fix hat, dann denselben Punkt erneut doppelklicken.`;
-        return;
-      }
-      const zuNah = calibTemp.points.find(p=>{
-        const dm = Math.hypot((longitude-p.lng)*111320*Math.cos(latitude*Math.PI/180), (latitude-p.lat)*110540);
-        return dm < 15;
-      });
-      if(zuNah){
-        document.getElementById('place-status').textContent = 'Diese GPS-Position liegt weniger als 15 m von einem bereits gesetzten Kalibrierpunkt entfernt — vermutlich hat das GPS noch nicht nachgezogen. Kurz warten und erneut doppelklicken (oder wirklich zu einem weiter entfernten Punkt gehen).';
-        return;
-      }
-      calibTemp.points.push({x, y, lat:latitude, lng:longitude});
-      const n = calibTemp.points.length;
-      if(n < CALIB_PUNKTE){
-        calibStep = n + 1;
-        document.getElementById('place-status').textContent = `Kalibrierpunkt ${n} gespeichert ✓ (GPS ±${Math.round(accuracy)} m) — Schritt ${n+1}/${CALIB_PUNKTE}: zum nächsten markanten Punkt gehen, dort 15–20 s warten, dann antippen.`;
-      } else {
-        const neueKalib = {points: calibTemp.points};
-        const alteKalib = state.gpsCalib;
-        state.gpsCalib = neueKalib;
-        const T = buildCalibTransform();
-        if(!T){
-          state.gpsCalib = alteKalib;
-          calibMode = false; calibStep = 0; calibTemp = {};
-          alert('Kalibrierung fehlgeschlagen: Die 4 Punkte liegen zu nah an einer Linie. Bitte erneut mit weiter verteilten Punkten versuchen (z.B. die vier Geländeecken). Die bisherige Kalibrierung bleibt erhalten.');
-          document.getElementById('place-status').textContent = '';
-          return;
-        }
-        const res = calibResidualMeters();
-        if(res !== null && res > 10){
-          const behalten = confirm(`Die Kalibrierung ist ungenau (mittlere Abweichung ±${res.toFixed(1)} m) — vermutlich hatte mindestens ein Punkt schlechten GPS-Empfang.\n\nTrotzdem übernehmen?\n(Abbrechen = bisherige Kalibrierung behalten)`);
-          if(!behalten){
-            state.gpsCalib = alteKalib;
-            calibMode = false; calibStep = 0; calibTemp = {};
-            document.getElementById('place-status').textContent = 'Kalibrierung verworfen — die bisherige bleibt aktiv.';
-            return;
-          }
-        }
-        saveState();
-        calibMode = false; calibStep = 0; calibTemp = {};
-        document.getElementById('place-status').textContent = `GPS-Kalibrierung (${CALIB_PUNKTE} Punkte) abgeschlossen ✓` + (res!=null? ` — mittlere Abweichung ±${res.toFixed(1)} m` : '');
-        if(satMap) renderSatMarkers();
-      }
-    }, err=>{
-      alert('GPS-Standort konnte nicht ermittelt werden: '+err.message+' — Die Kalibrierung wurde abgebrochen, bisher gesetzte Punkte sind verworfen.');
-      document.getElementById('place-status').textContent = '';
-      calibMode = false; calibStep = 0; calibTemp = {};
-    }, {enableHighAccuracy:true, timeout:25000, maximumAge:0});
-    return;
-  }
-
-  if(!placeMode) return;
-  if(!selectedForPlacement){ alert('Bitte zuerst einen Baum aus der Liste auswählen.'); return; }
   state.positions[selectedForPlacement] = {x, y};
   saveState();
   renderPins(); renderUnplacedSelect();
   selectedForPlacement = '';
   document.getElementById('unplaced-select').value='';
-  document.getElementById('place-status').textContent = 'Position gespeichert ✓ — nächsten Baum wählen.';
+  document.getElementById('place-status').textContent = 'Position gespeichert – nächsten Baum wählen.';
 });
 
+/* ---------- Pins ---------- */
 function renderPins(){
   document.querySelectorAll('.pin').forEach(p=>p.remove());
   const wrap = document.getElementById('map-wrap');
-  const editing = isEditMode();
+  const editing = isAdmin();
   Object.entries(state.positions).forEach(([id,pos])=>{
     const t = getTree(id);
+    if(!t) return;
+    if(currentImage !== 'lageplan') {
+      const photo = SECTION_PHOTOS.find(s => s.id === currentImage);
+      if(photo && t.standort_zeile && t.standort_zeile !== photo.row) return;
+    }
     const pin = document.createElement('div');
     pin.className = 'pin ' + (t? t.frucht.toLowerCase():'') + (editing? '' : ' locked');
     pin.style.left = pos.x+'%';
@@ -2212,7 +2150,6 @@ function renderPins(){
 
 function makePinDraggable(pin, id, editing){
   if(!editing){
-    // Nicht eingeloggt: Stecknadel ist fest, nur Klick zum Öffnen der Detailansicht
     pin.addEventListener('pointerup', (e)=>{
       e.stopPropagation();
       if(!placeMode) selectPinAndOpen(pin, id);
@@ -2251,7 +2188,7 @@ function makePinDraggable(pin, id, editing){
       const x = parseFloat(pin.dataset.x), y = parseFloat(pin.dataset.y);
       state.positions[id] = {x: Math.round(x*100)/100, y: Math.round(y*100)/100};
       saveState();
-      document.getElementById('place-status').textContent = 'Position verschoben ✓';
+      document.getElementById('place-status').textContent = 'Position verschoben';
     } else if(!placeMode){
       selectPinAndOpen(pin, id);
     }
@@ -2310,32 +2247,35 @@ document.getElementById('file-import').addEventListener('change', (e)=>{
 /* ---------- Login & Edit-Modus ---------- */
 function applyEditModeUI(){
   const on = isEditMode();
+  const admin = isAdmin();
   document.querySelectorAll('.btn-login-toggle').forEach(b=>{
-    b.textContent = on ? 'Bearbeiten beenden' : 'Bearbeiten';
-    b.className = (on ? 'btn accent' : 'btn field') + ' btn-login-toggle';
+    b.textContent = on ? (admin ? 'Admin abmelden' : 'Abmelden') : 'Anmelden';
+    b.style.borderColor = on ? 'rgba(255,255,255,.6)' : 'rgba(255,255,255,.35)';
+    b.style.color = on ? '#F1EDE2' : '#B7C4B4';
   });
-  document.getElementById('btn-add-baum').style.display = on ? '' : 'none';
+  document.getElementById('btn-add-baum').style.display = admin ? '' : 'none';
   document.getElementById('edit-banner').style.display = on ? '' : 'none';
-  document.getElementById('tab-btn-daten').style.display = on ? '' : 'none';
+  document.getElementById('tab-btn-daten').style.display = admin ? '' : 'none';
+  const banner = document.getElementById('edit-banner');
+  if(on) banner.innerHTML = (admin ? 'Bearbeitungsmodus (Admin)' : 'Bearbeitungsmodus (Mitarbeiter:in)') + ' — Änderungen werden lokal gespeichert &nbsp;';
   if(!on && document.getElementById('tab-daten').style.display!=='none'){
     activateTab('baumkataster');
   }
   renderBaumTable();
   renderPins();
-  const zeigeEdit = on && !(typeof mapLayer!=='undefined' && mapLayer==='sat');
+  const zeigeEdit = on;
   const placeBtn = document.getElementById('btn-place-mode');
   const unplacedSel = document.getElementById('unplaced-select');
   if(placeBtn) placeBtn.style.display = zeigeEdit ? '' : 'none';
   if(unplacedSel) unplacedSel.style.display = zeigeEdit ? '' : 'none';
   const gpsPlaceBtn = document.getElementById('btn-gps-place');
-  const gpsCalibBtn = document.getElementById('btn-gps-calib');
   if(gpsPlaceBtn) gpsPlaceBtn.style.display = zeigeEdit ? '' : 'none';
-  if(gpsCalibBtn) gpsCalibBtn.style.display = zeigeEdit ? '' : 'none';
+  const fotoSel = document.getElementById('foto-select');
+  if(fotoSel) fotoSel.style.display = mapLayer==='sat' ? 'none' : '';
   const hint = document.getElementById('lageplan-hint');
   if(hint) hint.style.display = on ? '' : 'none';
   if(!on){
     placeMode = false;
-    calibMode = false; calibStep = 0; calibTemp = {};
     const placeLabel = document.getElementById('place-mode-label');
     if(placeLabel) placeLabel.textContent = 'Position setzen';
     const st = document.getElementById('place-status');
@@ -2344,23 +2284,53 @@ function applyEditModeUI(){
   }
 }
 
-const LOGIN_EMAIL = 'mail@trilight.eu'; // festes Login-Konto (Firebase Authentication) – Passwort wird abgefragt
+const LOGIN_ACCOUNTS = {
+  admin: 'mail@trilight.eu',
+  mitarbeiter: 'mail@trilight.eu' // separater Account nötig
+};
+let pendingLoginRole = '';
+
+function isAdmin(){ const u = window.__firebaseUser; return u && u.email === LOGIN_ACCOUNTS.admin; }
+function isMitarbeiter(){ return isEditMode() && !isAdmin(); }
 
 function handleLoginToggle(){
   if(isEditMode()){
     if(window.__firebaseSignOut) window.__firebaseSignOut();
     return;
   }
+  showLoginDialog();
+}
+
+function showLoginDialog(){
+  const html = `
+    <button class="close" onclick="closeModal()">&times;</button>
+    <h2>Anmeldung</h2>
+    <p style="margin:12px 0 16px;color:var(--muted);font-size:.9rem;">Rolle wählen:</p>
+    <div style="display:flex;flex-direction:column;gap:10px;max-width:280px;">
+      <button class="btn" onclick="loginAsRole('admin')" style="text-align:left;padding:14px 18px;">
+        <b>Admin</b><br><span style="font-size:.82rem;color:var(--muted);">Voller Zugriff auf alle Funktionen</span>
+      </button>
+      <button class="btn" onclick="loginAsRole('mitarbeiter')" style="text-align:left;padding:14px 18px;">
+        <b>Mitarbeiter:in</b><br><span style="font-size:.82rem;color:var(--muted);">Ernte- und Sukzessionsdokumentation, Phänologie</span>
+      </button>
+    </div>`;
+  document.getElementById('modal-content').innerHTML = html;
+  document.getElementById('overlay').classList.add('open');
+}
+
+function loginAsRole(role){
+  pendingLoginRole = role;
+  closeModal();
   const pw = prompt('Passwort eingeben:');
   if(pw===null) return;
   if(!window.__firebaseSignIn){ alert('Anmeldung ist noch nicht bereit, bitte kurz warten und erneut versuchen.'); return; }
-  window.__firebaseSignIn(LOGIN_EMAIL, pw).catch(err=>{
+  window.__firebaseSignIn(LOGIN_ACCOUNTS[role], pw).catch(err=>{
     alert('Anmeldung fehlgeschlagen: '+(err && err.message ? err.message : err));
   });
 }
 
 function editBaumWithLogin(id){
-  if(isEditMode()){
+  if(isAdmin()){
     openBaumEditForm(id);
     return;
   }
@@ -2572,7 +2542,6 @@ function confirmDeleteBaum(id){
   }
   if(state.baumEdits && state.baumEdits[id]) delete state.baumEdits[id];
   if(state.positions && state.positions[id]) delete state.positions[id];
-  if(state.satPositions && state.satPositions[id]) delete state.satPositions[id];
   saveState();
   closeModal();
   refreshFilterOptions();
@@ -2603,12 +2572,6 @@ function startApp(){
       if(BLACKLIST.has(k) || (!baumIds.has(k) && !k.startsWith('NEU-'))){ delete state.positions[k]; changed = true; }
     }
   }
-  /* Sat-Positionen für nicht mehr existierende IDs */
-  if(state.satPositions){
-    for(const k of Object.keys(state.satPositions)){
-      if(BLACKLIST.has(k) || (!baumIds.has(k) && !k.startsWith('NEU-'))){ delete state.satPositions[k]; changed = true; }
-    }
-  }
   if(changed) saveState();
   refreshFilterOptions();
   applyEditModeUI();
@@ -2616,6 +2579,7 @@ function startApp(){
   renderSortenUebersicht();
   renderUnplacedSelect();
   renderImportTemplates();
+  renderSortenlistenSichtbar();
   if(window.__pendingRemoteState){ const r = window.__pendingRemoteState; window.__pendingRemoteState = null; applyRemoteState(r); }
   showWelcomeBannerIfNeeded();
 }
@@ -2974,11 +2938,11 @@ function beraten(){
   const toArr=v=>Array.isArray(v)?v:[v];
   const scored=pool.filter(s=>{const st=s.standort;return hoehe<=st.hmax&&toArr(st.expo).includes(expo)&&toArr(st.ns).includes(ns)&&!(frost==='hoch'&&st.frost==='gering');})
     .map(s=>({s, score:gZ.filter(z=>s.standort.ziele.includes(z)).length}))
-    .sort((a,b)=>b.score-a.score).slice(0,4);
+    .sort((a,b)=>{ if(b.score!==a.score) return b.score-a.score; if(a.s.quelle==='hof'&&b.s.quelle!=='hof') return -1; if(a.s.quelle!=='hof'&&b.s.quelle==='hof') return 1; return (a.s.sorte||a.s.name||'').localeCompare(b.s.sorte||b.s.name||'','de'); });
   const lbl=aktArt.charAt(0).toUpperCase()+aktArt.slice(1);
   const expoEl=document.getElementById('expo');
   if(!scored.length){document.getElementById('res').innerHTML='<div class="sb-leer">Keine passende Sorte für diesen Standort gefunden. Aktuell liegen Standort-Daten für '+pool.length+' '+lbl+'-Sorten vor.</div>';return;}
-  let html='<p class="res-header">'+lbl+' &middot; '+hoehe+'m &middot; '+expoEl.options[expoEl.selectedIndex].text+' &middot; '+scored.length+' Empfehlung'+(scored.length>1?'en':'')+' aus '+pool.length+' Sorten mit Standort-Daten</p>';
+  let html='<p class="res-header">'+lbl+' &middot; '+hoehe+'m &middot; '+expoEl.options[expoEl.selectedIndex].text+' &middot; '+scored.length+' Empfehlung'+(scored.length>1?'en':'')+' aus '+pool.length+' Sorten mit Standort-Daten</p><div id="berater-results">';
   scored.forEach(e=>{
     const s=e.s;
     const tags=hofTags(s).map(t=>'<span class="sb-tag '+tagCls(t)+'">'+t+'</span>').join('');
@@ -2987,9 +2951,48 @@ function beraten(){
     const n=anzahl[sn]||0;
     const nTxt=n?' · '+n+' Baum/Bäume am Hof':'';
     const quelleLabel=s.quelle==='arche'?'Arche Noah':'Hofsorte';
-    html+='<div class="sb-sorte" style="cursor:pointer" onclick="openSortenModal(\''+sn.replace(/'/g,"\\'")+'\')"><div class="sb-sorte-name">'+sn+'<span class="sb-reife">Pflückzeit: '+reife+nTxt+' &middot; bis '+s.standort.hmax+'m</span></div><div class="sb-tags">'+tags+'</div><div class="sb-gilde"><strong>'+quelleLabel+'</strong> '+s.standort.basis+'</div></div>';
+    const idText=s.id?'<span class="idbadge" style="font-size:.72rem;margin-left:6px;">ID '+s.id+'</span>':'';
+    const hatPosition=state.positions && Object.keys(state.positions).some(k=>{const t=getTree(k);return t&&t.sorte===sn;});
+    const LageplanBtn=hatPosition?'<button class="btn secondary" style="font-size:.78rem;padding:3px 10px;margin-top:6px;" onclick="event.stopPropagation();showOnLageplan(\''+sn.replace(/'/g,"\\'")+'\')">Im Lageplan anzeigen</button>':'';
+    html+='<div class="sb-sorte" style="cursor:pointer" onclick="openSortenModal(\''+sn.replace(/'/g,"\\'")+'\')"><div class="sb-sorte-name">'+sn+idText+'<span class="sb-reife">Pflückzeit: '+reife+nTxt+' &middot; bis '+s.standort.hmax+'m</span></div><div class="sb-tags">'+tags+'</div><div class="sb-gilde"><strong>'+quelleLabel+'</strong> '+s.standort.basis+'</div>'+LageplanBtn+'</div>';
   });
+  window._beraterScored=scored; window._beraterShown=0;
+  const INIT_SHOW=12;
+  let html='<p class="res-header">'+lbl+' &middot; '+hoehe+'m &middot; '+expoEl.options[expoEl.selectedIndex].text+' &middot; '+scored.length+' Empfehlung'+(scored.length>1?'en':'')+' aus '+pool.length+' Sorten mit Standort-Daten</p><div id="berater-results"></div>';
   document.getElementById('res').innerHTML=html;
+  renderBeraterBatch(INIT_SHOW);
+}
+
+function renderBeraterBatch(count){
+  const scored=window._beraterScored||[];
+  const anzahl={}; getAllTrees().forEach(t=>{if(t.sorte) anzahl[t.sorte]=(anzahl[t.sorte]||0)+1;});
+  const container=document.getElementById('berater-results');
+  if(!container) return;
+  const start=window._beraterShown||0;
+  const end=Math.min(start+count, scored.length);
+  let html='';
+  for(let i=start;i<end;i++){
+    const e=scored[i];
+    const s=e.s;
+    const tags=hofTags(s).map(t=>'<span class="sb-tag '+tagCls(t)+'">'+t+'</span>').join('');
+    const reife=s.pflueckzeitpunkt||s.pflueck_reifezeit||'–';
+    const sn=s.sorte||s.name||'';
+    const n=anzahl[sn]||0;
+    const nTxt=n?' · '+n+' Baum/Bäume am Hof':'';
+    const quelleLabel=s.quelle==='arche'?'Arche Noah':'Hofsorte';
+    const idText=s.id?'<span class="idbadge" style="font-size:.72rem;margin-left:6px;">ID '+s.id+'</span>':'';
+    const hatPosition=state.positions && Object.keys(state.positions).some(k=>{const t=getTree(k);return t&&t.sorte===sn;});
+    const LageplanBtn=hatPosition?'<button class="btn secondary" style="font-size:.78rem;padding:3px 10px;margin-top:6px;" onclick="event.stopPropagation();showOnLageplan(\''+sn.replace(/'/g,"\\'")+'\')">Im Lageplan anzeigen</button>':'';
+    html+='<div class="sb-sorte" style="cursor:pointer" onclick="openSortenModal(\''+sn.replace(/'/g,"\\'")+'\')"><div class="sb-sorte-name">'+sn+idText+'<span class="sb-reife">Pflückzeit: '+reife+nTxt+' &middot; bis '+s.standort.hmax+'m</span></div><div class="sb-tags">'+tags+'</div><div class="sb-gilde"><strong>'+quelleLabel+'</strong> '+s.standort.basis+'</div>'+LageplanBtn+'</div>';
+  }
+  container.insertAdjacentHTML('beforeend', html);
+  window._beraterShown=end;
+  if(end<scored.length){
+    const moreBtn='<button class="btn secondary" id="berater-more-btn" style="margin:12px auto;display:block;" onclick="renderBeraterBatch(12)">Mehr laden ('+(scored.length-end)+' weitere)</button>';
+    container.insertAdjacentHTML('beforeend', moreBtn);
+  }
+  const oldBtn=document.getElementById('berater-more-btn');
+  if(oldBtn && window._beraterShown>=scored.length) oldBtn.remove();
 }
 
 // ─── SORTENÜBERSICHT ─────────────────────────────────────────────────────────
@@ -3081,6 +3084,14 @@ function getAllSorten(){
     });
     
     sortenMap.forEach(s=>result.push(s));
+  }
+  
+  // Sichtbarkeit filtern (nur wenn Admin-Einstellungen vorhanden)
+  if(state.sortenSichtbar && Object.keys(state.sortenSichtbar).length>0){
+    return result.filter(s=>{
+      const key=s.quelle==='arche'?'arche':s.quelle==='hof'?'hof':s.quelle;
+      return state.sortenSichtbar[key]!==false;
+    });
   }
   
   return result;
@@ -3672,8 +3683,7 @@ function executeImport(){
     datum:new Date().toISOString(),
     importId:importId,
     customTrees:JSON.parse(JSON.stringify(state.customTrees||[])),
-    positions:JSON.parse(JSON.stringify(state.positions||{})),
-    satPositions:JSON.parse(JSON.stringify(state.satPositions||{}))
+    positions:JSON.parse(JSON.stringify(state.positions||{}))
   });
   if(state.importSnapshots.length>5) state.importSnapshots.shift();
   
@@ -4015,7 +4025,6 @@ function undoImport(importId){
   // Snapshot wiederherstellen
   state.customTrees=snapshot.customTrees;
   state.positions=snapshot.positions;
-  state.satPositions=snapshot.satPositions;
   
   // Import aus Log entfernen
   state.importLog=state.importLog.filter(e=>e.id!==importId);
@@ -4055,6 +4064,7 @@ function deleteImport(importId){
 
 // Dropzone Event Listener
 document.addEventListener('DOMContentLoaded',function(){
+  initFotoSelect();
   const dropzones=['import-dropzone','import-dropzone-modal'];
   dropzones.forEach(id=>{
     const dz=document.getElementById(id);
