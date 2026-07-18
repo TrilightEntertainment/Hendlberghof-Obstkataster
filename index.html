@@ -1375,6 +1375,28 @@ function neuePdfKarte(){
     k.y += h;
   };
 
+  k.feldDrei = function(l1, v1, l2, v2, l3, v3){
+    v1 = v1? String(v1) : ''; v2 = v2? String(v2) : ''; v3 = v3? String(v3) : '';
+    if(!v1 && !v2 && !v3) return;
+    const cw3 = (W - 2*M - 20) / 3;
+    const lines1 = v1? doc.splitTextToSize(v1, cw3) : [];
+    const lines2 = v2? doc.splitTextToSize(v2, cw3) : [];
+    const lines3 = v3? doc.splitTextToSize(v3, cw3) : [];
+    const h = 4 + Math.max(lines1.length, lines2.length, lines3.length)*4.3 + 3;
+    k.ensure(h);
+    const x2 = M + cw3 + 10;
+    const x3 = M + 2*(cw3 + 10);
+    doc.setFontSize(7.5); doc.setFont('helvetica','bold'); doc.setTextColor(122,113,104);
+    if(v1) doc.text(l1.toUpperCase(), M, k.y);
+    if(v2) doc.text(l2.toUpperCase(), x2, k.y);
+    if(v3) doc.text(l3.toUpperCase(), x3, k.y);
+    doc.setFontSize(9.5); doc.setFont('helvetica','normal'); doc.setTextColor(42,35,29);
+    if(v1) doc.text(lines1, M, k.y+4);
+    if(v2) doc.text(lines2, x2, k.y+4);
+    if(v3) doc.text(lines3, x3, k.y+4);
+    k.y += h;
+  };
+
   k.abschnitt = function(titel){
     k.ensure(16);
     k.y += 4;
@@ -1404,24 +1426,36 @@ function exportBaumKartePDF(id){
   const merged = Object.assign({}, sorteInfo||{}, t);
   const k = neuePdfKarte();
   const {doc} = k;
-  const feldPaar = k.feldPaar, abschnitt = k.abschnitt, absatz = k.absatz;
+  const feldPaar = k.feldPaar, feldDrei = k.feldDrei, abschnitt = k.abschnitt, absatz = k.absatz;
 
   let hinweis = null, hinweisFarbe = null;
   if(state.verifiziert[t.sorte]){ hinweis = 'Verifiziert am '+state.verifiziert[t.sorte]; hinweisFarbe = [46,63,42]; }
   else if(sorteInfo && sorteInfo.recherchiert){ hinweis = 'Sortenangaben web-recherchiert – bitte prüfen'; hinweisFarbe = [138,90,0]; }
   k.kopf(t.sorte || 'Unbekannte Sorte', t.id_placeholder? 'ID noch offen' : 'ID '+t.id, hinweis, hinweisFarbe);
 
-  feldPaar('Obstart', t.frucht, 'Pflückreife', merged.pflueckzeitpunkt||merged.pflueck_reifezeit);
-  feldPaar('Verwendung', (merged.verwendung||[]).join(', '), 'Genussreife', merged.genuss_von&&merged.genuss_bis? merged.genuss_von+' – '+merged.genuss_bis+' Monate ab Ernte' : merged.genussreife);
-  feldPaar('Pflanzjahr', t.ausgepflanzt, 'Ertrag', merged.ertrag);
-  feldPaar('Veredelungsjahr', t.veredelt, 'Unterlage', t.unterlage);
+  const mittel = t.sorte ? calcPfluckMittel(t.sorte) : null;
+  const mittelText = mittel ? ' → '+mittel.wert : '';
+  const pflBeschreibung = merged.pflueckzeitpunkt||merged.pflueck_reifezeit||'';
+
+  feldDrei('Obstart', t.frucht, 'Pflückreife lt. Beschreibung', pflBeschreibung, 'Pflückreife ermittelt', mittelText||'–');
+  feldPaar('Verwendung', (merged.verwendung||[]).join(', ')||'–', 'Genussreife', merged.genuss_von&&merged.genuss_bis? merged.genuss_von+' – '+merged.genuss_bis+' Monate ab Ernte' : merged.genussreife);
+  feldDrei('Gepflanzt', t.ausgepflanzt, 'Veredelt', t.veredelt, 'Unterlage', t.unterlage);
+  feldPaar('Ertrag', merged.ertrag, 'Befruchtungspartner', merged.befruchtungspartner);
   feldPaar('Erstmals tragend', t.erstmals_tragend, 'Lagerfähigkeit', merged.lagerfaehig);
-  feldPaar('Befruchtungspartner', merged.befruchtungspartner, 'Herkunft', merged.herkunft_jahr||merged.herkunft);
+  feldPaar('Herkunft', merged.herkunft_jahr||merged.herkunft, '', '');
 
   if(merged.geschmack){ abschnitt('Geschmack / Nutzung'); absatz(merged.geschmack); }
+  if(merged.frucht_beschreibung){ abschnitt('Frucht'); absatz(merged.frucht_beschreibung); }
   if(merged.eigenschaften || merged.standort_anspruch){
     abschnitt('Eigenschaften / Standortansprüche');
     absatz(((merged.eigenschaften||'')+' '+(merged.standort_anspruch||'')).trim());
+  }
+  if(merged.frucht){
+    abschnitt('Begleitpflanzungen & Gilden');
+    const g=getGuildRecommendations(merged.frucht);
+    const cats=[{key:'naehrstoff',label:'Naehrstoff-Akkumulatoren'},{key:'boden',label:'Bodenverbesserer'},{key:'schaedling',label:'Schaedlingsabwehr'},{key:'bestaeuber',label:'Bestaeuber-Anziehung'}];
+    cats.forEach(c=>{ const items=g[c.key]; if(items&&items.length) absatz(c.label+': '+items.join(', ')); });
+    if(g.warnung&&g.warnung.length) absatz(g.warnung.join(' '));
   }
 
   abschnitt('Lageplan');
@@ -1718,8 +1752,8 @@ function openBaumModal(id){
       <div class="field"><b>Pflückreife ermittelt</b><div>${mittelText||predictionHtml||'–'}</div></div>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:0;border:1px solid var(--rand);border-radius:10px;overflow:hidden;margin-bottom:8px;">
-      ${fieldRow('Genussreife', merged.genuss_von&&merged.genuss_bis ? merged.genuss_von+' – '+merged.genuss_bis+' Monate ab Ernte' : merged.genussreife)}
       ${fieldRow('Verwendung', (merged.verwendung||[]).join(', ')||'–')}
+      ${fieldRow('Genussreife', merged.genuss_von&&merged.genuss_bis ? merged.genuss_von+' – '+merged.genuss_bis+' Monate ab Ernte' : merged.genussreife)}
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0;border:1px solid var(--rand);border-radius:10px;overflow:hidden;margin-bottom:8px;">
       ${fieldRow('Gepflanzt', t.ausgepflanzt)}
@@ -1925,7 +1959,11 @@ function addPhaenoEreignis(){
 
 /* ---------- Modal: Sorten-Detail ---------- */
 function openSortenModal(sorteName){
-  const s = getSorte(sorteName);
+  let s = getSorte(sorteName);
+  if(!s){
+    const all=getAllSorten();
+    s=all.find(x=>x.name===sorteName);
+  }
   if(!s) return;
   const safeName = sorteName.replace(/'/g,"\\'");
   const originalPW = s.pflueckzeitpunkt||s.pflueck_reifezeit||'';
@@ -3173,7 +3211,9 @@ function renderBeraterBatch(count){
       });
       preisHtml+='</div>';
     }
-    html+='<div class="sb-sorte" style="cursor:pointer" onclick="openSortenModal(\''+sn.replace(/'/g,"\\'")+'\')"><div class="sb-sorte-name">'+sn+idText+'<span class="sb-reife">Pflueckzeit: '+reife+nTxt+' &middot; bis '+s.standort.hmax+'m</span></div><div class="sb-tags">'+tags+'</div><div class="sb-gilde"><strong>'+quelleLabel+'</strong> '+s.standort.basis+'</div>'+preisHtml+btnRow+'</div>';
+    const guildHtml=s.frucht?'<div style="margin-top:4px;font-size:.82rem;">'+renderGuildSection(s.frucht)+'</div>':'';
+    const archeHtml=archeNoahLink(s);
+    html+='<div class="sb-sorte" style="cursor:pointer" onclick="openSortenModal(\''+sn.replace(/'/g,"\\'")+'\')"><div class="sb-sorte-name">'+sn+idText+'<span class="sb-reife">Pflueckzeit: '+reife+nTxt+' &middot; bis '+s.standort.hmax+'m</span></div><div class="sb-tags">'+tags+'</div><div class="sb-gilde"><strong>'+quelleLabel+'</strong> '+s.standort.basis+'</div>'+guildHtml+preisHtml+(archeHtml?'<div style="margin-top:6px;">'+archeHtml+'</div>':'')+btnRow+'</div>';
   }
   container.insertAdjacentHTML('beforeend', html);
   window._beraterShown=end;
