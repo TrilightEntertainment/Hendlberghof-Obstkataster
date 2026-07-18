@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Hendlberghof – Obstdatenbank</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#2E3F2A">
@@ -50,7 +50,7 @@
   header{
     background:#28362A;
     color:#fff;
-    padding:22px 28px 18px;
+    padding:calc(22px + env(safe-area-inset-top)) 28px 18px;
     position:relative;
   }
   header::after{
@@ -98,7 +98,7 @@
     border-bottom-width:2px;
     font-weight:600;
   }
-  main{padding:22px 28px 60px;max-width:1300px;margin:0 auto;}
+  main{padding:22px 28px calc(60px + env(safe-area-inset-bottom));max-width:1300px;margin:0 auto;}
   .toolbar{
     display:flex;
     flex-wrap:wrap;
@@ -374,11 +374,11 @@
   }
 
   @media (max-width:640px){
-    header{padding:16px 16px 14px;}
+    header{padding:calc(16px + env(safe-area-inset-top)) 16px 14px;}
     header h1{font-size:1.5rem;}
     nav{padding:0 10px;overflow-x:auto;}
     nav button{padding:12px 14px;font-size:.85rem;white-space:nowrap;}
-    main{padding:14px 12px 40px;}
+    main{padding:14px 12px calc(40px + env(safe-area-inset-bottom));}
     .toolbar{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;align-items:stretch;}
     .toolbar .search-wrap{grid-column:1/-1;}
     .toolbar > *{width:100%;}
@@ -388,6 +388,13 @@
     table{font-size:.8rem;}
     thead th, tbody td{padding:8px 8px;}
   }
+/* ===== Toast-System ===== */
+#toast-container{position:fixed;bottom:calc(20px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);z-index:10000;display:flex;flex-direction:column-reverse;gap:8px;pointer-events:none;}
+.toast{pointer-events:auto;padding:10px 18px;border-radius:10px;font-size:.85rem;font-family:'DM Sans',sans-serif;color:#fff;box-shadow:0 4px 16px rgba(0,0,0,.15);opacity:0;transform:translateY(12px);transition:opacity .25s,transform .25s;max-width:340px;text-align:center;cursor:pointer;}
+.toast.show{opacity:1;transform:translateY(0);}
+.toast.success{background:var(--gruen);}
+.toast.error{background:var(--dachziegel);}
+.toast.info{background:var(--ackerde);}
 /* ===== Sortenberater (integriert, an App-Design angepasst) ===== */
 #tab-sortenberater{max-width:1300px;margin:0 auto;--gruen:#2E3F2A;--gruen-hell:#eaf3de;--gruen-mid:#6E8A4E;--braun:#854F0B;--braun-hell:#FAEEDA;--rand:#E2DACB;--blau:#185FA5;--blau-hell:#E6F1FB;--lila:#993556;--lila-hell:#FBEAF0;--text:#2A231D;--text-mid:#5F5E5A;--text-leicht:#7A7168;--weiss:#ffffff;--stroh:#D9B458;--radius:10px}
 #tab-sortenberater .sbr-tabs{display:flex;background:var(--weiss);border-bottom:1px solid var(--rand);max-width:760px;margin:0 auto}
@@ -511,6 +518,10 @@
   <div style="font-family:Georgia,serif;font-size:1rem;color:var(--waldrand);">Lade Daten…</div>
 </div>
 <style>@keyframes spin{to{transform:rotate(360deg)}}</style>
+<div id="toast-container"></div>
+<div id="offline-banner" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:9998;background:var(--dachziegel);color:#fff;text-align:center;padding:6px 12px;font-size:.8rem;font-weight:600;">
+⚠ Keine Internetverbindung — Offline-Modus
+</div>
 
 <header>
   <div class="header-brand">
@@ -563,6 +574,7 @@
       </select>
       <button type="button" class="btn field" id="btn-baum-search-reset" title="Suche zurücksetzen">✕ Suche zurücksetzen</button>
       <button class="btn field" onclick="openExportDialog('baum','excel')" title="Gefilterte Auswahl als Excel exportieren">⬇ Excel</button>
+      <button class="btn field" onclick="exportBaumCSV()" title="Gefilterte Auswahl als CSV exportieren">⬇ CSV</button>
       <button class="btn field" onclick="openExportDialog('baum','pdf')" title="Gefilterte Auswahl als PDF exportieren">⬇ PDF</button>
       <button class="btn accent" id="btn-add-baum" style="display:none;" onclick="openBaumAddForm()">Neuer Baum</button>
     </div>
@@ -925,6 +937,89 @@ let SORTEN_DATA = [];
 const BLACKLIST = new Set(['W20','W21','W22']);
 function escHtml(s){return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 
+function showToast(msg, type, duration){
+  type = type || 'info';
+  duration = duration || 3000;
+  const container = document.getElementById('toast-container');
+  if(!container) return;
+  const t = document.createElement('div');
+  t.className = 'toast ' + type;
+  t.textContent = msg;
+  t.addEventListener('click', ()=>{ t.classList.remove('show'); setTimeout(()=>t.remove(), 250); });
+  container.appendChild(t);
+  requestAnimationFrame(()=>{ requestAnimationFrame(()=>{ t.classList.add('show'); }); });
+  setTimeout(()=>{ t.classList.remove('show'); setTimeout(()=>t.remove(), 250); }, duration);
+}
+
+function debounce(fn, ms){ let t; return function(){ clearTimeout(t); t = setTimeout(()=>fn.apply(this, arguments), ms); }; }
+
+let _undoBuf = null;
+let _undoTimer = null;
+let _undoEl = null;
+function setUndo(type, data){
+  if(_undoEl && _undoEl.parentElement) _undoEl.remove();
+  clearTimeout(_undoTimer);
+  _undoBuf = {type, data};
+  const c=document.getElementById('toast-container');
+  if(!c) return;
+  const el=document.createElement('div');
+  el.className='toast info';
+  el.style.cssText='display:flex;gap:8px;align-items:center;cursor:pointer;min-width:0;';
+  const txt=document.createElement('span'); txt.textContent='Gelöscht — '; el.appendChild(txt);
+  const btn=document.createElement('span'); btn.textContent='Rückgängig (30s)'; btn.style.cssText='color:var(--dachziegel,#B2543A);font-weight:600;white-space:nowrap;'; el.appendChild(btn);
+  el.onclick=()=>{ doUndo(); if(el.parentElement) el.remove(); };
+  c.appendChild(el);
+  _undoEl=el;
+  _undoTimer=setTimeout(()=>{ _undoBuf=null; _undoEl=null; if(el.parentElement){ el.style.opacity='0'; setTimeout(()=>{ el.remove(); }, 300); } }, 30000);
+}
+function doUndo(){
+  if(!_undoBuf) return;
+  const {type, data} = _undoBuf;
+  _undoBuf = null;
+  clearTimeout(_undoTimer);
+  if(type==='sukz'){
+    if(!state.sukzession[data.id]) state.sukzession[data.id]=[];
+    state.sukzession[data.id].splice(data.idx, 0, data.item);
+    saveState(); renderSukzList(data.id);
+  } else if(type==='ernte'){
+    if(!state.ernten[data.id]) state.ernten[data.id]=[];
+    state.ernten[data.id].splice(data.idx, 0, data.item);
+    _mittelCache=null;
+    saveState(); renderErnteList(data.id);
+  } else if(type==='baum'){
+    state.customTrees.push(data.tree);
+    if(data.pos) state.positions[data.id] = data.pos;
+    if(data.edit) state.baumEdits[data.id] = data.edit;
+    saveState(); renderBaumTable(); renderPins();
+  }
+  showToast('Rückgängig gemacht.','success');
+}
+
+function _shareText(title, text){
+  if(navigator.share){ navigator.share({title, text}).catch(()=>{}); }
+  else if(navigator.clipboard){ navigator.clipboard.writeText(text).then(()=>showToast('In Zwischenablage kopiert.','success')); }
+  else { showToast('Teilen nicht verfügbar.','error'); }
+}
+function shareBaum(id){
+  const t = getTree(id); if(!t) return;
+  const lines = ['🌳 '+(t.sorte||'Unbekannt')+' (ID: '+t.id+')'];
+  if(t.frucht) lines.push('Obstart: '+t.frucht);
+  if(t.pflueckzeitpunkt||t.pflueck_reifezeit) lines.push('Pflückzeit: '+(t.pflueckzeitpunkt||t.pflueck_reifezeit));
+  if(t.standort_zeile) lines.push('Standort: '+t.standort_zeile);
+  if(t.genussreife) lines.push('Genussreife: '+t.genussreife);
+  _shareText('Baum '+t.id, lines.join('\n'));
+}
+function shareSorte(name){
+  const s = getSorte(name); if(!s) return;
+  const lines = ['🍎 '+s.sorte];
+  if(s.frucht) lines.push('Obstart: '+s.frucht);
+  if(s.pflueckzeitpunkt||s.pflueck_reifezeit) lines.push('Pflückzeit: '+(s.pflueckzeitpunkt||s.pflueck_reifezeit||'–'));
+  if(s.genussreife) lines.push('Genussreife: '+s.genussreife);
+  if(s.geschmack) lines.push('Geschmack: '+s.geschmack);
+  if(s.befruchtungspartner) lines.push('Befruchtung: '+s.befruchtungspartner);
+  _shareText('Sorte '+s.sorte, lines.join('\n'));
+}
+
 const LS_KEY = "hendlberghof_obstdb_v1";
 
 let SEED_POSITIONS = {};
@@ -946,6 +1041,7 @@ function loadState(){
 let _saving = false;
 let _saveTimer = null;
 function saveState(){
+  _sortenCache = null;
   clearTimeout(_saveTimer);
   _saveTimer = setTimeout(()=>{
     localStorage.setItem(LS_KEY, JSON.stringify(state));
@@ -1007,6 +1103,7 @@ function applyRemoteState(remote){
   }
   Object.assign(state, remote);
   _mittelCache=null;
+  _sortenCache=null;
   if(!state.verifiziert) state.verifiziert = {};
   if(!state.customTrees) state.customTrees = [];
   if(!state.baumEdits) state.baumEdits = {};
@@ -1254,6 +1351,22 @@ const EXPORT_SPALTEN = {
 
 let exportContext = null;
 
+function exportBaumCSV(){
+  const rows = getFilteredBaumRows();
+  if(!rows.length){ showToast('Keine Daten zum Exportieren.','error'); return; }
+  const headers = ['ID','Sorte','Art','Pflückzeit','Standort'];
+  const csvRows = [headers.join(';')];
+  rows.forEach(t=>{
+    csvRows.push([t.id, t.sorte||'', t.frucht||'', t.pflueckzeitpunkt||t.pflueck_reifezeit||'', t.standort_zeile||''].map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(';'));
+  });
+  const blob = new Blob(['\uFEFF'+csvRows.join('\n')], {type:'text/csv;charset=utf-8;'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'hendlberghof_baumkataster_'+new Date().toISOString().slice(0,10)+'.csv';
+  a.click();
+  showToast(rows.length+' Bäume als CSV exportiert.','success');
+}
+
 function openExportDialog(typ, format){
   exportContext = {typ, format};
   let gespeichert = null;
@@ -1332,7 +1445,7 @@ function renderBaumTable(){
   });
 }
 ['baum-search','baum-filter-frucht','baum-filter-verwendung'].forEach(id=>{
-  document.getElementById(id).addEventListener('input', renderBaumTable);
+  document.getElementById(id).addEventListener('input', debounce(renderBaumTable, 200));
   document.getElementById(id).addEventListener('change', renderBaumTable);
 });
 document.getElementById('btn-baum-search-reset').addEventListener('click', ()=>{
@@ -1757,6 +1870,12 @@ function openBaumModal(id){
         <rect x="6" y="14" width="12" height="7"/>
       </svg>
     </button>
+    <button class="close" style="right:108px;" title="Teilen" onclick="shareBaum('${id}')">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false" style="vertical-align:middle;">
+        <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+        <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+      </svg>
+    </button>
     ${ausSorte? `<div class="badge-recherche">🔍 Sortenangaben web-recherchiert – bitte prüfen</div>
       <button class="btn-verify" onclick="toggleVerifiziert('${t.sorte.replace(/'/g,"\\'")}', {baumId:'${t.id}'})">✓ Als verifiziert markieren</button>`
       : (state.verifiziert[t.sorte]? `<div class="badge-verifiziert">✓ Verifiziert am ${state.verifiziert[t.sorte]}</div>
@@ -1879,7 +1998,7 @@ function renderErnteChart(id){
   if(!wrap) return;
   const items = (state.ernten[id]||[]);
   const valid = items.filter(it => it.datum && it.menge !== null && it.menge !== undefined && it.menge !== '' && !isNaN(parseFloat(it.menge)));
-  if(valid.length < 2){ wrap.innerHTML = ''; return; }
+  if(valid.length < 1){ wrap.innerHTML = ''; return; }
   const byYear = {};
   valid.forEach(it => {
     const y = it.datum.slice(0,4);
@@ -1888,8 +2007,8 @@ function renderErnteChart(id){
   });
   const years = Object.keys(byYear).sort();
   const vals = years.map(y => byYear[y]);
-  const maxVal = Math.max(...vals);
-  const W = 300, H = 120, pad = 40, padR = 10, padT = 15, padB = 30;
+  const maxVal = Math.max(...vals) || 1;
+  const W = 300, H = 130, pad = 40, padR = 10, padT = 15, padB = 30;
   const chartW = W - pad - padR, chartH = H - padT - padB;
   const xStep = years.length > 1 ? chartW / (years.length - 1) : chartW / 2;
   const pts = years.map((y, i) => {
@@ -1903,8 +2022,30 @@ function renderErnteChart(id){
   svg += `<rect x="${pad}" y="${padT}" width="${chartW}" height="${chartH}" fill="none" stroke="var(--rand,#ddd)" stroke-width="0.5"/>`;
   svg += `<path d="${areaD}" fill="var(--gruen,#28362A)" fill-opacity="0.08"/>`;
   svg += `<path d="${pathD}" fill="none" stroke="var(--gruen,#28362A)" stroke-width="2" stroke-linejoin="round"/>`;
+  // Trend line
+  if(pts.length >= 2){
+    const n = pts.length;
+    const sumX = pts.reduce((s,p)=>s+p.x,0);
+    const sumY = pts.reduce((s,p)=>s+p.y,0);
+    const sumXY = pts.reduce((s,p,i)=>s+p.x*p.y,0);
+    const sumXX = pts.reduce((s,p)=>s+p.x*p.x,0);
+    const denom = n*sumXX - sumX*sumX;
+    if(denom !== 0){
+      const slope = (n*sumXY - sumX*sumY) / denom;
+      const intercept = (sumY - slope*sumX) / n;
+      const tx1 = pts[0].x, tx2 = pts[n-1].x;
+      const ty1 = slope*tx1+intercept, ty2 = slope*tx2+intercept;
+      svg += `<line x1="${tx1.toFixed(1)}" y1="${ty1.toFixed(1)}" x2="${tx2.toFixed(1)}" y2="${ty2.toFixed(1)}" stroke="var(--dachziegel,#B2543A)" stroke-width="1" stroke-dasharray="4,3" opacity="0.6"/>`;
+    }
+  }
   pts.forEach(p => {
-    svg += `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="3.5" fill="var(--gruen,#28362A)" stroke="#fff" stroke-width="1.5"/>`;
+    if(pts.length === 1){
+      const bw = 30;
+      svg += `<rect x="${(p.x - bw/2).toFixed(1)}" y="${p.y.toFixed(1)}" width="${bw}" height="${(padT + chartH - p.y).toFixed(1)}" rx="3" fill="var(--gruen,#28362A)" fill-opacity="0.2" stroke="var(--gruen,#28362A)" stroke-width="1.5"/>`;
+      svg += `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="4" fill="var(--gruen,#28362A)" stroke="#fff" stroke-width="1.5"/>`;
+    } else {
+      svg += `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="3.5" fill="var(--gruen,#28362A)" stroke="#fff" stroke-width="1.5"/>`;
+    }
     svg += `<text x="${p.x.toFixed(1)}" y="${(padT + chartH + 16).toFixed(1)}" text-anchor="middle" font-size="9" fill="var(--text-mid,#6B7280)" font-family="DM Sans,sans-serif">${p.year}</text>`;
     const label = p.val >= 1 ? p.val.toFixed(2) : (p.val * 1000).toFixed(0) + 'g';
     svg += `<text x="${p.x.toFixed(1)}" y="${(p.y - 7).toFixed(1)}" text-anchor="middle" font-size="8.5" font-weight="600" fill="var(--gruen,#28362A)" font-family="DM Sans,sans-serif">${label}</text>`;
@@ -1924,9 +2065,12 @@ function addSukz(id){
   document.getElementById('sukz-datum').value=''; document.getElementById('sukz-text').value='';
 }
 function delSukz(id, idx){
-  state.sukzession[id] = (state.sukzession[id]||[]).filter((it,i)=>i!==idx);
+  const items = state.sukzession[id]||[];
+  const item = items[idx];
+  state.sukzession[id] = items.filter((it,i)=>i!==idx);
   state.sukzession[id].forEach((it,i)=>it._idx=i);
   saveState(); renderSukzList(id);
+  setUndo('sukz', {id, idx, item});
 }
 function addErnte(id){
   const datum = document.getElementById('ernte-datum').value;
@@ -1942,10 +2086,13 @@ function addErnte(id){
   document.getElementById('ernte-datum').value=''; document.getElementById('ernte-menge').value=''; document.getElementById('ernte-bem').value='';
 }
 function delErnte(id, idx){
-  state.ernten[id] = (state.ernten[id]||[]).filter((it,i)=>i!==idx);
+  const items = state.ernten[id]||[];
+  const item = items[idx];
+  state.ernten[id] = items.filter((it,i)=>i!==idx);
   state.ernten[id].forEach((it,i)=>it._idx=i);
   _mittelCache=null;
   saveState(); renderErnteList(id);
+  setUndo('ernte', {id, idx, item});
 }
 
 const _PHAENO_LABELS={holunder_bluete:'Holunder-Blühbeginn',holunder_vollbluete:'Holunder-Vollblüte',knaeulgras_rispenschieben:'Knäuelgras-Rispenschieben'};
@@ -2010,6 +2157,12 @@ function openSortenModal(sorteName){
         <path d="M6 9V3h12v6"/>
         <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
         <rect x="6" y="14" width="12" height="7"/>
+      </svg>
+    </button>
+    <button class="close" style="right:108px;" title="Teilen" onclick="shareSorte('${safeName}')">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false" style="vertical-align:middle;">
+        <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+        <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
       </svg>
     </button>
     ${s.recherchiert? `<div class="badge-recherche">🔍 Web-recherchiert – bitte prüfen</div>
@@ -3282,8 +3435,10 @@ let sortenQuelle='alle';
 let sortenVerwendung=new Set();
 let sortenSeite=1;
 let sortenSuche='';
+let _sortenCache=null;
 
 function getAllSorten(){
+  if(_sortenCache) return _sortenCache;
   const result=[];
   
   // Arche Noah Sorten
@@ -3380,6 +3535,7 @@ function getAllSorten(){
     });
   }
   
+  _sortenCache = deduped;
   return deduped;
 }
 
@@ -4787,6 +4943,7 @@ function renderBestellModalContent() {
 
   html += '<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;">';
   html += '<button class="btn secondary" onclick="bestellungDrucken()">Drucken</button>';
+  html += '<button class="btn secondary" onclick="bestellungPdf()">PDF erstellen</button>';
   html += '<button class="btn secondary" onclick="bestellungEmail()">E-Mail senden</button>';
   html += '<button class="btn secondary" onclick="bestellungSpeichern()">Bestellung speichern</button>';
   html += '</div>';
@@ -4794,28 +4951,50 @@ function renderBestellModalContent() {
   document.getElementById('modal-content').innerHTML = html;
 }
 
+function _validateBestellfelder(){
+  const required = ['bk-vname','bk-nname','bk-strasse','bk-plz','bk-ort','bk-email','bk-telefon'];
+  let ok = true;
+  for(const id of required){
+    const el = document.getElementById(id);
+    if(!el) continue;
+    if(!el.value.trim()){
+      el.style.borderColor = 'var(--dachziegel)';
+      ok = false;
+    } else {
+      el.style.borderColor = '';
+    }
+  }
+  return ok;
+}
+function _bestellFeldWerte(){
+  return {
+    vname: (document.getElementById('bk-vname')||{}).value || '',
+    nname: (document.getElementById('bk-nname')||{}).value || '',
+    strasse: (document.getElementById('bk-strasse')||{}).value || '',
+    plz: (document.getElementById('bk-plz')||{}).value || '',
+    ort: (document.getElementById('bk-ort')||{}).value || '',
+    email: (document.getElementById('bk-email')||{}).value || '',
+    telefon: (document.getElementById('bk-telefon')||{}).value || ''
+  };
+}
 function bestellungDrucken() {
+  if(!_validateBestellfelder()){ showToast('Bitte alle Pflichtfelder ausfüllen.','error'); return; }
   window.print();
 }
 
 function bestellungEmail() {
   if(!bestellListe.length) { alert('Keine Sorten in der Bestellliste.'); return; }
+  if(!_validateBestellfelder()){ showToast('Bitte alle Pflichtfelder ausfüllen.','error'); return; }
+  const kf = _bestellFeldWerte();
   const to = bestellListe[0].email || '';
-  const vname = (document.getElementById('bk-vname')||{}).value || '';
-  const nname = (document.getElementById('bk-nname')||{}).value || '';
-  const strasse = (document.getElementById('bk-strasse')||{}).value || '';
-  const plz = (document.getElementById('bk-plz')||{}).value || '';
-  const ort = (document.getElementById('bk-ort')||{}).value || '';
-  const email = (document.getElementById('bk-email')||{}).value || '';
-  const telefon = (document.getElementById('bk-telefon')||{}).value || '';
   const gesamt = bestellListe.reduce((s,e) => s + e.preis * e.menge, 0);
   const lines = [
     'Bestellung Hendlberghof',
     '',
-    'Kontakt: ' + vname + ' ' + nname,
-    'Adresse: ' + strasse + ', ' + plz + ' ' + ort,
-    'Email: ' + email,
-    'Tel: ' + telefon,
+    'Kontakt: ' + kf.vname + ' ' + kf.nname,
+    'Adresse: ' + kf.strasse + ', ' + kf.plz + ' ' + kf.ort,
+    'Email: ' + kf.email,
+    'Tel: ' + kf.telefon,
     '',
     'Sorten:',
     ...bestellListe.map(e =>
@@ -4826,8 +5005,58 @@ function bestellungEmail() {
     'Gesamt: ' + gesamt.toFixed(2) + ' EUR'
   ];
   const body = lines.join('\r\n');
-  const subject = 'Bestellung Hendlberghof ' + vname + ' ' + nname;
+  const subject = 'Bestellung Hendlberghof ' + kf.vname + ' ' + kf.nname;
   window.location.href = 'mailto:' + to + '?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body);
+}
+
+function bestellungPdf(){
+  if(!window.jspdf){ showToast('PDF-Bibliothek nicht geladen – Internet nötig.','error'); return; }
+  if(!_validateBestellfelder()){ showToast('Bitte alle Pflichtfelder ausfüllen.','error'); return; }
+  if(!bestellListe.length){ showToast('Keine Sorten in der Bestellliste.','error'); return; }
+  const kf = _bestellFeldWerte();
+  const {jsPDF} = window.jspdf;
+  const doc = new jsPDF();
+  const today = new Date().toLocaleDateString('de-AT',{day:'2-digit',month:'2-digit',year:'numeric'});
+  doc.setFontSize(16);
+  doc.text('Bestellung Hendlberghof', 20, 22);
+  doc.setFontSize(10);
+  doc.text('Datum: '+today, 20, 30);
+  doc.setFontSize(11);
+  doc.text('Kontakt', 20, 42);
+  doc.setFontSize(10);
+  doc.text(kf.vname+' '+kf.nname, 20, 49);
+  doc.text(kf.strasse, 20, 55);
+  doc.text(kf.plz+' '+kf.ort, 20, 61);
+  doc.text('Email: '+kf.email, 20, 67);
+  doc.text('Tel: '+kf.telefon, 20, 73);
+  doc.setDrawColor(40,54,42);
+  doc.line(20, 77, 190, 77);
+  doc.setFontSize(11);
+  doc.text('Sorten', 20, 85);
+  let y = 92;
+  const grouped = {};
+  bestellListe.forEach((e,i)=>{
+    if(!grouped[e.qid]) grouped[e.qid] = { quelle: e.quelle, items:[] };
+    grouped[e.qid].items.push(e);
+  });
+  let gesamt = 0;
+  Object.values(grouped).forEach(g=>{
+    doc.setFontSize(10);
+    doc.setFont(undefined,'bold');
+    doc.text(g.quelle, 20, y); y += 6;
+    doc.setFont(undefined,'normal');
+    g.items.forEach(item=>{
+      const lp = (item.preis*item.menge).toFixed(2);
+      doc.text(item.sorte+(item.unterlage?' '+item.unterlage:'')+(item.alter?' '+item.alter:'')+'  x'+item.menge+'  '+lp+' EUR', 24, y);
+      gesamt += item.preis*item.menge;
+      y += 5;
+    });
+    y += 2;
+  });
+  doc.line(20, y, 190, y); y += 6;
+  doc.setFont(undefined,'bold');
+  doc.text('Gesamt: '+gesamt.toFixed(2)+' EUR (inkl. 13% MwSt)', 20, y);
+  doc.save('Bestellung_Hendlberghof_'+today.replace(/\./g,'-')+'.pdf');
 }
 
 function bestellungSpeichern() {
@@ -4990,6 +5219,16 @@ function handleImportFile(file){
     document.getElementById('import-next-btn').disabled=false;
   }
 }
+
+(function(){
+  const b=document.getElementById('offline-banner');
+  if(!b) return;
+  function show(){ b.style.display='block'; }
+  function hide(){ b.style.display='none'; }
+  if(!navigator.onLine) show();
+  window.addEventListener('offline', show);
+  window.addEventListener('online', ()=>{ hide(); showToast('Internetverbindung wiederhergestellt.','success'); });
+})();
 
 </script>
 </body>
