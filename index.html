@@ -3065,23 +3065,9 @@ function beraten(){
   const lbl=aktArt.charAt(0).toUpperCase()+aktArt.slice(1);
   const expoEl=document.getElementById('expo');
   if(!scored.length){document.getElementById('res').innerHTML='<div class="sb-leer">Keine passende Sorte für diesen Standort gefunden. Aktuell liegen Standort-Daten für '+pool.length+' '+lbl+'-Sorten vor.</div>';return;}
-  let html='<p class="res-header">'+lbl+' &middot; '+hoehe+'m &middot; '+expoEl.options[expoEl.selectedIndex].text+' &middot; '+scored.length+' Empfehlung'+(scored.length>1?'en':'')+' aus '+pool.length+' Sorten mit Standort-Daten</p><div id="berater-results">';
-  scored.forEach(e=>{
-    const s=e.s;
-    const tags=hofTags(s).map(t=>'<span class="sb-tag '+tagCls(t)+'">'+t+'</span>').join('');
-    const reife=s.pflueckzeitpunkt||s.pflueck_reifezeit||'–';
-    const sn=s.sorte||s.name||'';
-    const n=anzahl[sn]||0;
-    const nTxt=n?' · '+n+' Baum/Bäume am Hof':'';
-    const quelleLabel=s.quelle==='arche'?'Arche Noah':'Hofsorte';
-    const idText=s.id?'<span class="idbadge" style="font-size:.72rem;margin-left:6px;">ID '+s.id+'</span>':'';
-    const hatPosition=state.positions && Object.keys(state.positions).some(k=>{const t=getTree(k);return t&&t.sorte===sn;});
-    const LageplanBtn=hatPosition?'<button class="btn secondary" style="font-size:.78rem;padding:3px 10px;margin-top:6px;" onclick="event.stopPropagation();showOnLageplan(\''+sn.replace(/'/g,"\\'")+'\')">Im Lageplan anzeigen</button>':'';
-    html+='<div class="sb-sorte" style="cursor:pointer" onclick="openSortenModal(\''+sn.replace(/'/g,"\\'")+'\')"><div class="sb-sorte-name">'+sn+idText+'<span class="sb-reife">Pflückzeit: '+reife+nTxt+' &middot; bis '+s.standort.hmax+'m</span></div><div class="sb-tags">'+tags+'</div><div class="sb-gilde"><strong>'+quelleLabel+'</strong> '+s.standort.basis+'</div>'+LageplanBtn+'</div>';
-  });
   window._beraterScored=scored; window._beraterShown=0;
   const INIT_SHOW=12;
-  let html='<p class="res-header">'+lbl+' &middot; '+hoehe+'m &middot; '+expoEl.options[expoEl.selectedIndex].text+' &middot; '+scored.length+' Empfehlung'+(scored.length>1?'en':'')+' aus '+pool.length+' Sorten mit Standort-Daten</p><div id="berater-results"></div>';
+  let html='<p class="res-header">'+lbl+' · '+hoehe+'m · '+expoEl.options[expoEl.selectedIndex].text+' · '+scored.length+' Empfehlung'+(scored.length>1?'en':'')+' aus '+pool.length+' Sorten mit Standort-Daten</p><div id="berater-results"></div>';
   document.getElementById('res').innerHTML=html;
   renderBeraterBatch(INIT_SHOW);
 }
