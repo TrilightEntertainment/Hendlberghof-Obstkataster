@@ -678,7 +678,10 @@
   <div class="sb-checks" id="ziele-box"></div>
 </div>
 <button class="sbr-btn" onclick="beraten()">Sorten empfehlen</button>
-<div id="res"><div class="sb-leer">Standort und Ziele wählen — der Berater empfiehlt Sorten mit passenden Standort-Daten.</div></div>
+<div style="margin:8px 0 0;display:flex;align-items:center;gap:8px;">
+  <button class="btn secondary" style="font-size:.78rem;padding:3px 10px;" onclick="showGuildQuellen()">Gilden-Hinweis & Quellen</button>
+</div>
+<div id="res"><div class="sb-leer">Standort und Ziele wahlen — der Berater empfiehlt Sorten mit passenden Standort-Daten.</div></div>
 </div>
 
 <!-- SORTENÜBERSICHT -->
@@ -1708,6 +1711,7 @@ function openBaumModal(id){
     ${merged.geschmack? `<div class="section-title">Geschmack / Nutzung</div><div class="field">${merged.geschmack}</div>`:''}
     ${merged.frucht_beschreibung? `<div class="section-title">Frucht</div><div class="field">${merged.frucht_beschreibung}</div>`:''}
     ${merged.eigenschaften? `<div class="section-title">Eigenschaften / Standortansprüche</div><div class="field">${merged.eigenschaften} ${merged.standort_anspruch||''}</div>`:''}
+    ${merged.frucht ? `<div class="section-title">Begleitpflanzungen & Gilden</div><div class="field">${renderGuildSection(merged.frucht)}</div>`:''}
     ${ausSorte? `<div class="quelle-hinweis"><b>Quelle(n):</b> ${sorteInfo.quelle}<br>Sortenangaben aus Web-Recherche, nicht aus deiner Numbers-Tabelle – bitte am Baum verifizieren.</div>`:''}
 
     <div class="section-title">Lageplan</div>
@@ -1902,6 +1906,7 @@ function openSortenModal(sorteName){
     ${s.frucht_beschreibung? `<div class="section-title">Frucht</div><div class="field">${s.frucht_beschreibung}</div>`:''}
     ${s.geschmack? `<div class="section-title">Geschmack / Nutzung</div><div class="field">${s.geschmack}</div>`:''}
     ${s.eigenschaften||s.standort_anspruch? `<div class="section-title">Eigenschaften / Standortansprüche</div><div class="field">${s.eigenschaften} ${s.standort_anspruch}</div>`:''}
+    ${s.frucht ? `<div class="section-title">Begleitpflanzungen & Gilden</div><div class="field">${renderGuildSection(s.frucht)}</div>`:''}
     ${!s.geschmack && !s.eigenschaften && !s.frucht_beschreibung ? '<p class="empty">Für diese Sorte liegt noch keine ausführliche Beschreibung vor.</p>':''}
     ${s.recherchiert? `<div class="quelle-hinweis"><b>Quelle(n):</b> ${s.quelle}<br>Diese Angaben stammen aus einer Web-Recherche (nicht aus deiner Numbers-Tabelle) und sollten anhand der Bäume vor Ort verifiziert werden.</div>`:''}
   `;
@@ -2894,6 +2899,101 @@ function hofTags(s){
   else if(s.recherchiert) t.push('recherchiert');
   return t;
 }
+
+/* ─── GILDEN & BEGLEITPFLANZUNG ─────────────────────────────────────────────── */
+const GUILD_DB = {
+  apfel: {
+    naehrstoff: ['Beinwell', 'Brennnessel', 'Ringelblume'],
+    boden: ['Weißklee', 'Rotklee', 'Luzerne'],
+    schaedling: ['Lavendel', 'Borretsch', 'Kapuzinerkresse', 'Rainfarn'],
+    bestaeuber: ['Fenchel', 'Dill', 'Kamille'],
+    warnung: []
+  },
+  birne: {
+    naehrstoff: ['Beinwell', 'Brennnessel', 'Ringelblume'],
+    boden: ['Weißklee', 'Rotklee'],
+    schaedling: ['Lavendel', 'Borretsch', 'Kapuzinerkresse'],
+    bestaeuber: ['Fenchel', 'Dill'],
+    warnung: []
+  },
+  walnuss: {
+    naehrstoff: [],
+    boden: [],
+    schaedling: [],
+    bestaeuber: [],
+    warnung: ['Walnuesse sondern Juglone ab, das viele Begleitpflanzen hemmt. Unter Walnussbaeumen nur sortenreiche Wildblumenwiesen anlegen. Keine Solanaceen, Rosen oder Beeren in Boden.naehe.']
+  },
+  kirsche: {
+    naehrstoff: ['Beinwell', 'Brennnessel'],
+    boden: ['Weißklee'],
+    schaedling: ['Lavendel', 'Rainfarn'],
+    bestaeuber: ['Fenchel', 'Dill', 'Kamille'],
+    warnung: []
+  },
+  zwetschke: {
+    naehrstoff: ['Beinwell', 'Brennnessel', 'Ringelblume'],
+    boden: ['Weißklee', 'Rotklee', 'Luzerne'],
+    schaedling: ['Lavendel', 'Borretsch', 'Kapuzinerkresse'],
+    bestaeuber: ['Fenchel', 'Dill', 'Kamille'],
+    warnung: []
+  },
+  sonstige: {
+    naehrstoff: ['Beinwell', 'Brennnessel', 'Ringelblume'],
+    boden: ['Weißklee'],
+    schaedling: ['Lavendel'],
+    bestaeuber: ['Fenchel'],
+    warnung: []
+  }
+};
+
+function getGuildRecommendations(frucht) {
+  const key = (frucht||'').toLowerCase();
+  return GUILD_DB[key] || GUILD_DB.sonstige;
+}
+
+function renderGuildSection(frucht) {
+  const g = getGuildRecommendations(frucht);
+  const cats = [
+    { key: 'naehrstoff', label: 'Naehrstoff-Akkumulatoren' },
+    { key: 'boden', label: 'Bodenverbesserer' },
+    { key: 'schaedling', label: 'Schaedlingsabwehr' },
+    { key: 'bestaeuber', label: 'Bestaeuber-Anziehung' }
+  ];
+  let html = '';
+  cats.forEach(c => {
+    const items = g[c.key];
+    if(!items || !items.length) return;
+    html += '<div style="margin-top:4px;"><span style="color:var(--muted);font-size:.78rem;">'+c.label+':</span> <span style="font-size:.82rem;">'+items.join(', ')+'</span></div>';
+  });
+  if(g.warnung && g.warnung.length){
+    html += '<div style="margin-top:6px;padding:6px 8px;background:rgba(220,38,38,.08);border-radius:6px;font-size:.78rem;color:#991b1b;">'+g.warnung.join(' ')+'</div>';
+  }
+  return html;
+}
+
+const GUILD_QUELLEN = [
+  { autor: 'Robert Kourik', titel: 'Designing and Maintaining Your Edible Landscape', jahr: 2005 },
+  { autor: 'Toby Hemenway', titel: 'Gaia\'s Garden: A Guide to Home-Scale Permaculture', jahr: 2009 },
+  { autor: 'Sepp Holzer', titel: 'Der Obstbau', jahr: 2018 },
+  { autor: 'Plants For A Future (PFAF)', titel: 'pfaf.org — Edible, Medicinal and Useful Plants', jahr: 'online' },
+  { autor: 'Bund Oekologische Lebensmittelwirtschaft', titel: 'Kompost & Gründüngung im Bio-Obstbau', jahr: 2020 }
+];
+
+function showGuildQuellen() {
+  let listHtml = GUILD_QUELLEN.map(q =>
+    '<li style="margin-bottom:4px;"><strong>'+q.autor+'</strong> ('+q.jahr+'): '+q.titel+'</li>'
+  ).join('');
+  const modalHtml = '<div style="max-width:520px;">' +
+    '<h3 style="font-family:var(--font-heading);color:var(--dark);margin:0 0 12px;">Gilden & Begleitpflanzung</h3>' +
+    '<p style="font-size:.85rem;color:var(--text);line-height:1.5;margin-bottom:10px;">Empfehlungen fuer Begleitpflanzen rund um Obstbaeume. Gilden sind Pflanzen, die sich gegenseitig unterstuetzen — durch Naehrstoffanreicherung, Schaedlingsabwehr oder Bestaeuberfoerderung.</p>' +
+    '<p style="font-size:.78rem;color:var(--muted);line-height:1.4;margin-bottom:10px;"><em>Hinweis: Gilden-Empfehlungen basieren auf Permakultur-Praxiserfahrung, nicht auf wissenschaftlich validierten Studien. Sie ergaenzen, ersetzen aber nicht eine fundierte Boden- und Pflanzenpflege.</em></p>' +
+    '<div class="section-title">Quellen</div>' +
+    '<ol style="font-size:.82rem;padding-left:18px;margin:6px 0;">'+listHtml+'</ol>' +
+    '</div>';
+  document.getElementById('modal-content').innerHTML = modalHtml;
+  document.getElementById('overlay').classList.add('open');
+}
+
 let beraterQuelle='alle';
 function beraterPool(){
   const all=getAllSorten();
@@ -2983,7 +3083,8 @@ function renderBeraterBatch(count){
     const idText=s.id?'<span class="idbadge" style="font-size:.72rem;margin-left:6px;">ID '+s.id+'</span>':'';
     const hatPosition=state.positions && Object.keys(state.positions).some(k=>{const t=getTree(k);return t&&t.sorte===sn;});
     const LageplanBtn=hatPosition?'<button class="btn secondary" style="font-size:.78rem;padding:3px 10px;margin-top:6px;" onclick="event.stopPropagation();showOnLageplan(\''+sn.replace(/'/g,"\\'")+'\')">Im Lageplan anzeigen</button>':'';
-    html+='<div class="sb-sorte" style="cursor:pointer" onclick="openSortenModal(\''+sn.replace(/'/g,"\\'")+'\')"><div class="sb-sorte-name">'+sn+idText+'<span class="sb-reife">Pflückzeit: '+reife+nTxt+' &middot; bis '+s.standort.hmax+'m</span></div><div class="sb-tags">'+tags+'</div><div class="sb-gilde"><strong>'+quelleLabel+'</strong> '+s.standort.basis+'</div>'+LageplanBtn+'</div>';
+    const guildHtml=renderGuildSection(s.frucht||'');
+    html+='<div class="sb-sorte" style="cursor:pointer" onclick="openSortenModal(\''+sn.replace(/'/g,"\\'")+'\')"><div class="sb-sorte-name">'+sn+idText+'<span class="sb-reife">Pflueckzeit: '+reife+nTxt+' &middot; bis '+s.standort.hmax+'m</span></div><div class="sb-tags">'+tags+'</div><div class="sb-gilde"><strong>'+quelleLabel+'</strong> '+s.standort.basis+'</div>'+(guildHtml?'<div style="margin-top:6px;padding-top:6px;border-top:1px solid var(--border);">'+guildHtml+'</div>':'')+ LageplanBtn+'</div>';
   }
   container.insertAdjacentHTML('beforeend', html);
   window._beraterShown=end;
