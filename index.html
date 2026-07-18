@@ -1738,7 +1738,7 @@ function openBaumModal(id){
     ${merged.geschmack? `<div class="section-title">Geschmack / Nutzung</div><div class="field">${merged.geschmack}</div>`:''}
     ${merged.frucht_beschreibung? `<div class="section-title">Frucht</div><div class="field">${merged.frucht_beschreibung}</div>`:''}
     ${merged.eigenschaften? `<div class="section-title">Eigenschaften / Standortansprüche</div><div class="field">${merged.eigenschaften} ${merged.standort_anspruch||''}</div>`:''}
-    ${merged.frucht ? `<div class="section-title">Begleitpflanzungen & Gilden</div><div class="field">${renderGuildSection(merged.frucht)}</div>`:''}
+    ${merged.frucht ? `<div class="section-title" style="cursor:pointer;color:var(--gruen);text-decoration:underline;text-decoration-style:dotted;text-underline-offset:3px;" onclick="showGuildQuellen()">Begleitpflanzungen & Gilden</div><div class="field">${renderGuildSection(merged.frucht)}</div>`:''}
     ${ausSorte? `<div class="quelle-hinweis"><b>Quelle(n):</b> ${sorteInfo.quelle}<br>Sortenangaben aus Web-Recherche, nicht aus deiner Numbers-Tabelle – bitte am Baum verifizieren.</div>`:''}
 
     <div class="section-title">Lageplan</div>
@@ -1983,7 +1983,7 @@ function openSortenModal(sorteName){
     ${s.frucht_beschreibung? `<div class="section-title">Frucht</div><div class="field">${s.frucht_beschreibung}</div>`:''}
     ${s.geschmack? `<div class="section-title">Geschmack / Nutzung</div><div class="field">${s.geschmack}</div>`:''}
     ${s.eigenschaften||s.standort_anspruch? `<div class="section-title">Eigenschaften / Standortansprüche</div><div class="field">${s.eigenschaften} ${s.standort_anspruch}</div>`:''}
-    ${s.frucht ? `<div class="section-title">Begleitpflanzungen & Gilden</div><div class="field">${renderGuildSection(s.frucht)}</div>`:''}
+    ${s.frucht ? `<div class="section-title" style="cursor:pointer;color:var(--gruen);text-decoration:underline;text-decoration-style:dotted;text-underline-offset:3px;" onclick="showGuildQuellen()">Begleitpflanzungen & Gilden</div><div class="field">${renderGuildSection(s.frucht)}</div>`:''}
     ${!s.geschmack && !s.eigenschaften && !s.frucht_beschreibung ? '<p class="empty">Für diese Sorte liegt noch keine ausführliche Beschreibung vor.</p>':''}
     ${s.recherchiert? `<div class="quelle-hinweis"><b>Quelle(n):</b> ${s.quelle}<br>Diese Angaben stammen aus einer Web-Recherche (nicht aus deiner Numbers-Tabelle) und sollten anhand der Bäume vor Ort verifiziert werden.</div>`:''}
   `;
@@ -3065,7 +3065,7 @@ const GUILD_QUELLEN = [
   { autor: 'Toby Hemenway', titel: 'Gaia\'s Garden: A Guide to Home-Scale Permaculture', jahr: 2009, url: '' },
   { autor: 'Sepp Holzer', titel: 'Der Obstbau', jahr: 2018, url: '' },
   { autor: 'Plants For A Future (PFAF)', titel: 'pfaf.org — Edible, Medicinal and Useful Plants', jahr: 'online', url: 'https://pfaf.org' },
-  { autor: 'Bund Oekologische Lebensmittelwirtschaft', titel: 'Kompost & Gründüngung im Bio-Obstbau', jahr: 2020, url: 'https://www.bund.net' }
+  { autor: 'Bund Oekologische Lebensmittelwirtschaft', titel: 'Kompost & Gründüngung im Bio-Obstbau', jahr: 2020, url: 'https://www.boelw.de/themen/pflanze/duengung/' }
 ];
 
 function showGuildQuellen() {
@@ -3160,7 +3160,7 @@ function renderBeraterBatch(count){
     const posBaumId=state.positions? Object.keys(state.positions).find(k=>{const t=getTree(k);return t&&t.sorte===sn;}) : null;
     const preise=getPreisFuerSorte(sn);
     const bestellBtn=preise.length?'<button class="btn secondary" style="font-size:.78rem;padding:3px 10px;" onclick="event.stopPropagation();addToBestellliste(\''+sn.replace(/'/g,"\\'")+'\','+JSON.stringify(preise[0]).replace(/"/g,'&quot;')+')">Zur Bestellung hinzufügen</button>':'<button class="btn secondary" style="font-size:.78rem;padding:3px 10px;" onclick="event.stopPropagation();alert(\'Keine Preise hinterlegt. Bitte zuerst eine Preisliste anlegen.\')">Zur Bestellung hinzufügen</button>';
-    const btnRow='<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;padding-top:6px;border-top:1px solid var(--border);">'+(posBaumId?'<button class="btn secondary" style="font-size:.78rem;padding:3px 10px;" onclick="event.stopPropagation();showOnLageplan(\''+String(posBaumId).replace(/'/g,"\\'")+'\')">Im Lageplan anzeigen</button>':'')+(s.frucht?'<button class="btn secondary" style="font-size:.78rem;padding:3px 10px;" onclick="event.stopPropagation();showGuildQuellen()">Begleitpflanzen-Hinweis</button>':'')+bestellBtn+'</div>';
+    const btnRow='<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;padding-top:6px;border-top:1px solid var(--border);">'+(posBaumId?'<button class="btn secondary" style="font-size:.78rem;padding:3px 10px;" onclick="event.stopPropagation();showOnLageplan(\''+String(posBaumId).replace(/'/g,"\\'")+'\')">Im Lageplan anzeigen</button>':'')+bestellBtn+'</div>';
     let preisHtml='';
     if(preise.length){
       preisHtml='<div style="margin-top:6px;padding-top:6px;border-top:1px solid var(--border);">';
