@@ -284,7 +284,8 @@
     border:1px solid var(--stroh);
   }
   .grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px 20px;margin:14px 0;}
-  .field{font-size:.87rem;}
+  .field{font-size:.87rem;padding:8px 10px;}
+  .field:not(:last-child){border-right:1px solid var(--rand);}
   .field b{display:block;color:var(--muted);font-size:.72rem;text-transform:uppercase;letter-spacing:.4px;margin-bottom:2px;}
   .section-title{
     font-weight:700;color:var(--waldrand);margin:18px 0 6px;font-size:.85rem;
@@ -1688,7 +1689,7 @@ function openBaumModal(id){
   }
   const html = `
     <button class="close" onclick="closeModal()">&times;</button>
-    ${isAdmin()? `<button class="close" style="right:44px;" title="Bearbeiten" onclick="editBaumWithLogin('${id}')">
+    <button class="close" style="right:44px;" title="Bearbeiten" onclick="editBaumWithLogin('${id}')">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" focusable="false" style="vertical-align:middle;">
         <line x1="4" y1="7" x2="20" y2="7"/>
         <circle cx="14" cy="7" r="2.3"/>
@@ -1697,7 +1698,7 @@ function openBaumModal(id){
         <line x1="4" y1="21" x2="20" y2="21"/>
         <circle cx="16" cy="21" r="2.3"/>
       </svg>
-    </button>` : ''}
+    </button>
     <button class="close" style="right:76px;" title="Als PDF speichern" onclick="exportBaumKartePDF('${id}')">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false" style="vertical-align:middle;">
         <path d="M6 9V3h12v6"/>
@@ -1711,20 +1712,27 @@ function openBaumModal(id){
       <button class="btn-verify done" onclick="toggleVerifiziert('${t.sorte.replace(/'/g,"\\'")}', {baumId:'${t.id}'})">Verifizierung zurücknehmen</button>` : '')}
     <h2>${t.sorte||'Unbekannte Sorte'} <span class="idbadge">${t.id_placeholder? 'ID noch offen' : 'ID '+t.id}</span></h2>
     ${archeNoahLink(merged)}
-    <div class="grid2">
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0;border:1px solid var(--rand);border-radius:10px;overflow:hidden;margin-bottom:8px;">
       ${fieldRow('Obstart', t.frucht)}
-      <div class="field"><b>Pflückreife</b><div>${originalPW||'–'}${mittelText}</div>${predictionHtml}</div>
-      ${verwendungField(t.sorte, merged.verwendung)}
+      <div class="field"><b>Pflückreife lt. Beschreibung</b><div>${originalPW||'–'}</div></div>
+      <div class="field"><b>Pflückreife ermittelt</b><div>${mittelText||predictionHtml||'–'}</div></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0;border:1px solid var(--rand);border-radius:10px;overflow:hidden;margin-bottom:8px;">
       ${fieldRow('Genussreife', merged.genuss_von&&merged.genuss_bis ? merged.genuss_von+' – '+merged.genuss_bis+' Monate ab Ernte' : merged.genussreife)}
-      ${fieldRow('Pflanzjahr', t.ausgepflanzt)}
-      ${fieldRow('Ertrag', merged.ertrag)}
-      ${fieldRow('Veredelungsjahr', t.veredelt)}
+      ${verwendungField(t.sorte, merged.verwendung)}
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0;border:1px solid var(--rand);border-radius:10px;overflow:hidden;margin-bottom:8px;">
+      ${fieldRow('Gepflanzt', t.ausgepflanzt)}
+      ${fieldRow('Veredelt', t.veredelt)}
       ${fieldRow('Unterlage', t.unterlage)}
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0;border:1px solid var(--rand);border-radius:10px;overflow:hidden;margin-bottom:8px;">
+      ${fieldRow('Ertrag', merged.ertrag)}
+      ${fieldRow('Befruchtungspartner', merged.befruchtungspartner)}
     </div>
     <div class="grid2">
       ${fieldRow('Erstmals tragend', t.erstmals_tragend)}
       ${fieldRow('Lagerfähigkeit', merged.lagerfaehig)}
-      ${fieldRow('Befruchtungspartner', merged.befruchtungspartner)}
       ${fieldRow('Herkunft', merged.herkunft_jahr||merged.herkunft)}
     </div>
     ${merged.geschmack? `<div class="section-title">Geschmack / Nutzung</div><div class="field">${merged.geschmack}</div>`:''}
@@ -1749,6 +1757,7 @@ function openBaumModal(id){
     </div>` : ''}
 
     <div class="section-title">Ernte-Dokumentation</div>
+    <div id="ernte-chart-wrap" style="margin-bottom:10px;"></div>
     <ul class="log-list" id="ernte-list"></ul>
     ${isEditMode()? `<div class="addlog">
       <input type="date" id="ernte-datum">
@@ -1812,6 +1821,45 @@ function renderErnteList(id){
     li.innerHTML = `<span><b>${it.datum||'–'}</b> — ${mengeText} ${it.bemerkung? '('+it.bemerkung+')':''}</span>${editing? `<span class="del" onclick="delErnte('${id}', ${it._idx})">✕</span>`:''}`;
     list.appendChild(li);
   });
+  renderErnteChart(id);
+}
+function renderErnteChart(id){
+  const wrap = document.getElementById('ernte-chart-wrap');
+  if(!wrap) return;
+  const items = (state.ernten[id]||[]);
+  const valid = items.filter(it => it.datum && it.menge !== null && it.menge !== undefined && it.menge !== '' && !isNaN(parseFloat(it.menge)));
+  if(valid.length < 2){ wrap.innerHTML = ''; return; }
+  const byYear = {};
+  valid.forEach(it => {
+    const y = it.datum.slice(0,4);
+    const m = parseFloat(it.menge);
+    byYear[y] = (byYear[y]||0) + m;
+  });
+  const years = Object.keys(byYear).sort();
+  const vals = years.map(y => byYear[y]);
+  const maxVal = Math.max(...vals);
+  const W = 300, H = 120, pad = 40, padR = 10, padT = 15, padB = 30;
+  const chartW = W - pad - padR, chartH = H - padT - padB;
+  const xStep = years.length > 1 ? chartW / (years.length - 1) : chartW / 2;
+  const pts = years.map((y, i) => {
+    const x = years.length > 1 ? pad + i * xStep : pad + chartW / 2;
+    const yy = padT + chartH - (vals[i] / maxVal) * chartH;
+    return { x, y: yy, year: y, val: vals[i] };
+  });
+  const pathD = pts.map((p, i) => (i === 0 ? 'M' : 'L') + p.x.toFixed(1) + ',' + p.y.toFixed(1)).join(' ');
+  const areaD = pathD + ' L' + pts[pts.length-1].x.toFixed(1) + ',' + (padT + chartH) + ' L' + pts[0].x.toFixed(1) + ',' + (padT + chartH) + ' Z';
+  let svg = `<svg viewBox="0 0 ${W} ${H}" style="width:100%;max-width:320px;height:auto;">`;
+  svg += `<rect x="${pad}" y="${padT}" width="${chartW}" height="${chartH}" fill="none" stroke="var(--rand,#ddd)" stroke-width="0.5"/>`;
+  svg += `<path d="${areaD}" fill="var(--gruen,#28362A)" fill-opacity="0.08"/>`;
+  svg += `<path d="${pathD}" fill="none" stroke="var(--gruen,#28362A)" stroke-width="2" stroke-linejoin="round"/>`;
+  pts.forEach(p => {
+    svg += `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="3.5" fill="var(--gruen,#28362A)" stroke="#fff" stroke-width="1.5"/>`;
+    svg += `<text x="${p.x.toFixed(1)}" y="${(padT + chartH + 16).toFixed(1)}" text-anchor="middle" font-size="9" fill="var(--text-mid,#6B7280)" font-family="DM Sans,sans-serif">${p.year}</text>`;
+    const label = p.val >= 1 ? p.val.toFixed(2) : (p.val * 1000).toFixed(0) + 'g';
+    svg += `<text x="${p.x.toFixed(1)}" y="${(p.y - 7).toFixed(1)}" text-anchor="middle" font-size="8.5" font-weight="600" fill="var(--gruen,#28362A)" font-family="DM Sans,sans-serif">${label}</text>`;
+  });
+  svg += '</svg>';
+  wrap.innerHTML = svg;
 }
 
 function addSukz(id){
@@ -1891,7 +1939,17 @@ function openSortenModal(sorteName){
   }
   const html = `
     <button class="close" onclick="closeModal()">&times;</button>
-    <button class="close" style="right:44px;" title="Als PDF speichern" onclick="exportSortenKartePDF('${safeName}')">
+    <button class="close" style="right:44px;" title="Bearbeiten" onclick="editSorteWithLogin('${safeName}')">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" focusable="false" style="vertical-align:middle;">
+        <line x1="4" y1="7" x2="20" y2="7"/>
+        <circle cx="14" cy="7" r="2.3"/>
+        <line x1="4" y1="14" x2="20" y2="14"/>
+        <circle cx="9" cy="14" r="2.3"/>
+        <line x1="4" y1="21" x2="20" y2="21"/>
+        <circle cx="16" cy="21" r="2.3"/>
+      </svg>
+    </button>
+    <button class="close" style="right:76px;" title="Als PDF speichern" onclick="exportSortenKartePDF('${safeName}')">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false" style="vertical-align:middle;">
         <path d="M6 9V3h12v6"/>
         <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
@@ -2058,7 +2116,7 @@ function setMapLayer(layer){
 
 function initSatMap(){
   if(!satMap){
-    satMap = L.map('sat-map');
+    satMap = L.map('sat-map').setView([48.072, 15.861], 17);
     L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
       maxZoom: 19,
       attribution: 'Esri, Maxar, Earthstar Geographics'
@@ -2360,12 +2418,22 @@ function editBaumWithLogin(id){
     openBaumEditForm(id);
     return;
   }
-  const pw = prompt('Passwort eingeben:');
-  if(pw===null) return;
-  if(!window.__firebaseSignIn){ alert('Anmeldung ist noch nicht bereit, bitte kurz warten und erneut versuchen.'); return; }
-  window.__firebaseSignIn(LOGIN_EMAIL, pw).then(()=> openBaumEditForm(id)).catch(err=>{
-    alert('Anmeldung fehlgeschlagen: '+(err && err.message ? err.message : err));
-  });
+  if(isEditMode()){
+    openBaumEditForm(id);
+    return;
+  }
+  showLoginDialog();
+}
+function editSorteWithLogin(sorteName){
+  if(isAdmin()){
+    openSorteEditForm(sorteName);
+    return;
+  }
+  if(isEditMode()){
+    openSorteEditForm(sorteName);
+    return;
+  }
+  showLoginDialog();
 }
 
 const FELDER = [
@@ -3091,14 +3159,14 @@ function renderBeraterBatch(count){
     const idText=s.id?'<span class="idbadge" style="font-size:.72rem;margin-left:6px;">ID '+s.id+'</span>':'';
     const posBaumId=state.positions? Object.keys(state.positions).find(k=>{const t=getTree(k);return t&&t.sorte===sn;}) : null;
     const preise=getPreisFuerSorte(sn);
-    const bestellBtn=preise.length?'<button class="btn secondary" style="font-size:.78rem;padding:3px 10px;" onclick="event.stopPropagation();addToBestellliste(\''+sn.replace(/'/g,"\\'")+'\','+JSON.stringify(preise[0]).replace(/"/g,'&quot;')+')">Zur Bestellliste</button>':'<button class="btn secondary" style="font-size:.78rem;padding:3px 10px;" onclick="event.stopPropagation();alert(\'Keine Preise hinterlegt. Bitte zuerst eine Preisliste anlegen.\')">Zur Bestellliste</button>';
+    const bestellBtn=preise.length?'<button class="btn secondary" style="font-size:.78rem;padding:3px 10px;" onclick="event.stopPropagation();addToBestellliste(\''+sn.replace(/'/g,"\\'")+'\','+JSON.stringify(preise[0]).replace(/"/g,'&quot;')+')">Zur Bestellung hinzufügen</button>':'<button class="btn secondary" style="font-size:.78rem;padding:3px 10px;" onclick="event.stopPropagation();alert(\'Keine Preise hinterlegt. Bitte zuerst eine Preisliste anlegen.\')">Zur Bestellung hinzufügen</button>';
     const btnRow='<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;padding-top:6px;border-top:1px solid var(--border);">'+(posBaumId?'<button class="btn secondary" style="font-size:.78rem;padding:3px 10px;" onclick="event.stopPropagation();showOnLageplan(\''+String(posBaumId).replace(/'/g,"\\'")+'\')">Im Lageplan anzeigen</button>':'')+(s.frucht?'<button class="btn secondary" style="font-size:.78rem;padding:3px 10px;" onclick="event.stopPropagation();showGuildQuellen()">Begleitpflanzen-Hinweis</button>':'')+bestellBtn+'</div>';
     let preisHtml='';
     if(preise.length){
       preisHtml='<div style="margin-top:6px;padding-top:6px;border-top:1px solid var(--border);">';
       preise.forEach(p=>{
         preisHtml+='<div style="display:flex;align-items:center;gap:6px;font-size:.82rem;margin:2px 0;"><span style="color:var(--gruen);font-weight:600;">'+p.preis.toFixed(2)+' EUR</span> <span style="color:var(--muted);">('+p.quelle+(p.unterlage?' '+p.unterlage:'')+(p.alter?' '+p.alter:'')+')</span>';
-        preisHtml+=' <button class="btn secondary" style="font-size:.72rem;padding:1px 6px;" onclick="event.stopPropagation();addToBestellliste(\''+sn.replace(/'/g,"\\'")+'\','+JSON.stringify(p).replace(/"/g,'&quot;')+')">Zur Bestellliste</button>';
+        preisHtml+=' <button class="btn secondary" style="font-size:.72rem;padding:1px 6px;" onclick="event.stopPropagation();addToBestellliste(\''+sn.replace(/'/g,"\\'")+'\','+JSON.stringify(p).replace(/"/g,'&quot;')+')">Zur Bestellung hinzufügen</button>';
         if(p.vorbestellbar) preisHtml+=' <span style="font-size:.7rem;color:var(--muted);">(vorbestellbar)</span>';
         preisHtml+='</div>';
       });
@@ -4337,7 +4405,7 @@ function renderBestellModalContent() {
   const today = new Date().toLocaleDateString('de-AT',{day:'2-digit',month:'2-digit',year:'numeric'});
   let html = '<div style="max-width:560px;">';
   html += '<button class="close" onclick="closeModal()">&times;</button>';
-  html += '<h2 style="font-family:var(--font-heading);color:var(--dark);margin:0 0 12px;">Bestellliste &mdash; '+today+'</h2>';
+  html += '<h2 style="font-family:var(--font-heading);color:var(--dark);margin:0 0 12px;">Bestellung &mdash; '+today+'</h2>';
 
   html += '<div class="section-title">Kontakt</div>';
   html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:12px;">';
