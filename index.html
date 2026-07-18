@@ -37,6 +37,8 @@
     --braun-hell:#fef3c7;
     --lila:#7c3aed;
     --lila-hell:#ede9fe;
+    --font-heading:Georgia,serif;
+    --dark:#2A231D;
   }
   *{box-sizing:border-box;}
   body{
@@ -82,7 +84,7 @@
     background:transparent;
     border:none;
     color:#8FA08C;
-    padding:12px 18px;
+    padding:14px 18px;
     font-size:13px;
     cursor:pointer;
     border-bottom:3px solid transparent;
@@ -108,7 +110,7 @@
     padding:8px 14px;
     border:1px solid #C9C0A9;
     border-radius:7px;
-    font-size:12px;
+    font-size:16px;
     font-family:inherit;
     background:transparent;
     color:#8A7F63;
@@ -375,7 +377,7 @@
     header{padding:16px 16px 14px;}
     header h1{font-size:1.5rem;}
     nav{padding:0 10px;overflow-x:auto;}
-    nav button{padding:10px 12px;font-size:.85rem;white-space:nowrap;}
+    nav button{padding:12px 14px;font-size:.85rem;white-space:nowrap;}
     main{padding:14px 12px 40px;}
     .toolbar{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;align-items:stretch;}
     .toolbar .search-wrap{grid-column:1/-1;}
@@ -503,6 +505,12 @@
 </style>
 </head>
 <body>
+
+<div id="loading-overlay" style="position:fixed;inset:0;z-index:9999;background:var(--kalkstein);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;transition:opacity .3s;">
+  <div style="width:36px;height:36px;border:3px solid var(--border);border-top-color:var(--gruen);border-radius:50%;animation:spin .8s linear infinite;"></div>
+  <div style="font-family:Georgia,serif;font-size:1rem;color:var(--waldrand);">Lade Daten…</div>
+</div>
+<style>@keyframes spin{to{transform:rotate(360deg)}}</style>
 
 <header>
   <div class="header-brand">
@@ -936,12 +944,13 @@ function loadState(){
   return { positions: Object.assign({}, SEED_POSITIONS), sukzession:{}, ernten:{}, verifiziert:{}, customTrees:[], baumEdits:{}, sortenEdits:{}, importLog:[], importSnapshots:[], phaenologie:{}, sortenSichtbar:{}, preislisten:{}, bestellungen:[] };
 }
 let _saving = false;
+let _saveTimer = null;
 function saveState(){
-  if(_saving) return;
-  _saving = true;
-  localStorage.setItem(LS_KEY, JSON.stringify(state));
-  if(window.__syncToFirestore) window.__syncToFirestore(state);
-  setTimeout(()=>{ _saving = false; }, 500);
+  clearTimeout(_saveTimer);
+  _saveTimer = setTimeout(()=>{
+    localStorage.setItem(LS_KEY, JSON.stringify(state));
+    if(window.__syncToFirestore) window.__syncToFirestore(state);
+  }, 300);
 }
 let state;
 function initState(){
@@ -956,6 +965,8 @@ function initState(){
   if(!state.sortenSichtbar) state.sortenSichtbar = {};
   if(!state.preislisten) state.preislisten = {};
   if(!state.bestellungen) state.bestellungen = [];
+  if(!state.sukzession) state.sukzession = {};
+  if(!state.ernten) state.ernten = {};
   if(state.satPositions && Object.keys(state.satPositions).length){
     Object.entries(state.satPositions).forEach(([id,pos])=>{
       if(!state.positions[id]) state.positions[id] = pos;
@@ -1004,6 +1015,10 @@ function applyRemoteState(remote){
   if(!state.importSnapshots) state.importSnapshots = [];
   if(!state.phaenologie) state.phaenologie = {};
   if(!state.sortenSichtbar) state.sortenSichtbar = {};
+  if(!state.preislisten) state.preislisten = {};
+  if(!state.bestellungen) state.bestellungen = [];
+  if(!state.sukzession) state.sukzession = {};
+  if(!state.ernten) state.ernten = {};
   if(state.satPositions && Object.keys(state.satPositions).length){
     Object.entries(state.satPositions).forEach(([id,pos])=>{ if(!state.positions[id]) state.positions[id] = pos; });
     state.satPositions = undefined;
@@ -1190,7 +1205,7 @@ function baumMerged(t){ return Object.assign({}, getSorte(t.sorte)||{}, t); }
 function getFilteredSortenExportRows(){
   let pool = getAllSorten();
   if(sortenQuelle!=='alle') pool = pool.filter(s=>s.quelle===sortenQuelle);
-  if(sortenVerwendung.size>0) pool = pool.filter(s=>Array.from(sortenVerwendung).some(v=>s.verwendung.includes(v)));
+  if(sortenVerwendung.size>0) pool = pool.filter(s=>Array.from(sortenVerwendung).some(v=>(s.verwendung||[]).includes(v)));
   const q = (document.getElementById('sl-search')?.value||'').toLowerCase();
   if(q) pool = pool.filter(s=>s.name.toLowerCase().includes(q)||(s.beschreibung||'').toLowerCase().includes(q)||(s.tags||[]).some(t=>t.toLowerCase().includes(q)));
   pool.sort((a,b)=>a.name.localeCompare(b.name,'de'));
@@ -1223,7 +1238,7 @@ const EXPORT_SPALTEN = {
     {key:'Sorte', get:s=> s.sorte},
     {key:'Obstart', get:s=> s.frucht},
     {key:'Verwendung', get:s=> ((getSorte(s.sorte)||s).verwendung||[]).join(', ')},
-    {key:'Anzahl Bäume', get:s=> s.baum_ids.length},
+    {key:'Anzahl Bäume', get:s=> (s.baum_ids||[]).length},
     {key:'Pflückzeit', get:s=> s.pflueckzeitpunkt||s.pflueck_reifezeit||''},
     {key:'Genussreife', get:s=> s.genuss_von&&s.genuss_bis? s.genuss_von+'–'+s.genuss_bis+' Monate' : (s.genussreife||'')},
     {key:'Lagerfähigkeit', get:s=> s.lagerfaehig||''},
@@ -1308,10 +1323,10 @@ function renderBaumTable(){
   }
   rows.forEach(t=>{
     const tr = document.createElement('tr');
-    tr.innerHTML = `<td><b>${t.id_placeholder? '<span style="color:var(--muted);font-weight:400;font-style:italic;">noch offen</span>' : t.id}</b></td><td>${t.sorte||'–'}</td>
-      <td><span class="pill ${(t.frucht||'sonstige').toLowerCase()}">${t.frucht||'–'}</span></td>
-      <td>${t.pflueckzeitpunkt||t.pflueck_reifezeit||'–'}</td>
-      <td>${t.standort_zeile||'–'}</td>`;
+    tr.innerHTML = `<td><b>${t.id_placeholder? '<span style="color:var(--muted);font-weight:400;font-style:italic;">noch offen</span>' : escHtml(t.id)}</b></td><td>${escHtml(t.sorte)||'–'}</td>
+      <td><span class="pill ${(t.frucht||'sonstige').toLowerCase()}">${escHtml(t.frucht)||'–'}</span></td>
+      <td>${escHtml(t.pflueckzeitpunkt||t.pflueck_reifezeit||'–')}</td>
+      <td>${escHtml(t.standort_zeile||'–')}</td>`;
     tr.addEventListener('click', ()=>openBaumModal(t.id));
     tbody.appendChild(tr);
   });
@@ -1497,7 +1512,7 @@ function exportSortenKartePDF(sorteName){
   feldPaar('Veredelungsjahr', s.veredelt, 'Unterlage', s.unterlage);
   feldPaar('Erstmals tragend', s.erstmals_tragend, 'Lagerfähigkeit', s.lagerfaehig);
   feldPaar('Befruchtungspartner', s.befruchtungspartner, 'Herkunft', s.herkunft_jahr||s.herkunft);
-  feldPaar('Anzahl Bäume', s.baum_ids.length + ' (' + s.baum_ids.join(', ') + ')', 'Synonyme', s.synonyme);
+  feldPaar('Anzahl Bäume', (s.baum_ids||[]).length + ' (' + (s.baum_ids||[]).join(', ') + ')', 'Synonyme', s.synonyme);
 
   if(s.frucht_beschreibung){ abschnitt('Frucht'); absatz(s.frucht_beschreibung); }
   if(s.geschmack){ abschnitt('Geschmack / Nutzung'); absatz(s.geschmack); }
@@ -1523,7 +1538,7 @@ function exportSortenbeschreibungenPDF(){
   const suche=(document.getElementById('sl-search').value||'').toLowerCase();
   let pool=getAllSorten();
   if(sortenQuelle!=='alle') pool=pool.filter(s=>s.quelle===sortenQuelle);
-  if(sortenVerwendung.size>0) pool=pool.filter(s=>Array.from(sortenVerwendung).some(v=>s.verwendung.includes(v)));
+  if(sortenVerwendung.size>0) pool=pool.filter(s=>Array.from(sortenVerwendung).some(v=>(s.verwendung||[]).includes(v)));
   if(suche) pool=pool.filter(s=>s.name.toLowerCase().includes(suche)||(s.beschreibung||'').toLowerCase().includes(suche)||(s.tags||[]).some(t=>t.toLowerCase().includes(suche)));
   pool.sort((a,b)=>a.name.localeCompare(b.name,'de'));
   if(!pool.length){ alert('Keine Sorten zum Exportieren gefunden.'); return; }
@@ -1576,7 +1591,7 @@ function exportLageplanPDF(){
   const r = cw * 0.008;
   Object.entries(state.positions).forEach(([id,pos])=>{
     const t = getTree(id);
-    const farbe = t? (farben[t.frucht.toLowerCase()]||'#B2543A') : '#B2543A';
+    const farbe = t? (farben[(t.frucht||'').toLowerCase()]||'#B2543A') : '#B2543A';
     const px = pos.x/100*cw, py = pos.y/100*ch;
     ctx.beginPath(); ctx.arc(px, py, r, 0, Math.PI*2);
     ctx.fillStyle = farbe; ctx.fill();
@@ -1617,7 +1632,7 @@ function exportLageplanPDF(){
 /* ---------- Modal: Baum-Detail ---------- */
 function fieldRow(label, val){
   if(!val) return `<div class="field"><b>${label}</b>–</div>`;
-  return `<div class="field"><b>${label}</b>${val}</div>`;
+  return `<div class="field"><b>${label}</b>${escHtml(String(val))}</div>`;
 }
 
 function archeNoahLink(obj){
@@ -1834,7 +1849,7 @@ function renderSukzList(id){
   items.forEach((it,idx)=>{
     const li = document.createElement('li');
     const datumAnzeige = it.jahr? new Date(it.jahr).toLocaleDateString('de-AT',{day:'2-digit',month:'2-digit',year:'numeric'}) : '–';
-    li.innerHTML = `<span><b>${datumAnzeige}</b> — ${it.text}</span>${editing? `<span class="del" onclick="delSukz('${id}', ${it._idx})">✕</span>`:''}`;
+    li.innerHTML = `<span><b>${datumAnzeige}</b> — ${escHtml(it.text)}</span>${editing? `<span class="del" onclick="delSukz('${id}', ${idx})">✕</span>`:''}`;
     list.appendChild(li);
   });
 }
@@ -1843,7 +1858,7 @@ function renderErnteList(id){
   const items = (state.ernten[id]||[]).slice().sort((a,b)=> (b.datum||'').localeCompare(a.datum||''));
   list.innerHTML = items.length? '' : '<li class="empty" style="background:none;">Noch keine Einträge.</li>';
   const editing = isEditMode();
-  items.forEach((it)=>{
+  items.forEach((it,idx)=>{
     const li = document.createElement('li');
     let mengeText = '';
     if(it.menge !== null && it.menge !== undefined && it.menge !== ''){
@@ -1854,7 +1869,7 @@ function renderErnteList(id){
         mengeText = String(it.menge);
       }
     }
-    li.innerHTML = `<span><b>${it.datum||'–'}</b> — ${mengeText} ${it.bemerkung? '('+it.bemerkung+')':''}</span>${editing? `<span class="del" onclick="delErnte('${id}', ${it._idx})">✕</span>`:''}`;
+    li.innerHTML = `<span><b>${it.datum||'–'}</b> — ${mengeText} ${it.bemerkung? '('+escHtml(it.bemerkung)+')':''}</span>${editing? `<span class="del" onclick="delErnte('${id}', ${idx})">✕</span>`:''}`;
     list.appendChild(li);
   });
   renderErnteChart(id);
@@ -2018,7 +2033,7 @@ function openSortenModal(sorteName){
       ${fieldRow('Lagerfähigkeit', s.lagerfaehig)}
       ${fieldRow('Befruchtungspartner', s.befruchtungspartner)}
       ${fieldRow('Herkunft', s.herkunft_jahr||s.herkunft)}
-      ${fieldRow('Anzahl Bäume', s.baum_ids.length + ' (' + s.baum_ids.join(', ') + ')')}
+      ${fieldRow('Anzahl Bäume', (s.baum_ids||[]).length + ' (' + (s.baum_ids||[]).join(', ') + ')')}
       ${fieldRow('Synonyme', s.synonyme)}
     </div>
     ${s.frucht_beschreibung? `<div class="section-title">Frucht</div><div class="field">${s.frucht_beschreibung}</div>`:''}
@@ -2260,7 +2275,7 @@ function renderPins(){
       if(photo && t.standort_zeile && t.standort_zeile !== photo.row) return;
     }
     const pin = document.createElement('div');
-    pin.className = 'pin ' + (t? t.frucht.toLowerCase():'') + (editing? '' : ' locked');
+    pin.className = 'pin ' + (t? (t.frucht||'').toLowerCase():'') + (editing? '' : ' locked');
     pin.style.left = pos.x+'%';
     pin.style.top = pos.y+'%';
     pin.dataset.id = id;
@@ -2356,7 +2371,13 @@ document.getElementById('file-import').addEventListener('change', (e)=>{
     try{
       const imported = JSON.parse(ev.target.result);
       if(imported.positions && imported.sukzession && imported.ernten){
-        state = imported;
+        if(imported.positions) Object.assign(state.positions, imported.positions);
+        if(imported.sukzession) Object.assign(state.sukzession, imported.sukzession);
+        if(imported.ernten) Object.assign(state.ernten, imported.ernten);
+        if(imported.customTrees) state.customTrees = (state.customTrees||[]).concat(imported.customTrees.filter(c=>!state.customTrees.some(e=>e.id===c.id)));
+        if(imported.baumEdits) Object.assign(state.baumEdits, imported.baumEdits);
+        if(imported.sortenEdits) Object.assign(state.sortenEdits, imported.sortenEdits);
+        if(imported.phaenologie) Object.assign(state.phaenologie, imported.phaenologie);
         saveState();
         alert('Import erfolgreich.');
         renderPins(); renderUnplacedSelect(); renderBaumTable();
@@ -2447,11 +2468,33 @@ function showLoginDialog(){
 function loginAsRole(role){
   pendingLoginRole = role;
   closeModal();
-  const pw = prompt('Passwort eingeben:');
-  if(pw===null) return;
-  if(!window.__firebaseSignIn){ alert('Anmeldung ist noch nicht bereit, bitte kurz warten und erneut versuchen.'); return; }
-  window.__firebaseSignIn(LOGIN_ACCOUNTS[role], pw).catch(err=>{
-    alert('Anmeldung fehlgeschlagen: '+(err && err.message ? err.message : err));
+  const html = `
+    <button class="close" onclick="closeModal()">&times;</button>
+    <h2>Anmeldung — ${role==='admin'?'Admin':'Mitarbeiter:in'}</h2>
+    <div style="max-width:320px;margin-top:16px;">
+      <div style="margin-bottom:12px;">
+        <label style="display:block;font-size:.82rem;color:var(--muted);margin-bottom:4px;">E-Mail</label>
+        <input type="email" id="login-email" value="${LOGIN_ACCOUNTS[role]}" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:1rem;font-family:inherit;">
+      </div>
+      <div style="margin-bottom:16px;">
+        <label style="display:block;font-size:.82rem;color:var(--muted);margin-bottom:4px;">Passwort</label>
+        <input type="password" id="login-pw" placeholder="Passwort eingeben" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:1rem;font-family:inherit;">
+      </div>
+      <div id="login-error" style="color:var(--dachziegel);font-size:.82rem;margin-bottom:12px;display:none;"></div>
+      <button class="btn" onclick="submitLogin()" style="width:100%;">Anmelden</button>
+    </div>`;
+  document.getElementById('modal-content').innerHTML = html;
+  document.getElementById('overlay').classList.add('open');
+  setTimeout(()=>{ const pw=document.getElementById('login-pw'); if(pw) pw.focus(); }, 100);
+}
+function submitLogin(){
+  const email = (document.getElementById('login-email').value||'').trim();
+  const pw = document.getElementById('login-pw').value;
+  const errEl = document.getElementById('login-error');
+  if(!email || !pw){ if(errEl){ errEl.textContent='Bitte E-Mail und Passwort eingeben.'; errEl.style.display='block'; } return; }
+  if(!window.__firebaseSignIn){ if(errEl){ errEl.textContent='Anmeldung ist noch nicht bereit, bitte kurz warten und erneut versuchen.'; errEl.style.display='block'; } return; }
+  window.__firebaseSignIn(email, pw).catch(err=>{
+    if(errEl){ errEl.textContent='Anmeldung fehlgeschlagen: '+(err && err.message ? err.message : err); errEl.style.display='block'; }
   });
 }
 
@@ -2718,6 +2761,8 @@ function startApp(){
   renderSortenlistenSichtbar();
   if(window.__pendingRemoteState){ const r = window.__pendingRemoteState; window.__pendingRemoteState = null; applyRemoteState(r); }
   showWelcomeBannerIfNeeded();
+  const lo=document.getElementById('loading-overlay');
+  if(lo){ lo.style.opacity='0'; setTimeout(()=>lo.remove(), 400); }
 }
 
 function showWelcomeBannerIfNeeded(){
@@ -3164,7 +3209,6 @@ function beraten(){
   const hoehe=parseInt(document.getElementById('hoehe').value),expo=document.getElementById('expo').value,frost=document.getElementById('frost').value,ns=document.getElementById('ns').value;
   const zdef=ZIELE_DEF[aktArt]||ZIELE_DEF.apfel;
   const gZ=zdef.filter(z=>{var e=document.getElementById('z-'+z.id);return e&&e.checked;}).map(z=>z.id);
-  const anzahl={}; getAllTrees().forEach(t=>{if(t.sorte) anzahl[t.sorte]=(anzahl[t.sorte]||0)+1;});
   const pool=beraterPoolFiltered().filter(s=>(s.frucht||'').toLowerCase()===aktArt);
   const toArr=v=>Array.isArray(v)?v:[v];
   const scored=pool.filter(s=>{const st=s.standort;return hoehe<=st.hmax&&toArr(st.expo).includes(expo)&&toArr(st.ns).includes(ns)&&!(frost==='hoch'&&st.frost==='gering');})
@@ -3541,7 +3585,7 @@ function renderSortenUebersicht(){
   
   // Verwendungs-Filter
   if(sortenVerwendung.size>0){
-    pool=pool.filter(s=>Array.from(sortenVerwendung).some(v=>s.verwendung.includes(v)));
+    pool=pool.filter(s=>Array.from(sortenVerwendung).some(v=>(s.verwendung||[]).includes(v)));
   }
   
   // Suche
@@ -3586,7 +3630,7 @@ function renderSortenUebersicht(){
   }
   
   const html=page.map(s=>{
-    const tags=s.tags.map(t=>'<span class="sb-tag '+tagCls(t)+'">'+t+'</span>').join('');
+    const tags=(s.tags||[]).map(t=>'<span class="sb-tag '+tagCls(t)+'">'+t+'</span>').join('');
     const quelleBadge=s.quelle==='arche'?'<span class="an-badge">Arche Noah</span>':'<span class="an-badge hof-badge">Hofsorten</span>';
     const ernteText=s.erntem.length>0?(s.erntem.map(m=>MONATE.find(mo=>mo.m===m)?.kz||m).join(', ')):'–';
     const verwendungText=(s.verwendung&&s.verwendung.length)?s.verwendung.join(', '):'';
@@ -3706,6 +3750,10 @@ function canProceedImport(){
     case 4:return importState.preview.length>0;
     default:return false;
   }
+}
+function revalidateImportBtn(){
+  const nextBtn=document.getElementById('import-next');
+  if(nextBtn && importState.step===3) nextBtn.disabled=!canProceedImport();
 }
 
 function importNextStep(){
@@ -3863,7 +3911,7 @@ function renderMappingUI(){
     return '<div class="import-mapping-row">'+
       '<label>'+field.label+required+'</label>'+
       '<div class="import-mapping-arrow">←</div>'+
-      '<select onchange="importState.mapping[\''+field.id+'\']=this.value||null">'+ '<option value="">– Nicht zuordnen –</option>'+options+'</select>'+
+      '<select onchange="importState.mapping[\''+field.id+'\']=this.value||null;revalidateImportBtn()">'+ '<option value="">– Nicht zuordnen –</option>'+options+'</select>'+
     '</div>';
   }).join('');
   
@@ -4637,7 +4685,9 @@ function executePreisImport() {
 
 /* ─── BESTELLLISTE ──────────────────────────────────────────────────────────── */
 
-let bestellListe = [];
+let bestellListe = JSON.parse(localStorage.getItem('hendlberghof_cart') || '[]');
+
+function saveCart(){ localStorage.setItem('hendlberghof_cart', JSON.stringify(bestellListe)); }
 
 function updateCartBadge(){
   const badge=document.getElementById('cart-badge');
@@ -4665,12 +4715,14 @@ function addToBestellliste(sorteName, preisInfo) {
   }
   openBestelllisteModal();
   updateCartBadge();
+  saveCart();
 }
 
 function removeFromBestellliste(idx) {
   bestellListe.splice(idx, 1);
   renderBestellModalContent();
   updateCartBadge();
+  saveCart();
 }
 
 function updateBestellMenge(idx, menge) {
@@ -4679,6 +4731,7 @@ function updateBestellMenge(idx, menge) {
   else { bestellListe[idx].menge = menge; }
   renderBestellModalContent();
   updateCartBadge();
+  saveCart();
 }
 
 function openBestelllisteModal() {
@@ -4772,7 +4825,7 @@ function bestellungEmail() {
     '',
     'Gesamt: ' + gesamt.toFixed(2) + ' EUR'
   ];
-  const body = lines.join('%0D%0A');
+  const body = lines.join('\r\n');
   const subject = 'Bestellung Hendlberghof ' + vname + ' ' + nname;
   window.location.href = 'mailto:' + to + '?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body);
 }
@@ -4805,6 +4858,7 @@ function bestellungSpeichern() {
   state.bestellungen.push(order);
   saveState();
   bestellListe = [];
+  saveCart();
   updateCartBadge();
   alert('Bestellung gespeichert!');
   closeModal();
