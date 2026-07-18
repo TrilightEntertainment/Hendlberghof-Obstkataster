@@ -1719,7 +1719,7 @@ function openBaumModal(id){
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:0;border:1px solid var(--rand);border-radius:10px;overflow:hidden;margin-bottom:8px;">
       ${fieldRow('Genussreife', merged.genuss_von&&merged.genuss_bis ? merged.genuss_von+' – '+merged.genuss_bis+' Monate ab Ernte' : merged.genussreife)}
-      ${verwendungField(t.sorte, merged.verwendung)}
+      ${fieldRow('Verwendung', (merged.verwendung||[]).join(', ')||'–')}
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0;border:1px solid var(--rand);border-radius:10px;overflow:hidden;margin-bottom:8px;">
       ${fieldRow('Gepflanzt', t.ausgepflanzt)}
@@ -2011,7 +2011,7 @@ const SECTION_PHOTOS = [
 ];
 
 /* ---------- Naive GPS → % Conversion ---------- */
-const NAIVE_GPS_REF = { lat: 48.072, lng: 15.861, xPct: 50, yPct: 50, scaleM: 120 };
+const NAIVE_GPS_REF = { lat: 48.0696, lng: 15.844, xPct: 50, yPct: 50, scaleM: 120 };
 
 function gpsToPercent(lat, lng) {
   const R = 6371000;
@@ -2117,7 +2117,7 @@ function setMapLayer(layer){
 
 function initSatMap(){
   if(!satMap){
-    satMap = L.map('sat-map').setView([48.072, 15.861], 17);
+    satMap = L.map('sat-map').setView([48.0696, 15.844], 17);
     L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
       maxZoom: 19,
       attribution: 'Esri, Maxar, Earthstar Geographics'
