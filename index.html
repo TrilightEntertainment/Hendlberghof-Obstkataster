@@ -3090,8 +3090,9 @@ function renderBeraterBatch(count){
     const nTxt=n?' · '+n+' Baum/Bäume am Hof':'';
     const quelleLabel=s.quelle==='arche'?'Arche Noah':'Hofsorte';
     const idText=s.id?'<span class="idbadge" style="font-size:.72rem;margin-left:6px;">ID '+s.id+'</span>':'';
-    const hatPosition=state.positions && Object.keys(state.positions).some(k=>{const t=getTree(k);return t&&t.sorte===sn;});
-    const LageplanBtn=hatPosition?'<button class="btn secondary" style="font-size:.78rem;padding:3px 10px;margin-top:6px;" onclick="event.stopPropagation();showOnLageplan(\''+sn.replace(/'/g,"\\'")+'\')">Im Lageplan anzeigen</button>':'';
+    const posBaumId=state.positions? Object.keys(state.positions).find(k=>{const t=getTree(k);return t&&t.sorte===sn;}) : null;
+    const LageplanBtn=posBaumId?'<button class="btn secondary" style="font-size:.78rem;padding:3px 10px;margin-top:6px;" onclick="event.stopPropagation();showOnLageplan(\''+String(posBaumId).replace(/'/g,"\\'")+'\')">Im Lageplan anzeigen</button>':'';
+    const guildHtml=renderGuildSection(s.frucht||'');
     const preise=getPreisFuerSorte(sn);
     let preisHtml='';
     if(preise.length){
