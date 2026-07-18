@@ -582,7 +582,7 @@
       <select id="foto-select" onchange="switchToImage(this.value)" style="min-width:160px;">
         <option value="lageplan">Foto: Gesamtansicht</option>
       </select>
-      <button class="btn field layer-btn" id="btn-layer-sat" onclick="setMapLayer('sat')">Satellit</button>
+      <button class="btn field layer-btn" id="btn-layer-sat" onclick="setMapLayer(mapLayer==='sat'?'foto':'sat')">Satellit</button>
       <button class="btn field" onclick="exportLageplanPDF()">PDF</button>
       <button class="btn" id="btn-place-mode"><span id="place-mode-label">Position setzen</span></button>
       <select id="unplaced-select"><option value="">– Baum wählen –</option></select>
@@ -2106,6 +2106,7 @@ function setMapLayer(layer){
   document.getElementById('map-wrap').style.display = layer==='foto'? '' : 'none';
   document.getElementById('sat-map').style.display = layer==='sat'? 'block' : 'none';
   document.getElementById('btn-layer-sat').classList.toggle('active', layer==='sat');
+  document.getElementById('btn-layer-sat').textContent = layer==='sat'? 'Fotoansicht' : 'Satellit';
   const fotoSel = document.getElementById('foto-select');
   if(fotoSel) fotoSel.style.display = layer==='sat'? 'none' : '';
   if(layer==='sat'){
