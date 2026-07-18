@@ -4311,16 +4311,18 @@ function renderPreislistenAdmin() {
     html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">';
     html += '<input value="'+(quelle.name||'').replace(/"/g,'&quot;')+'" style="font-weight:600;font-size:.9rem;border:none;border-bottom:1px solid var(--border);background:transparent;width:160px;" onchange="updateQuelleName(\''+qid+'\',this.value)">';
     html += '<input value="'+(quelle.email||'').replace(/"/g,'&quot;')+'" placeholder="Email" style="font-size:.8rem;border:none;border-bottom:1px solid var(--border);background:transparent;width:180px;" onchange="updateQuelleEmail(\''+qid+'\',this.value)">';
+    html += '<button class="btn secondary" style="font-size:.75rem;padding:2px 8px;" onclick="openPreisImport(\''+qid+'\')">CSV importieren</button>';
     html += '<button class="btn secondary" style="font-size:.75rem;padding:2px 8px;" onclick="removePreisquelle(\''+qid+'\')">Entfernen</button>';
     html += '</div>';
     html += '<table style="width:100%;font-size:.8rem;border-collapse:collapse;">';
-    html += '<tr style="color:var(--muted);font-size:.75rem;"><td style="padding:2px 4px;">Sorte</td><td style="padding:2px 4px;">Unterlage</td><td style="padding:2px 4px;">Alter</td><td style="padding:2px 4px;">Preis</td><td style="padding:2px 4px;">Vorbestellbar</td><td></td></tr>';
+    html += '<tr style="color:var(--muted);font-size:.75rem;"><td style="padding:2px 4px;">Sorte</td><td style="padding:2px 4px;">Unterlage</td><td style="padding:2px 4px;">Alter</td><td style="padding:2px 4px;">Preis</td><td style="padding:2px 4px;">MWST</td><td style="padding:2px 4px;">Vorbestellbar</td><td></td></tr>';
     (quelle.preise||[]).forEach((p, i)=>{
       html += '<tr>';
       html += '<td style="padding:2px 4px;"><input value="'+(p.sorte||'').replace(/"/g,'&quot;')+'" style="width:120px;" onchange="updatePreisItem(\''+qid+'\','+i+',\'sorte\',this.value)"></td>';
       html += '<td style="padding:2px 4px;"><input value="'+(p.unterlage||'').replace(/"/g,'&quot;')+'" style="width:60px;" onchange="updatePreisItem(\''+qid+'\','+i+',\'unterlage\',this.value)"></td>';
       html += '<td style="padding:2px 4px;"><input value="'+(p.alter||'').replace(/"/g,'&quot;')+'" style="width:50px;" onchange="updatePreisItem(\''+qid+'\','+i+',\'alter\',this.value)"></td>';
       html += '<td style="padding:2px 4px;"><input type="number" step="0.01" min="0" value="'+(p.preis||0)+'" style="width:60px;" onchange="updatePreisItem(\''+qid+'\','+i+',\'preis\',parseFloat(this.value)||0)"></td>';
+      html += '<td style="padding:2px 4px;"><select style="width:45px;font-size:.78rem;" onchange="updatePreisItem(\''+qid+'\','+i+',\'mwst_satz\',parseInt(this.value)||20)"><option value="10"'+((p.mwst_satz||20)===10?' selected':'')+'>10%</option><option value="20"'+((p.mwst_satz||20)===20?' selected':'')+'>20%</option></select></td>';
       html += '<td style="padding:2px 4px;text-align:center;"><input type="checkbox" '+(p.vorbestellbar?'checked':'')+' onchange="updatePreisItem(\''+qid+'\','+i+',\'vorbestellbar\',this.checked)"></td>';
       html += '<td style="padding:2px 4px;"><button style="background:none;border:none;color:var(--dachziegel);cursor:pointer;font-size:.8rem;" onclick="removePreisItem(\''+qid+'\','+i+')">x</button></td>';
       html += '</tr>';
@@ -4380,11 +4382,249 @@ function getPreisFuerSorte(sorteName) {
   Object.entries(state.preislisten||{}).forEach(([qid, q])=>{
     (q.preise||[]).forEach(p => {
       if(p.sorte && p.sorte.toLowerCase() === sorteName.toLowerCase()) {
-        results.push({ quelle: q.name, email: q.email, qid, preis: p.preis, unterlage: p.unterlage, alter: p.alter, vorbestellbar: p.vorbestellbar });
+        results.push({ quelle: q.name, email: q.email, qid, preis: p.preis, unterlage: p.unterlage, alter: p.alter, vorbestellbar: p.vorbestellbar, mwst_satz: p.mwst_satz||20 });
       }
     });
   });
   return results;
+}
+
+// ─── PREISLISTEN-IMPORT ──────────────────────────────────────────────────────
+let preisImportState = { qid: null, rows: [], headers: [], mapping: {}, preview: [] };
+
+const PREIS_CSV_FIELDS = [
+  {id:'sorte', label:'Sorte', required:true, autoDetect:['sorte','Sorte','name','Name','sortenname']},
+  {id:'unterlage', label:'Unterlage', required:false, autoDetect:['unterlage','Unterlage','rootstock','Unterl.']},
+  {id:'alter', label:'Veredelt (Jahr)', required:false, autoDetect:['veredelt','Veredelt','alter','Alter','Jahr','veredelungsjahr']},
+  {id:'preis', label:'Preis inkl. MWST', required:true, autoDetect:['preis','Preis','price','Preis inkl','brutto','ep','EP','Einzelpreis']},
+  {id:'mwst', label:'MWST Satz (%)', required:false, autoDetect:['mwst','MWSt','USt','ust','steuersatz','mehrwertsteuer','tax','vat']},
+  {id:'vorbestellbar', label:'Nur auf Vorbestellung', required:false, autoDetect:['vorbestellbar','Vorbestellung','pre-order','nur vorbestellung','vorbestellbar?']}
+];
+
+function openPreisImport(qid) {
+  preisImportState = { qid, rows: [], headers: [], mapping: {}, preview: [] };
+  const html = `
+    <button class="close" onclick="closeModal()">&times;</button>
+    <h2 style="font-family:var(--font-heading);color:var(--dark);margin:0 0 12px;">Preisliste importieren</h2>
+    <p style="font-size:.85rem;color:var(--muted);margin-bottom:12px;">Quelle: <b>${(state.preislisten[qid]?.name||qid)}</b> — Alle bestehenden Preise werden durch die CSV-Daten ersetzt.</p>
+    <div id="preis-import-step1">
+      <p style="font-size:.85rem;margin-bottom:8px;">CSV- oder Excel-Datei wählen:</p>
+      <input type="file" id="preis-import-file" accept=".csv,.tsv,.xlsx,.xls" onchange="handlePreisImportFile(this.files[0])" style="font-size:.85rem;">
+      <p style="font-size:.78rem;color:var(--muted);margin-top:6px;">Erwartete Spalten: Sorte, Unterlage, Veredelt (Jahr), Preis inkl. MWST, MWST Satz, Nur auf Vorbestellung</p>
+    </div>
+    <div id="preis-import-step2" style="display:none;"></div>
+    <div id="preis-import-step3" style="display:none;"></div>
+  `;
+  document.getElementById('modal-content').innerHTML = html;
+  document.getElementById('overlay').classList.add('open');
+}
+
+function handlePreisImportFile(file) {
+  if(!file) return;
+  const name = file.name.toLowerCase();
+  if(name.endsWith('.xlsx') || name.endsWith('.xls')){
+    if(typeof XLSX === 'undefined'){ alert('Excel-Bibliothek nicht geladen. Bitte Internetverbindung prüfen.'); return; }
+    const reader = new FileReader();
+    reader.onload = function(e){
+      try {
+        const wb = XLSX.read(e.target.result, {type:'array'});
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const data = XLSX.utils.sheet_to_json(ws, {header:1});
+        if(data.length < 2){ alert('Die Datei enthält keine Daten.'); return; }
+        preisImportState.headers = data[0].map(h=>String(h||'').trim());
+        preisImportState.rows = data.slice(1).filter(r=>r.some(v=>v));
+        detectPreisMapping();
+      } catch(err){ alert('Fehler beim Lesen der Excel-Datei: '+err.message); }
+    };
+    reader.readAsArrayBuffer(file);
+  } else {
+    const reader = new FileReader();
+    reader.onload = function(e){
+      const text = e.target.result;
+      const delimiter = text.includes('\t') ? '\t' : ',';
+      const data = parseCSV(text, delimiter);
+      if(data.length < 2){ alert('Die Datei enthält keine Daten.'); return; }
+      preisImportState.headers = data[0];
+      preisImportState.rows = data.slice(1).filter(r=>r.some(v=>v));
+      detectPreisMapping();
+    };
+    reader.readAsText(file);
+  }
+}
+
+function detectPreisMapping() {
+  preisImportState.mapping = {};
+  const headers = preisImportState.headers.map(h=>h.toLowerCase().trim());
+  PREIS_CSV_FIELDS.forEach(field => {
+    const found = field.autoDetect.find(ad => headers.includes(ad.toLowerCase()));
+    if(found){
+      const idx = headers.indexOf(found.toLowerCase());
+      preisImportState.mapping[field.id] = preisImportState.headers[idx];
+    }
+  });
+  renderPreisMappingUI();
+}
+
+function renderPreisMappingUI() {
+  const s = preisImportState;
+  let html = '<p style="font-size:.85rem;margin-bottom:8px;">Spalten zuordnen:</p>';
+  html += '<table style="width:100%;font-size:.82rem;border-collapse:collapse;margin-bottom:12px;">';
+  PREIS_CSV_FIELDS.forEach(field => {
+    html += '<tr><td style="padding:4px 6px;font-weight:600;width:140px;">'+field.label+(field.required?' *':'')+'</td>';
+    html += '<td style="padding:4px 6px;"><select id="pim-'+field.id+'" style="font-size:.82rem;padding:3px 6px;border:1px solid var(--border);border-radius:4px;width:100%;">';
+    html += '<option value="">— nicht importieren —</option>';
+    s.headers.forEach(h => {
+      const sel = s.mapping[field.id] === h ? 'selected' : '';
+      html += '<option value="'+h.replace(/"/g,'&quot;')+'" '+sel+'>'+h+'</option>';
+    });
+    html += '</select></td></tr>';
+  });
+  html += '</table>';
+  html += '<button class="btn" onclick="previewPreisImport()">Vorschau</button>';
+  document.getElementById('preis-import-step2').innerHTML = html;
+  document.getElementById('preis-import-step2').style.display = '';
+}
+
+function getPreisColVal(row, fieldId) {
+  const s = preisImportState;
+  const colName = s.mapping[fieldId];
+  if(!colName) return '';
+  const idx = s.headers.indexOf(colName);
+  if(idx < 0) return '';
+  return String(row[idx]||'').trim();
+}
+
+function parsePreisValue(val) {
+  if(!val) return 0;
+  val = String(val).replace(/[€EUR\s]/g,'').replace(',','.').trim();
+  const n = parseFloat(val);
+  return isNaN(n) ? 0 : Math.round(n * 100) / 100;
+}
+
+function parseMwstValue(val) {
+  if(!val) return 20;
+  val = String(val).replace(/[%\s]/g,'').replace(',','.').trim();
+  const n = parseFloat(val);
+  if(isNaN(n)) return 20;
+  if(n <= 1) return Math.round(n * 100);
+  return Math.round(n);
+}
+
+function parseVorbestellbar(val) {
+  if(!val) return false;
+  const v = String(val).toLowerCase().trim();
+  return v === 'ja' || v === 'yes' || v === 'true' || v === '1' || v === 'x';
+}
+
+function fuzzyMatchSorte(csvSorte, csvUnterlage) {
+  if(!csvSorte) return null;
+  const norm = s => s.toLowerCase().replace(/[^a-z0-9äöüß]/g,'');
+  const csvNorm = norm(csvSorte);
+  const allSorten = getAllSorten();
+  let best = null, bestDist = Infinity;
+  for(const s of allSorten){
+    const sName = s.name || s.sorte || '';
+    if(norm(sName) === csvNorm){
+      if(csvUnterlage && s.unterlage && norm(s.unterlage) === norm(csvUnterlage)) return { name: sName, exact: true };
+      if(!best || bestDist > 0) { best = { name: sName, exact: true }; bestDist = 0; }
+    }
+  }
+  if(best) return best;
+  for(const s of allSorten){
+    const sName = s.name || s.sorte || '';
+    const dist = levenshtein(csvNorm, norm(sName));
+    if(dist <= 2 && dist < bestDist){ bestDist = dist; best = { name: sName, exact: false, dist }; }
+  }
+  return best;
+}
+
+function levenshtein(a, b) {
+  const m = a.length, n = b.length;
+  const dp = Array.from({length: m+1}, ()=>Array(n+1).fill(0));
+  for(let i=0;i<=m;i++) dp[i][0]=i;
+  for(let j=0;j<=n;j++) dp[0][j]=j;
+  for(let i=1;i<=m;i++) for(let j=1;j<=n;j++){
+    dp[i][j] = Math.min(dp[i-1][j]+1, dp[i][j-1]+1, dp[i-1][j-1]+(a[i-1]!==b[j-1]?1:0));
+  }
+  return dp[m][n];
+}
+
+function previewPreisImport() {
+  PREIS_CSV_FIELDS.forEach(field => {
+    const sel = document.getElementById('pim-'+field.id);
+    if(sel) preisImportState.mapping[field.id] = sel.value || '';
+  });
+  if(!preisImportState.mapping.sorte){ alert('Bitte die Spalte "Sorte" zuordnen.'); return; }
+  if(!preisImportState.mapping.preis){ alert('Bitte die Spalte "Preis" zuordnen.'); return; }
+
+  const preview = preisImportState.rows.slice(0, 20).map(row => {
+    const sorte = getPreisColVal(row, 'sorte');
+    const unterlage = getPreisColVal(row, 'unterlage');
+    const alter = getPreisColVal(row, 'alter');
+    const preis = parsePreisValue(getPreisColVal(row, 'preis'));
+    const mwst = parseMwstValue(getPreisColVal(row, 'mwst'));
+    const vorbestellbar = parseVorbestellbar(getPreisColVal(row, 'vorbestellbar'));
+    const match = fuzzyMatchSorte(sorte, unterlage);
+    return { sorte, unterlage, alter, preis, mwst, vorbestellbar, match };
+  });
+  preisImportState.preview = preview;
+
+  let html = '<p style="font-size:.85rem;margin-bottom:8px;"><b>'+preisImportState.rows.length}</b> Zeilen gefunden. Vorschau (erste '+preview.length+':</p>';
+  html += '<div style="max-height:300px;overflow-y:auto;border:1px solid var(--border);border-radius:6px;">';
+  html += '<table style="width:100%;font-size:.78rem;border-collapse:collapse;">';
+  html += '<tr style="background:var(--gruen-hell);position:sticky;top:0;"><td style="padding:4px 6px;font-weight:600;">Sorte (CSV)</td><td style="padding:4px 6px;">Unterl.</td><td style="padding:4px 6px;">Preis</td><td style="padding:4px 6px;">MWST</td><td style="padding:4px 6px;">Vorbest.</td><td style="padding:4px 6px;">Match</td></tr>';
+  preview.forEach(r => {
+    const matchColor = r.match ? (r.match.exact ? 'var(--gruen)' : 'var(--waldrand)') : 'var(--dachziegel)';
+    const matchText = r.match ? (r.match.exact ? '✓ '+r.match.name : '~ '+r.match.name+' ('+r.match.dist+')') : '⚠ nicht zugeordnet';
+    html += '<tr style="border-top:1px solid var(--border);">';
+    html += '<td style="padding:3px 6px;">'+r.sorte+'</td>';
+    html += '<td style="padding:3px 6px;">'+r.unterlage+'</td>';
+    html += '<td style="padding:3px 6px;">'+r.preis.toFixed(2)+' EUR</td>';
+    html += '<td style="padding:3px 6px;">'+r.mwst+'%</td>';
+    html += '<td style="padding:3px 6px;">'+(r.vorbestellbar?'Ja':'Nein')+'</td>';
+    html += '<td style="padding:3px 6px;color:'+matchColor+';font-weight:600;">'+matchText+'</td>';
+    html += '</tr>';
+  });
+  html += '</table></div>';
+
+  const unmatched = preview.filter(r=>!r.match).length;
+  if(unmatched > 0) html += '<p style="font-size:.8rem;color:var(--dachziegel);margin-top:6px;">⚠ '+unmatched+' Zeile(n) konnten keiner Sorte zugeordnet werden.</p>';
+
+  html += '<div style="display:flex;gap:8px;margin-top:12px;">';
+  html += '<button class="btn" onclick="executePreisImport()">Import ausführen (ersetzt alle Preise)</button>';
+  html += '<button class="btn secondary" onclick="openPreisImport(\''+preisImportState.qid+'\')">Zurück</button>';
+  html += '</div>';
+
+  document.getElementById('preis-import-step3').innerHTML = html;
+  document.getElementById('preis-import-step3').style.display = '';
+}
+
+function executePreisImport() {
+  const qid = preisImportState.qid;
+  if(!state.preislisten[qid]) return;
+  const neuePreise = preisImportState.rows.map(row => {
+    const sorte = getPreisColVal(row, 'sorte');
+    const unterlage = getPreisColVal(row, 'unterlage');
+    const alter = getPreisColVal(row, 'alter');
+    const preis = parsePreisValue(getPreisColVal(row, 'preis'));
+    const mwst = parseMwstValue(getPreisColVal(row, 'mwst'));
+    const vorbestellbar = parseVorbestellbar(getPreisColVal(row, 'vorbestellbar'));
+    const match = fuzzyMatchSorte(sorte, unterlage);
+    return {
+      sorte: match ? match.name : sorte,
+      unterlage: unterlage,
+      alter: alter,
+      preis: preis,
+      mwst_satz: mwst,
+      vorbestellbar: vorbestellbar
+    };
+  }).filter(p => p.sorte && p.preis > 0);
+
+  state.preislisten[qid].preise = neuePreise;
+  saveState();
+  closeModal();
+  renderPreislistenAdmin();
+  alert('Import abgeschlossen: '+neuePreise.length+' Preise importiert.');
 }
 
 /* ─── BESTELLLISTE ──────────────────────────────────────────────────────────── */
@@ -4411,6 +4651,7 @@ function addToBestellliste(sorteName, preisInfo) {
       unterlage: preisInfo.unterlage||'',
       alter: preisInfo.alter||'',
       preis: preisInfo.preis,
+      mwst_satz: preisInfo.mwst_satz||20,
       menge: 1
     });
   }
@@ -4470,7 +4711,7 @@ function renderBestellModalContent() {
         const zeilenPreis = item.preis * item.menge;
         qSumme += zeilenPreis;
         html += '<div style="display:flex;align-items:center;gap:6px;font-size:.82rem;margin:3px 0;">';
-        html += '<span style="flex:1;">'+item.sorte+(item.unterlage?' '+item.unterlage:'')+(item.alter?' '+item.alter:'')+' &mdash; '+item.preis.toFixed(2)+' EUR</span>';
+        html += '<span style="flex:1;">'+item.sorte+(item.unterlage?' '+item.unterlage:'')+(item.alter?' '+item.alter:'')+' &mdash; '+item.preis.toFixed(2)+' EUR <span style="font-size:.72rem;color:var(--muted);">(inkl. '+((item.mwst_satz||20))+'% MwSt)</span></span>';
         html += '<input type="number" min="1" value="'+item.menge+'" style="width:45px;font-size:.8rem;text-align:center;padding:2px;border:1px solid var(--border);border-radius:3px;" onchange="updateBestellMenge('+item.idx+',this.value)">';
         html += '<span style="width:55px;text-align:right;">'+zeilenPreis.toFixed(2)+' EUR</span>';
         html += '<button style="background:none;border:none;color:var(--dachziegel);cursor:pointer;font-size:.8rem;" onclick="removeFromBestellliste('+item.idx+')">x</button>';
@@ -4518,7 +4759,7 @@ function bestellungEmail() {
     'Sorten:',
     ...bestellListe.map(e =>
       '  ' + e.sorte + (e.unterlage ? ' (' + e.unterlage + ')' : '') +
-      (e.alter ? ' ' + e.alter : '') + ' x' + e.menge + ' = ' + (e.preis * e.menge).toFixed(2) + ' EUR'
+      (e.alter ? ' ' + e.alter : '') + ' x' + e.menge + ' = ' + (e.preis * e.menge).toFixed(2) + ' EUR (inkl. '+(e.mwst_satz||20)+'% MwSt)'
     ),
     '',
     'Gesamt: ' + gesamt.toFixed(2) + ' EUR'
