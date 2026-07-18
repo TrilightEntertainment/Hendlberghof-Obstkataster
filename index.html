@@ -632,8 +632,19 @@
     </div>
     <div class="card" style="max-width:640px;margin-top:16px;" id="card-sortenlisten-sichtbar">
       <h3>Sortenlisten-Sichtbarkeit</h3>
-      <p class="snippet">Wähle welche Sortenlisten im Sortenberater und in der Sortenübersicht angezeigt werden. Sortenblätter (PDF) bleiben immer verfügbar.</p>
+      <p class="snippet">Waehle welche Sortenlisten im Sortenberater und in der Sortenuebersicht angezeigt werden. Sortenblaetter (PDF) bleiben immer verfuegbar.</p>
       <div id="sortenlisten-sichtbar-ctrl"></div>
+    </div>
+    <div class="card" style="max-width:640px;margin-top:16px;" id="card-preislisten">
+      <h3>Preislisten</h3>
+      <p class="snippet">Preise pro Quelle und Sorte verwalten. Werden im Sortenberater und in der Bestellliste angezeigt.</p>
+      <div id="preislisten-admin"></div>
+      <button class="btn secondary" style="margin-top:10px;" onclick="addPreisquelle()">+ Neue Quelle</button>
+    </div>
+    <div class="card" style="max-width:640px;margin-top:16px;" id="card-bestellhistorie">
+      <h3>Bestellhistorie</h3>
+      <p class="snippet">Bisherige Bestellungen. Details anzeigen oder stornieren.</p>
+      <div id="bestellhistorie-list"></div>
     </div>
   </section>
 
@@ -921,7 +932,7 @@ function loadState(){
       return parsed;
     }
   }catch(e){}
-  return { positions: Object.assign({}, SEED_POSITIONS), sukzession:{}, ernten:{}, verifiziert:{}, customTrees:[], baumEdits:{}, sortenEdits:{}, importLog:[], importSnapshots:[], phaenologie:{}, sortenSichtbar:{} };
+  return { positions: Object.assign({}, SEED_POSITIONS), sukzession:{}, ernten:{}, verifiziert:{}, customTrees:[], baumEdits:{}, sortenEdits:{}, importLog:[], importSnapshots:[], phaenologie:{}, sortenSichtbar:{}, preislisten:{}, bestellungen:[] };
 }
 let _saving = false;
 function saveState(){
@@ -942,6 +953,8 @@ function initState(){
   if(!state.importSnapshots) state.importSnapshots = [];
   if(!state.phaenologie) state.phaenologie = {};
   if(!state.sortenSichtbar) state.sortenSichtbar = {};
+  if(!state.preislisten) state.preislisten = {};
+  if(!state.bestellungen) state.bestellungen = [];
   if(state.satPositions && Object.keys(state.satPositions).length){
     Object.entries(state.satPositions).forEach(([id,pos])=>{
       if(!state.positions[id]) state.positions[id] = pos;
@@ -1024,6 +1037,12 @@ function activateTab(tabName){
       renderSatMarkers();
       setTimeout(()=>{ satMap.invalidateSize(); }, 50);
     }
+  }
+  if(tabName==='daten'){
+    renderPreislistenAdmin();
+    renderBestellhistorie();
+    renderSortenlistenSichtbar();
+    renderImportLog();
   }
 }
 document.querySelectorAll('.tab-btn').forEach(btn=>{
@@ -2261,6 +2280,10 @@ function applyEditModeUI(){
   document.getElementById('btn-add-baum').style.display = admin ? '' : 'none';
   document.getElementById('edit-banner').style.display = on ? '' : 'none';
   document.getElementById('tab-btn-daten').style.display = admin ? '' : 'none';
+  const cardPl = document.getElementById('card-preislisten');
+  if(cardPl) cardPl.style.display = admin ? '' : 'none';
+  const cardBh = document.getElementById('card-bestellhistorie');
+  if(cardBh) cardBh.style.display = admin ? '' : 'none';
   const banner = document.getElementById('edit-banner');
   if(on) banner.innerHTML = (admin ? 'Bearbeitungsmodus (Admin)' : 'Bearbeitungsmodus (Mitarbeiter:in)') + ' — Änderungen werden lokal gespeichert &nbsp;';
   if(!on && document.getElementById('tab-daten').style.display!=='none'){
@@ -3083,8 +3106,19 @@ function renderBeraterBatch(count){
     const idText=s.id?'<span class="idbadge" style="font-size:.72rem;margin-left:6px;">ID '+s.id+'</span>':'';
     const hatPosition=state.positions && Object.keys(state.positions).some(k=>{const t=getTree(k);return t&&t.sorte===sn;});
     const LageplanBtn=hatPosition?'<button class="btn secondary" style="font-size:.78rem;padding:3px 10px;margin-top:6px;" onclick="event.stopPropagation();showOnLageplan(\''+sn.replace(/'/g,"\\'")+'\')">Im Lageplan anzeigen</button>':'';
-    const guildHtml=renderGuildSection(s.frucht||'');
-    html+='<div class="sb-sorte" style="cursor:pointer" onclick="openSortenModal(\''+sn.replace(/'/g,"\\'")+'\')"><div class="sb-sorte-name">'+sn+idText+'<span class="sb-reife">Pflueckzeit: '+reife+nTxt+' &middot; bis '+s.standort.hmax+'m</span></div><div class="sb-tags">'+tags+'</div><div class="sb-gilde"><strong>'+quelleLabel+'</strong> '+s.standort.basis+'</div>'+(guildHtml?'<div style="margin-top:6px;padding-top:6px;border-top:1px solid var(--border);">'+guildHtml+'</div>':'')+ LageplanBtn+'</div>';
+    const preise=getPreisFuerSorte(sn);
+    let preisHtml='';
+    if(preise.length){
+      preisHtml='<div style="margin-top:6px;padding-top:6px;border-top:1px solid var(--border);">';
+      preise.forEach(p=>{
+        preisHtml+='<div style="display:flex;align-items:center;gap:6px;font-size:.82rem;margin:2px 0;"><span style="color:var(--gruen);font-weight:600;">'+p.preis.toFixed(2)+' EUR</span> <span style="color:var(--muted);">('+p.quelle+(p.unterlage?' '+p.unterlage:'')+(p.alter?' '+p.alter:'')+')</span>';
+        preisHtml+=' <button class="btn secondary" style="font-size:.72rem;padding:1px 6px;" onclick="event.stopPropagation();addToBestellliste(\''+sn.replace(/'/g,"\\'")+'\','+JSON.stringify(p).replace(/"/g,'&quot;')+')">Zur Bestellliste</button>';
+        if(p.vorbestellbar) preisHtml+=' <span style="font-size:.7rem;color:var(--muted);">(vorbestellbar)</span>';
+        preisHtml+='</div>';
+      });
+      preisHtml+='</div>';
+    }
+    html+='<div class="sb-sorte" style="cursor:pointer" onclick="openSortenModal(\''+sn.replace(/'/g,"\\'")+'\')"><div class="sb-sorte-name">'+sn+idText+'<span class="sb-reife">Pflueckzeit: '+reife+nTxt+' &middot; bis '+s.standort.hmax+'m</span></div><div class="sb-tags">'+tags+'</div><div class="sb-gilde"><strong>'+quelleLabel+'</strong> '+s.standort.basis+'</div>'+preisHtml+(guildHtml?'<div style="margin-top:6px;padding-top:6px;border-top:1px solid var(--border);">'+guildHtml+'</div>':'')+ LageplanBtn+'</div>';
   }
   container.insertAdjacentHTML('beforeend', html);
   window._beraterShown=end;
@@ -4164,8 +4198,295 @@ function deleteImport(importId){
 }
 
 // Dropzone Event Listener
+/* ─── FEATURE 3: PREISLISTE & BESTELLLISTE ──────────────────────────────────── */
+
+function getDefaultPreislisten() {
+  return {
+    arche: { name:'Arche Noah', email:'', preise:[] },
+    hof: { name:'Hofsorten', email:'', preise:[] }
+  };
+}
+
+function renderPreislistenAdmin() {
+  if(!isAdmin()) { document.getElementById('preislisten-admin').innerHTML=''; return; }
+  const pl = state.preislisten || {};
+  let html = '';
+  Object.entries(pl).forEach(([qid, quelle])=>{
+    html += '<div style="margin-bottom:14px;padding:10px;border:1px solid var(--border);border-radius:8px;">';
+    html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">';
+    html += '<input value="'+(quelle.name||'').replace(/"/g,'&quot;')+'" style="font-weight:600;font-size:.9rem;border:none;border-bottom:1px solid var(--border);background:transparent;width:160px;" onchange="updateQuelleName(\''+qid+'\',this.value)">';
+    html += '<input value="'+(quelle.email||'').replace(/"/g,'&quot;')+'" placeholder="Email" style="font-size:.8rem;border:none;border-bottom:1px solid var(--border);background:transparent;width:180px;" onchange="updateQuelleEmail(\''+qid+'\',this.value)">';
+    html += '<button class="btn secondary" style="font-size:.75rem;padding:2px 8px;" onclick="removePreisquelle(\''+qid+'\')">Entfernen</button>';
+    html += '</div>';
+    html += '<table style="width:100%;font-size:.8rem;border-collapse:collapse;">';
+    html += '<tr style="color:var(--muted);font-size:.75rem;"><td style="padding:2px 4px;">Sorte</td><td style="padding:2px 4px;">Unterlage</td><td style="padding:2px 4px;">Alter</td><td style="padding:2px 4px;">Preis</td><td style="padding:2px 4px;">Vorbestellbar</td><td></td></tr>';
+    (quelle.preise||[]).forEach((p, i)=>{
+      html += '<tr>';
+      html += '<td style="padding:2px 4px;"><input value="'+(p.sorte||'').replace(/"/g,'&quot;')+'" style="width:120px;" onchange="updatePreisItem(\''+qid+'\','+i+',\'sorte\',this.value)"></td>';
+      html += '<td style="padding:2px 4px;"><input value="'+(p.unterlage||'').replace(/"/g,'&quot;')+'" style="width:60px;" onchange="updatePreisItem(\''+qid+'\','+i+',\'unterlage\',this.value)"></td>';
+      html += '<td style="padding:2px 4px;"><input value="'+(p.alter||'').replace(/"/g,'&quot;')+'" style="width:50px;" onchange="updatePreisItem(\''+qid+'\','+i+',\'alter\',this.value)"></td>';
+      html += '<td style="padding:2px 4px;"><input type="number" step="0.01" min="0" value="'+(p.preis||0)+'" style="width:60px;" onchange="updatePreisItem(\''+qid+'\','+i+',\'preis\',parseFloat(this.value)||0)"></td>';
+      html += '<td style="padding:2px 4px;text-align:center;"><input type="checkbox" '+(p.vorbestellbar?'checked':'')+' onchange="updatePreisItem(\''+qid+'\','+i+',\'vorbestellbar\',this.checked)"></td>';
+      html += '<td style="padding:2px 4px;"><button style="background:none;border:none;color:var(--dachziegel);cursor:pointer;font-size:.8rem;" onclick="removePreisItem(\''+qid+'\','+i+')">x</button></td>';
+      html += '</tr>';
+    });
+    html += '</table>';
+    html += '<button class="btn secondary" style="font-size:.78rem;margin-top:6px;padding:3px 10px;" onclick="addPreisItem(\''+qid+'\')">+ Preis hinzufuegen</button>';
+    html += '</div>';
+  });
+  document.getElementById('preislisten-admin').innerHTML = html || '<p style="font-size:.85rem;color:var(--muted);">Noch keine Preislisten angelegt. Fuege eine Quelle hinzu.</p>';
+}
+
+function addPreisquelle() {
+  if(!state.preislisten) state.preislisten = {};
+  const qid = 'quelle_' + Date.now();
+  state.preislisten[qid] = { name:'Neue Quelle', email:'', preise:[] };
+  saveState();
+  renderPreislistenAdmin();
+}
+
+function removePreisquelle(qid) {
+  if(!confirm('Quelle "'+(state.preislisten[qid]?.name||qid)+'" wirklich entfernen?')) return;
+  delete state.preislisten[qid];
+  saveState();
+  renderPreislistenAdmin();
+}
+
+function updateQuelleName(qid, val) {
+  if(state.preislisten[qid]) { state.preislisten[qid].name = val; saveState(); }
+}
+
+function updateQuelleEmail(qid, val) {
+  if(state.preislisten[qid]) { state.preislisten[qid].email = val; saveState(); }
+}
+
+function addPreisItem(qid) {
+  if(!state.preislisten[qid]) return;
+  state.preislisten[qid].preise.push({sorte:'',unterlage:'',alter:'',preis:0,vorbestellbar:false});
+  saveState();
+  renderPreislistenAdmin();
+}
+
+function removePreisItem(qid, idx) {
+  if(!state.preislisten[qid]) return;
+  state.preislisten[qid].preise.splice(idx, 1);
+  saveState();
+  renderPreislistenAdmin();
+}
+
+function updatePreisItem(qid, idx, field, val) {
+  if(!state.preislisten[qid] || !state.preislisten[qid].preise[idx]) return;
+  state.preislisten[qid].preise[idx][field] = val;
+  saveState();
+}
+
+function getPreisFuerSorte(sorteName) {
+  const results = [];
+  Object.entries(state.preislisten||{}).forEach(([qid, q])=>{
+    (q.preise||[]).forEach(p => {
+      if(p.sorte && p.sorte.toLowerCase() === sorteName.toLowerCase()) {
+        results.push({ quelle: q.name, email: q.email, qid, preis: p.preis, unterlage: p.unterlage, alter: p.alter, vorbestellbar: p.vorbestellbar });
+      }
+    });
+  });
+  return results;
+}
+
+/* ─── BESTELLLISTE ──────────────────────────────────────────────────────────── */
+
+let bestellListe = [];
+
+function addToBestellliste(sorteName, preisInfo) {
+  const existing = bestellListe.find(e => e.sorte === sorteName && e.qid === preisInfo.qid);
+  if(existing) { existing.menge += 1; }
+  else {
+    bestellListe.push({
+      sorte: sorteName,
+      qid: preisInfo.qid,
+      quelle: preisInfo.quelle,
+      email: preisInfo.email,
+      unterlage: preisInfo.unterlage||'',
+      alter: preisInfo.alter||'',
+      preis: preisInfo.preis,
+      menge: 1
+    });
+  }
+  openBestelllisteModal();
+}
+
+function removeFromBestellliste(idx) {
+  bestellListe.splice(idx, 1);
+  renderBestellModalContent();
+}
+
+function updateBestellMenge(idx, menge) {
+  menge = parseInt(menge) || 0;
+  if(menge <= 0) { bestellListe.splice(idx, 1); }
+  else { bestellListe[idx].menge = menge; }
+  renderBestellModalContent();
+}
+
+function openBestelllisteModal() {
+  renderBestellModalContent();
+  document.getElementById('overlay').classList.add('open');
+}
+
+function renderBestellModalContent() {
+  const grouped = {};
+  bestellListe.forEach((e,i)=>{
+    if(!grouped[e.qid]) grouped[e.qid] = { quelle: e.quelle, email: e.email, items:[] };
+    grouped[e.qid].items.push({...e, idx:i});
+  });
+  const today = new Date().toLocaleDateString('de-AT',{day:'2-digit',month:'2-digit',year:'numeric'});
+  let html = '<div style="max-width:560px;">';
+  html += '<button class="close" onclick="closeModal()">&times;</button>';
+  html += '<h2 style="font-family:var(--font-heading);color:var(--dark);margin:0 0 12px;">Bestellliste &mdash; '+today+'</h2>';
+
+  html += '<div class="section-title">Kontakt</div>';
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:12px;">';
+  html += '<input id="bk-vname" placeholder="Vorname*" style="font-size:.82rem;padding:5px 8px;border:1px solid var(--border);border-radius:4px;">';
+  html += '<input id="bk-nname" placeholder="Nachname*" style="font-size:.82rem;padding:5px 8px;border:1px solid var(--border);border-radius:4px;">';
+  html += '<input id="bk-strasse" placeholder="Strasse + Nr.*" style="font-size:.82rem;padding:5px 8px;border:1px solid var(--border);border-radius:4px;">';
+  html += '<div style="display:flex;gap:4px;"><input id="bk-plz" placeholder="PLZ*" style="font-size:.82rem;padding:5px 8px;border:1px solid var(--border);border-radius:4px;width:80px;"><input id="bk-ort" placeholder="Ort*" style="font-size:.82rem;padding:5px 8px;border:1px solid var(--border);border-radius:4px;flex:1;"></div>';
+  html += '<input id="bk-email" type="email" placeholder="Email*" style="font-size:.82rem;padding:5px 8px;border:1px solid var(--border);border-radius:4px;">';
+  html += '<input id="bk-telefon" placeholder="Telefon*" style="font-size:.82rem;padding:5px 8px;border:1px solid var(--border);border-radius:4px;">';
+  html += '</div>';
+
+  if(!bestellListe.length) {
+    html += '<p style="font-size:.85rem;color:var(--muted);text-align:center;padding:16px 0;">Noch keine Sorten ausgewaehlt. Fuege Sorten im Sortenberater hinzu.</p>';
+  } else {
+    let gesamt = 0;
+    Object.entries(grouped).forEach(([qid, g])=>{
+      let qSumme = 0;
+      html += '<div style="margin-bottom:10px;padding:8px;border:1px solid var(--border);border-radius:6px;">';
+      html += '<div style="font-weight:600;font-size:.85rem;margin-bottom:4px;">'+g.quelle+(g.email?' ('+g.email+')':'')+'</div>';
+      g.items.forEach(item=>{
+        const zeilenPreis = item.preis * item.menge;
+        qSumme += zeilenPreis;
+        html += '<div style="display:flex;align-items:center;gap:6px;font-size:.82rem;margin:3px 0;">';
+        html += '<span style="flex:1;">'+item.sorte+(item.unterlage?' '+item.unterlage:'')+(item.alter?' '+item.alter:'')+' &mdash; '+item.preis.toFixed(2)+' EUR</span>';
+        html += '<input type="number" min="1" value="'+item.menge+'" style="width:45px;font-size:.8rem;text-align:center;padding:2px;border:1px solid var(--border);border-radius:3px;" onchange="updateBestellMenge('+item.idx+',this.value)">';
+        html += '<span style="width:55px;text-align:right;">'+zeilenPreis.toFixed(2)+' EUR</span>';
+        html += '<button style="background:none;border:none;color:var(--dachziegel);cursor:pointer;font-size:.8rem;" onclick="removeFromBestellliste('+item.idx+')">x</button>';
+        html += '</div>';
+      });
+      html += '<div style="text-align:right;font-size:.82rem;font-weight:600;margin-top:4px;border-top:1px solid var(--border);padding-top:4px;">Gesamt '+g.quelle+': '+qSumme.toFixed(2)+' EUR</div>';
+      html += '</div>';
+      gesamt += qSumme;
+    });
+    html += '<div style="text-align:right;font-size:.95rem;font-weight:700;padding:8px 0;border-top:2px solid var(--dark);">Gesamtsumme: '+gesamt.toFixed(2)+' EUR</div>';
+  }
+
+  html += '<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;">';
+  html += '<button class="btn secondary" onclick="bestellungDrucken()">Drucken</button>';
+  html += '<button class="btn secondary" onclick="bestellungEmail()">E-Mail senden</button>';
+  html += '<button class="btn secondary" onclick="bestellungSpeichern()">Bestellung speichern</button>';
+  html += '</div>';
+  html += '</div>';
+  document.getElementById('modal-content').innerHTML = html;
+}
+
+function bestellungDrucken() {
+  window.print();
+}
+
+function bestellungEmail() {
+  if(!bestellListe.length) { alert('Keine Sorten in der Bestellliste.'); return; }
+  const body = bestellListe.map(e => e.sorte+(e.unterlage?' '+e.unterlage:'')+(e.alter?' '+e.alter:'')+' x'+e.menge+' = '+(e.preis*e.menge).toFixed(2)+' EUR').join('%0D%0A');
+  window.location.href = 'mailto:?subject=Bestellung%20Hendlberghof&body='+body;
+}
+
+function bestellungSpeichern() {
+  if(!bestellListe.length) { alert('Keine Sorten in der Bestellliste.'); return; }
+  const required = ['bk-vname','bk-nname','bk-strasse','bk-plz','bk-ort','bk-email','bk-telefon'];
+  for(const id of required) {
+    const el = document.getElementById(id);
+    if(!el || !el.value.trim()) { alert('Bitte alle Pflichtfelder ausfuellen.'); return; }
+  }
+  const kontakt = {
+    vorname: document.getElementById('bk-vname').value.trim(),
+    nachname: document.getElementById('bk-nname').value.trim(),
+    strasse: document.getElementById('bk-strasse').value.trim(),
+    plz: document.getElementById('bk-plz').value.trim(),
+    ort: document.getElementById('bk-ort').value.trim(),
+    email: document.getElementById('bk-email').value.trim(),
+    telefon: document.getElementById('bk-telefon').value.trim()
+  };
+  const gesamt = bestellListe.reduce((s,e) => s + e.preis * e.menge, 0);
+  const order = {
+    id: 'best_' + Date.now(),
+    datum: new Date().toISOString(),
+    kontakt,
+    items: JSON.parse(JSON.stringify(bestellListe)),
+    gesamt
+  };
+  state.bestellungen.push(order);
+  saveState();
+  bestellListe = [];
+  alert('Bestellung gespeichert!');
+  closeModal();
+  renderBestellhistorie();
+}
+
+/* ─── BESTELLHISTORIE ───────────────────────────────────────────────────────── */
+
+function renderBestellhistorie() {
+  if(!isAdmin()) { document.getElementById('bestellhistorie-list').innerHTML=''; return; }
+  const orders = state.bestellungen || [];
+  if(!orders.length) {
+    document.getElementById('bestellhistorie-list').innerHTML = '<p style="font-size:.85rem;color:var(--muted);">Noch keine Bestellungen vorhanden.</p>';
+    return;
+  }
+  let html = '';
+  orders.slice().reverse().forEach(o => {
+    const d = new Date(o.datum).toLocaleDateString('de-AT',{day:'2-digit',month:'2-digit',year:'numeric'});
+    const name = (o.kontakt?.vorname||'')+' '+(o.kontakt?.nachname||'');
+    html += '<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);font-size:.85rem;">';
+    html += '<span style="color:var(--muted);width:80px;">'+d+'</span>';
+    html += '<span style="flex:1;">'+name.trim()+'</span>';
+    html += '<span style="font-weight:600;">'+(o.gesamt||0).toFixed(2)+' EUR</span>';
+    html += '<button class="btn secondary" style="font-size:.75rem;padding:2px 8px;" onclick="showBestellDetails(\''+o.id+'\')">Details</button>';
+    html += '<button class="btn secondary" style="font-size:.75rem;padding:2px 8px;color:var(--dachziegel);" onclick="storniereBestellung(\''+o.id+'\')">Stornieren</button>';
+    html += '</div>';
+  });
+  document.getElementById('bestellhistorie-list').innerHTML = html;
+}
+
+function showBestellDetails(orderId) {
+  const o = (state.bestellungen||[]).find(x => x.id === orderId);
+  if(!o) return;
+  const d = new Date(o.datum).toLocaleDateString('de-AT',{day:'2-digit',month:'2-digit',year:'numeric'});
+  let html = '<div style="max-width:480px;">';
+  html += '<button class="close" onclick="closeModal()">&times;</button>';
+  html += '<h2 style="font-family:var(--font-heading);margin:0 0 10px;">Bestellung '+d+'</h2>';
+  html += '<div class="section-title">Kontakt</div>';
+  html += '<div style="font-size:.85rem;margin-bottom:10px;">';
+  ['vorname','nachname','strasse','plz','ort','email','telefon'].forEach(k=>{
+    if(o.kontakt && o.kontakt[k]) html += '<div>'+k.charAt(0).toUpperCase()+k.slice(1)+': '+o.kontakt[k]+'</div>';
+  });
+  html += '</div>';
+  html += '<div class="section-title">Sorten</div>';
+  (o.items||[]).forEach(e=>{
+    html += '<div style="font-size:.82rem;margin:3px 0;">'+e.sorte+(e.unterlage?' '+e.unterlage:'')+(e.alter?' '+e.alter:'')+' &mdash; '+e.preis.toFixed(2)+' EUR x '+e.menge+' = '+(e.preis*e.menge).toFixed(2)+' EUR</div>';
+  });
+  html += '<div style="text-align:right;font-weight:700;margin-top:8px;">Gesamt: '+(o.gesamt||0).toFixed(2)+' EUR</div>';
+  html += '</div>';
+  document.getElementById('modal-content').innerHTML = html;
+  document.getElementById('overlay').classList.add('open');
+}
+
+function storniereBestellung(orderId) {
+  if(!confirm('Bestellung wirklich stornieren?')) return;
+  state.bestellungen = (state.bestellungen||[]).filter(x => x.id !== orderId);
+  saveState();
+  renderBestellhistorie();
+}
+
+// Dropzone Event Listener
 document.addEventListener('DOMContentLoaded',function(){
   initFotoSelect();
+  renderPreislistenAdmin();
+  renderBestellhistorie();
   const dropzones=['import-dropzone','import-dropzone-modal'];
   dropzones.forEach(id=>{
     const dz=document.getElementById(id);
