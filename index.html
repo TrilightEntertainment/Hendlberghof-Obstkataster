@@ -936,6 +936,7 @@ let BAUM_DATA = [];
 let SORTEN_DATA = [];
 const BLACKLIST = new Set(['W20','W21','W22']);
 function escHtml(s){return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function escAttr(s){return (s||'').replace(/&/g,'&amp;').replace(/'/g,'&#39;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\(/g,'&#40;').replace(/\)/g,'&#41;');}
 
 function showToast(msg, type, duration){
   type = type || 'info';
@@ -1101,7 +1102,33 @@ function applyRemoteState(remote){
   if(remote.positions && typeof remote.positions === 'object'){
     for(const k of Object.keys(remote.positions)){ if(!isAlive(k)) delete remote.positions[k]; }
   }
-  Object.assign(state, remote);
+  /* Deep merge: Nested-Objekte Einträge beider Seiten zusammenführen */
+  const _mergeObj=(local, remote)=>{
+    const out=Object.assign({}, local||{});
+    if(remote && typeof remote==='object' && !Array.isArray(remote)){
+      Object.keys(remote).forEach(k=>{ out[k]=remote[k]; });
+    }
+    return out;
+  };
+  const _mergeArr=(local, remote)=>{
+    if(!Array.isArray(remote)) return local||[];
+    if(!Array.isArray(local)) return remote;
+    const ids=new Set(local.map(x=>x.id));
+    return local.concat(remote.filter(x=>!ids.has(x.id)));
+  };
+  state.verifiziert = _mergeObj(state.verifiziert, remote.verifiziert);
+  state.baumEdits = _mergeObj(state.baumEdits, remote.baumEdits);
+  state.sortenEdits = _mergeObj(state.sortenEdits, remote.sortenEdits);
+  state.positions = _mergeObj(state.positions, remote.positions);
+  state.phaenologie = _mergeObj(state.phaenologie, remote.phaenologie);
+  state.sortenSichtbar = _mergeObj(state.sortenSichtbar, remote.sortenSichtbar);
+  state.preislisten = _mergeObj(state.preislisten, remote.preislisten);
+  state.sukzession = _mergeObj(state.sukzession, remote.sukzession);
+  state.ernten = _mergeObj(state.ernten, remote.ernten);
+  state.bestellungen = _mergeArr(state.bestellungen, remote.bestellungen);
+  state.importLog = _mergeArr(state.importLog, remote.importLog);
+  state.importSnapshots = _mergeArr(state.importSnapshots, remote.importSnapshots);
+  state.customTrees = _mergeArr(state.customTrees, remote.customTrees);
   _mittelCache=null;
   _sortenCache=null;
   if(!state.verifiziert) state.verifiziert = {};
@@ -1203,10 +1230,10 @@ function renderSortenlistenSichtbar(){
     {key:'hof',label:'Hofsorten'}
   ];
   // Zähle Sorten pro Quelle
-  const counts={arche:AN_SORTEN.length,hof:0};
+  const counts={arche:0,hof:0};
   if(window.__dataReady && state){
-    const seen=new Set();
-    getAllTrees().forEach(t=>{if(t.sorte&&!seen.has(t.sorte)){seen.add(t.sorte);counts.hof=(counts.hof||0)+1;}});
+    const all=getAllSorten();
+    all.forEach(s=>{ if(s.quelle==='arche') counts.arche++; else if(s.quelle==='hof') counts.hof++; });
   }
   el.innerHTML=quellen.map(q=>{
     const visible=state.sortenSichtbar[q.key]!==false;
@@ -1751,8 +1778,8 @@ function fieldRow(label, val){
 function archeNoahLink(obj){
   const pdf = obj && (obj.arche_pdf || obj.pdf);
   if(!pdf) return '';
-  const sorte = (obj.sorte||obj.name||'').replace(/'/g,"\\'");
-  return `<button type="button" class="arche-link" onclick="openArcheViewer('${pdf}','${sorte}')" title="Arche-Noah-Sortenblatt (PDF) anzeigen">
+  const sorte = escAttr(obj.sorte||obj.name||'');
+  return `<button type="button" class="arche-link" onclick="openArcheViewer('${escAttr(pdf)}','${sorte}')" title="Arche-Noah-Sortenblatt (PDF) anzeigen">
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false" style="margin-right:6px;">
       <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
     Sortenblatt: Arche Noah</button>`;
@@ -1795,7 +1822,7 @@ function closeArcheViewer(){
   document.getElementById('pdf-frame').innerHTML='';
 }
 
-const VERWENDUNG_OPTIONEN = ['Tafelobst','Wirtschaftsobst','Saft/Most'];
+const VERWENDUNG_OPTIONEN = ['Tafelobst','Wirtschaftsobst','Saft/Most','Sonstiges'];
 
 function getSorte(sorteName){
   const s = SORTEN_DATA.find(x=>x.sorte===sorteName);
@@ -1820,7 +1847,7 @@ function verwendungField(sorteName, arr){
   if(!isAdmin()){
     return fieldRow('Verwendung', (arr||[]).join(', '));
   }
-  const safeName = sorteName.replace(/'/g,"\\'");
+  const safeName = escAttr(sorteName);
   return `<div class="field" style="grid-column:1 / -1;"><b>Verwendung</b><div class="verwendung-edit">
     ${VERWENDUNG_OPTIONEN.map(c=>`<label style="margin-right:12px;font-weight:400;">
       <input type="checkbox" ${(arr||[]).includes(c)?'checked':''} onchange="toggleVerwendung('${safeName}','${c}'); reopenModalFor('${safeName}')"> ${c}
@@ -1877,9 +1904,9 @@ function openBaumModal(id){
       </svg>
     </button>
     ${ausSorte? `<div class="badge-recherche">🔍 Sortenangaben web-recherchiert – bitte prüfen</div>
-      <button class="btn-verify" onclick="toggleVerifiziert('${t.sorte.replace(/'/g,"\\'")}', {baumId:'${t.id}'})">✓ Als verifiziert markieren</button>`
+      <button class="btn-verify" onclick="toggleVerifiziert('${escAttr(t.sorte)}', {baumId:'${escAttr(t.id)}'})">✓ Als verifiziert markieren</button>`
       : (state.verifiziert[t.sorte]? `<div class="badge-verifiziert">✓ Verifiziert am ${state.verifiziert[t.sorte]}</div>
-      <button class="btn-verify done" onclick="toggleVerifiziert('${t.sorte.replace(/'/g,"\\'")}', {baumId:'${t.id}'})">Verifizierung zurücknehmen</button>` : '')}
+      <button class="btn-verify done" onclick="toggleVerifiziert('${escAttr(t.sorte)}', {baumId:'${escAttr(t.id)}'})">Verifizierung zurücknehmen</button>` : '')}
     <h2>${t.sorte||'Unbekannte Sorte'} <span class="idbadge">${t.id_placeholder? 'ID noch offen' : 'ID '+t.id}</span></h2>
     ${archeNoahLink(merged)}
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0;border:1px solid var(--rand);border-radius:10px;overflow:hidden;margin-bottom:8px;">
@@ -1959,6 +1986,7 @@ function openBaumModal(id){
 
 function renderSukzList(id){
   const list = document.getElementById('sukz-list');
+  if(!list) return;
   const items = (state.sukzession[id]||[]).slice().sort((a,b)=>{
     const da=String(a.jahr||''), db=String(b.jahr||'');
     return db.localeCompare(da);
@@ -1974,6 +2002,7 @@ function renderSukzList(id){
 }
 function renderErnteList(id){
   const list = document.getElementById('ernte-list');
+  if(!list) return;
   const items = (state.ernten[id]||[]).slice().sort((a,b)=> (b.datum||'').localeCompare(a.datum||''));
   list.innerHTML = items.length? '' : '<li class="empty" style="background:none;">Noch keine Einträge.</li>';
   const editing = isEditMode();
@@ -1983,7 +2012,7 @@ function renderErnteList(id){
     if(it.menge !== null && it.menge !== undefined && it.menge !== ''){
       const m = typeof it.menge === 'string' ? parseFloat(it.menge) : it.menge;
       if(!isNaN(m)){
-        mengeText = m >= 1 ? m.toFixed(3)+' kg' : Math.round(m*1000)+' g';
+        mengeText = m >= 1 ? m.toFixed(2)+' kg' : Math.round(m*1000)+' g';
       } else {
         mengeText = String(it.menge);
       }
@@ -2059,8 +2088,7 @@ function addSukz(id){
   const text = document.getElementById('sukz-text').value.trim();
   if(!datum || !text) return;
   if(!state.sukzession[id]) state.sukzession[id]=[];
-  state.sukzession[id].forEach((it,i)=>it._idx=i);
-  state.sukzession[id].push({jahr:datum, text, _idx: state.sukzession[id].length});
+  state.sukzession[id].push({jahr:datum, text});
   saveState(); renderSukzList(id);
   document.getElementById('sukz-datum').value=''; document.getElementById('sukz-text').value='';
 }
@@ -2068,7 +2096,6 @@ function delSukz(id, idx){
   const items = state.sukzession[id]||[];
   const item = items[idx];
   state.sukzession[id] = items.filter((it,i)=>i!==idx);
-  state.sukzession[id].forEach((it,i)=>it._idx=i);
   saveState(); renderSukzList(id);
   setUndo('sukz', {id, idx, item});
 }
@@ -2080,8 +2107,7 @@ function addErnte(id){
   const menge = mengeRaw ? parseFloat(mengeRaw) : null;
   if(mengeRaw && isNaN(menge)) return;
   if(!state.ernten[id]) state.ernten[id]=[];
-  state.ernten[id].forEach((it,i)=>it._idx=i);
-  state.ernten[id].push({datum, menge, bemerkung, _idx: state.ernten[id].length});
+  state.ernten[id].push({datum, menge, bemerkung});
   saveState(); renderErnteList(id);
   document.getElementById('ernte-datum').value=''; document.getElementById('ernte-menge').value=''; document.getElementById('ernte-bem').value='';
 }
@@ -2089,7 +2115,6 @@ function delErnte(id, idx){
   const items = state.ernten[id]||[];
   const item = items[idx];
   state.ernten[id] = items.filter((it,i)=>i!==idx);
-  state.ernten[id].forEach((it,i)=>it._idx=i);
   _mittelCache=null;
   saveState(); renderErnteList(id);
   setUndo('ernte', {id, idx, item});
@@ -2130,7 +2155,7 @@ function openSortenModal(sorteName){
   }
   if(!s) return;
   s.sorte = s.sorte || s.name;
-  const safeName = sorteName.replace(/'/g,"\\'");
+  const safeName = escAttr(sorteName);
   const originalPW = s.pflueckzeitpunkt||s.pflueck_reifezeit||'';
   const mittel = calcPfluckMittel(sorteName);
   const prediction = predictErnte(sorteName);
@@ -2166,9 +2191,9 @@ function openSortenModal(sorteName){
       </svg>
     </button>
     ${s.recherchiert? `<div class="badge-recherche">🔍 Web-recherchiert – bitte prüfen</div>
-      <button class="btn-verify" onclick="toggleVerifiziert('${s.sorte.replace(/'/g,"\\'")}')">✓ Als verifiziert markieren</button>`
+      <button class="btn-verify" onclick="toggleVerifiziert('${escAttr(s.sorte)}')">✓ Als verifiziert markieren</button>`
       : (state.verifiziert[s.sorte]? `<div class="badge-verifiziert">✓ Verifiziert am ${state.verifiziert[s.sorte]}</div>
-      <button class="btn-verify done" onclick="toggleVerifiziert('${s.sorte.replace(/'/g,"\\'")}')">Verifizierung zurücknehmen</button>` : '')}
+      <button class="btn-verify done" onclick="toggleVerifiziert('${escAttr(s.sorte)}')">Verifizierung zurücknehmen</button>` : '')}
     <h2>${s.sorte}${s.baum_ids&&s.baum_ids.length?' <span class="idbadge" style="font-size:.78rem;">'+s.baum_ids.join(', ')+'</span>':''}</h2>
     ${archeNoahLink(s)}
     <div class="grid2">
@@ -2191,7 +2216,7 @@ function openSortenModal(sorteName){
     </div>
     ${s.frucht_beschreibung? `<div class="section-title">Frucht</div><div class="field">${s.frucht_beschreibung}</div>`:''}
     ${s.geschmack? `<div class="section-title">Geschmack / Nutzung</div><div class="field">${s.geschmack}</div>`:''}
-    ${s.eigenschaften||s.standort_anspruch? `<div class="section-title">Eigenschaften / Standortansprüche</div><div class="field">${s.eigenschaften} ${s.standort_anspruch}</div>`:''}
+    ${s.eigenschaften||s.standort_anspruch? `<div class="section-title">Eigenschaften / Standortansprüche</div><div class="field">${(s.eigenschaften||'')+(s.eigenschaften&&s.standort_anspruch?' ':'')+(s.standort_anspruch||'')}</div>`:''}
     ${s.frucht ? `<div class="section-title" style="cursor:pointer;color:var(--gruen);text-decoration:underline;text-decoration-style:dotted;text-underline-offset:3px;" onclick="showGuildQuellen()">Begleitpflanzungen & Gilden</div><div class="field">${renderGuildSection(s.frucht)}</div>`:''}
     ${!s.geschmack && !s.eigenschaften && !s.frucht_beschreibung ? '<p class="empty">Für diese Sorte liegt noch keine ausführliche Beschreibung vor.</p>':''}
     ${s.recherchiert? `<div class="quelle-hinweis"><b>Quelle(n):</b> ${s.quelle}<br>Diese Angaben stammen aus einer Web-Recherche (nicht aus deiner Numbers-Tabelle) und sollten anhand der Bäume vor Ort verifiziert werden.</div>`:''}
@@ -2403,6 +2428,7 @@ document.getElementById('btn-gps-place').addEventListener('click', ()=>{
 /* ---------- Map Click (Platzieren) ---------- */
 document.getElementById('map-wrap').addEventListener('click', (e)=>{
   if(!placeMode) return;
+  if(e.target.closest('.pin')) return;
   if(!selectedForPlacement){ alert('Bitte zuerst einen Baum aus der Liste auswählen.'); return; }
   const rect = e.currentTarget.getBoundingClientRect();
   const x = parseFloat(((e.clientX-rect.left)/rect.width*100).toFixed(2));
@@ -2849,7 +2875,6 @@ function saveNewBaum(){
     vals.id = 'NEU-'+n;
   }
   vals.id_placeholder = false;
-  vals.sukzession = []; vals.ernten = []; vals.position = null;
   if(!state.customTrees) state.customTrees = [];
   state.customTrees.push(vals);
   if(vals.sorte && vals.verwendung){
@@ -2869,6 +2894,9 @@ function confirmDeleteBaum(id){
   const isCustom = (state.customTrees||[]).find(c=>c.id===id);
   const fullRemove = isCustom || !inBaumData;
   if(!confirm(`Baum "${t? t.sorte : id}" wirklich löschen?${fullRemove? '' : '\n\nBei importierten Bäumen werden nur die lokalen Bearbeitungen zurückgesetzt.'}`)) return;
+  const savedTree = isCustom ? JSON.parse(JSON.stringify(isCustom)) : null;
+  const savedPos = state.positions?.[id] ? Object.assign({}, state.positions[id]) : null;
+  const savedEdit = state.baumEdits?.[id] ? Object.assign({}, state.baumEdits[id]) : null;
   if(isCustom){
     state.customTrees = state.customTrees.filter(c=>c.id!==id);
   }
@@ -2878,6 +2906,9 @@ function confirmDeleteBaum(id){
   closeModal();
   refreshFilterOptions();
   renderBaumTable();
+  if(savedTree){
+    setUndo('baum', {id, tree: savedTree, pos: savedPos, edit: savedEdit});
+  }
 }
 
 /* ---------- Init (nach Laden der externen Grunddaten) ---------- */
@@ -3350,7 +3381,7 @@ function renderSbArten(){
   arten.sort((a,b)=>{const ia=prio.indexOf(a),ib=prio.indexOf(b);return (ia<0?99:ia)-(ib<0?99:ib)||a.localeCompare(b,'de');});
   if(arten.length && !arten.some(a=>a.toLowerCase()===aktArt)) aktArt=arten[0].toLowerCase();
   document.getElementById('sb-arten').innerHTML = arten.length
-    ? arten.map(a=>'<div class="sb-art'+(a.toLowerCase()===aktArt?' active':'')+'" onclick="setArt(\''+a.toLowerCase().replace(/'/g,"\\'")+'\')">'+a+'</div>').join('')
+    ? arten.map(a=>'<div class="sb-art'+(a.toLowerCase()===aktArt?' active':'')+'" onclick="setArt(\''+escAttr(a.toLowerCase())+'\')">'+a+'</div>').join('')
     : '<div class="sl-empty">Keine Sorten mit Standort-Daten vorhanden.</div>';
   renderZiele();
 }
@@ -3398,14 +3429,15 @@ function renderBeraterBatch(count){
     const idText=s.id?'<span class="idbadge" style="font-size:.72rem;margin-left:6px;">ID '+s.id+'</span>':'';
     const posBaumId=state.positions? Object.keys(state.positions).find(k=>{const t=getTree(k);return t&&t.sorte===sn;}) : null;
     const preise=getPreisFuerSorte(sn);
-    const bestellBtn=preise.length?'<button class="btn secondary" style="font-size:.78rem;padding:3px 10px;" onclick="event.stopPropagation();addToBestellliste(\''+sn.replace(/'/g,"\\'")+'\','+JSON.stringify(preise[0]).replace(/"/g,'&quot;')+')">Zur Bestellung hinzufügen</button>':'<button class="btn secondary" style="font-size:.78rem;padding:3px 10px;" onclick="event.stopPropagation();alert(\'Keine Preise hinterlegt. Bitte zuerst eine Preisliste anlegen.\')">Zur Bestellung hinzufügen</button>';
-    const btnRow='<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;padding-top:6px;border-top:1px solid var(--border);">'+(posBaumId?'<button class="btn secondary" style="font-size:.78rem;padding:3px 10px;" onclick="event.stopPropagation();showOnLageplan(\''+String(posBaumId).replace(/'/g,"\\'")+'\')">Im Lageplan anzeigen</button>':'')+bestellBtn+'</div>';
+    const safeSn=escAttr(sn);
+    const bestellBtn=preise.length?'<button class="btn secondary" style="font-size:.78rem;padding:3px 10px;" onclick="event.stopPropagation();addToBestellliste(\''+safeSn+'\','+JSON.stringify(preise[0]).replace(/"/g,'&quot;')+')">Zur Bestellung hinzufügen</button>':'<button class="btn secondary" style="font-size:.78rem;padding:3px 10px;" onclick="event.stopPropagation();alert(\'Keine Preise hinterlegt. Bitte zuerst eine Preisliste anlegen.\')">Zur Bestellung hinzufügen</button>';
+    const btnRow='<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;padding-top:6px;border-top:1px solid var(--border);">'+(posBaumId?'<button class="btn secondary" style="font-size:.78rem;padding:3px 10px;" onclick="event.stopPropagation();showOnLageplan(\''+escAttr(posBaumId)+'\')">Im Lageplan anzeigen</button>':'')+bestellBtn+'</div>';
     let preisHtml='';
     if(preise.length){
       preisHtml='<div style="margin-top:6px;padding-top:6px;border-top:1px solid var(--border);">';
       preise.forEach(p=>{
         preisHtml+='<div style="display:flex;align-items:center;gap:6px;font-size:.82rem;margin:2px 0;"><span style="color:var(--gruen);font-weight:600;">'+p.preis.toFixed(2)+' EUR</span> <span style="color:var(--muted);">('+p.quelle+(p.unterlage?' '+p.unterlage:'')+(p.alter?' '+p.alter:'')+')</span>';
-        preisHtml+=' <button class="btn secondary" style="font-size:.72rem;padding:1px 6px;" onclick="event.stopPropagation();addToBestellliste(\''+sn.replace(/'/g,"\\'")+'\','+JSON.stringify(p).replace(/"/g,'&quot;')+')">Zur Bestellung hinzufügen</button>';
+        preisHtml+=' <button class="btn secondary" style="font-size:.72rem;padding:1px 6px;" onclick="event.stopPropagation();addToBestellliste(\''+safeSn+'\','+JSON.stringify(p).replace(/"/g,'&quot;')+')">Zur Bestellung hinzufügen</button>';
         if(p.vorbestellbar) preisHtml+=' <span style="font-size:.7rem;color:var(--muted);">(vorbestellbar)</span>';
         preisHtml+='</div>';
       });
@@ -3413,7 +3445,7 @@ function renderBeraterBatch(count){
     }
     const guildHtml=s.frucht?'<div style="margin-top:4px;font-size:.82rem;">'+renderGuildSection(s.frucht)+'</div>':'';
     const archeHtml=archeNoahLink(s);
-    html+='<div class="sb-sorte" style="cursor:pointer" onclick="openSortenModal(\''+sn.replace(/'/g,"\\'")+'\')"><div class="sb-sorte-name">'+sn+idText+'<span class="sb-reife">Pflueckzeit: '+reife+nTxt+' &middot; bis '+s.standort.hmax+'m</span></div><div class="sb-tags">'+tags+'</div><div class="sb-gilde"><strong>'+quelleLabel+'</strong> '+s.standort.basis+'</div>'+guildHtml+preisHtml+(archeHtml?'<div style="margin-top:6px;">'+archeHtml+'</div>':'')+btnRow+'</div>';
+    html+='<div class="sb-sorte" style="cursor:pointer" onclick="openSortenModal(\''+safeSn+'\')"><div class="sb-sorte-name">'+sn+idText+'<span class="sb-reife">Pflueckzeit: '+reife+nTxt+' &middot; bis '+s.standort.hmax+'m</span></div><div class="sb-tags">'+tags+'</div><div class="sb-gilde"><strong>'+quelleLabel+'</strong> '+s.standort.basis+'</div>'+guildHtml+preisHtml+(archeHtml?'<div style="margin-top:6px;">'+archeHtml+'</div>':'')+btnRow+'</div>';
   }
   container.insertAdjacentHTML('beforeend', html);
   window._beraterShown=end;
@@ -3464,9 +3496,7 @@ function getAllSorten(){
     
     // Wenn keine Verwendung erkannt, Standard setzen
     if(verwendung.length===0){
-      if(desc.includes('streuobst')||desc.includes('hausgarten')){
-        verwendung.push('Tafelobst');
-      }
+      verwendung.push('Sonstiges');
     }
     
     const full=getSorte(s.name);
@@ -3529,10 +3559,11 @@ function getAllSorten(){
   
   // Sichtbarkeit filtern (nur wenn Admin-Einstellungen vorhanden)
   if(state.sortenSichtbar && Object.keys(state.sortenSichtbar).length>0){
-    return deduped.filter(s=>{
+    _sortenCache = deduped.filter(s=>{
       const key=s.quelle==='arche'?'arche':s.quelle==='hof'?'hof':s.quelle;
       return state.sortenSichtbar[key]!==false;
     });
+    return _sortenCache;
   }
   
   _sortenCache = deduped;
@@ -3795,7 +3826,7 @@ function renderSortenUebersicht(){
     const mittelText=mittel?' <span style="color:var(--gruen);font-weight:600;">→ '+mittel.wert+'</span>':'';
     const idsText=(s.baum_ids&&s.baum_ids.length)?' · '+s.baum_ids.join(', '):'';
     
-    return '<div class="sl-card" onclick="openSortenModal(\''+s.name.replace(/'/g,"\\'")+'\')">'+quelleBadge+
+    return '<div class="sl-card" onclick="openSortenModal(\''+escAttr(s.name)+'\')">'+quelleBadge+
       '<div class="sl-card-name">'+s.name+'<span class="sl-card-ids">'+idsText+'</span></div>'+
       '<div class="sl-card-reife">'+s.frucht+(pflText?' · Pflückzeit: '+pflText+mittelText:(mittelText?' · Mittelwert:'+mittelText:''))+(verwendungText?' · '+verwendungText:'')+'</div>'+
       '<div class="sb-tags">'+tags+'</div>'+
@@ -3908,7 +3939,7 @@ function canProceedImport(){
   }
 }
 function revalidateImportBtn(){
-  const nextBtn=document.getElementById('import-next');
+  const nextBtn=document.getElementById('import-next-btn');
   if(nextBtn && importState.step===3) nextBtn.disabled=!canProceedImport();
 }
 
@@ -3944,7 +3975,14 @@ function parseImportFile(){
     const reader=new FileReader();
     reader.onload=function(e){
       const data=e.target.result;
-      const delimiter=ext==='tsv'?'\t':',';
+      let delimiter=',';
+      if(ext==='tsv') delimiter='\t';
+      else{
+        const firstLine=data.split('\n')[0]||'';
+        const semiCount=(firstLine.match(/;/g)||[]).length;
+        const commaCount=(firstLine.match(/,/g)||[]).length;
+        if(semiCount>commaCount) delimiter=';';
+      }
       const rows=parseCSV(data,delimiter);
       importState.sheets=['CSV'];
       importState.selectedSheet='CSV';
@@ -4497,6 +4535,14 @@ function deleteImport(importId){
   // Importierte Bäume entfernen
   if(state.customTrees&&importEntry.treeIds){
     state.customTrees=state.customTrees.filter(t=>!importEntry.treeIds.includes(t.id));
+  }
+  
+  // Ordnerte für Positions- und Edit-Einträge aufräumen
+  if(importEntry.treeIds){
+    importEntry.treeIds.forEach(id=>{
+      if(state.positions) delete state.positions[id];
+      if(state.baumEdits) delete state.baumEdits[id];
+    });
   }
   
   // Import aus Log entfernen
