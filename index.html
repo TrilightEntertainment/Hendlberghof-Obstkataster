@@ -688,9 +688,9 @@
   <div class="sb-title">Nutzungsziel</div>
   <div class="sb-checks" id="ziele-box"></div>
 </div>
-<button class="sbr-btn" onclick="beraten()">Sorten empfehlen</button>
-<div style="margin:8px 0 0;display:flex;align-items:center;gap:8px;">
-  <button class="btn secondary" style="font-size:.78rem;padding:3px 10px;" onclick="showGuildQuellen()">Gilden-Hinweis & Quellen</button>
+<div style="display:flex;gap:8px;align-items:center;">
+  <button class="sbr-btn" onclick="beraten()">Sorten empfehlen</button>
+  <button class="sbr-btn" style="background:var(--dark);font-size:.78rem;padding:6px 14px;" onclick="openBestelllisteModal()"><span id="cart-icon">🛒</span> Bestellliste <span id="cart-badge" style="display:none;background:var(--dachziegel);color:#fff;border-radius:50%;padding:1px 6px;font-size:.7rem;margin-left:4px;">0</span></button>
 </div>
 <div id="res"><div class="sb-leer">Standort und Ziele wahlen — der Berater empfiehlt Sorten mit passenden Standort-Daten.</div></div>
 </div>
@@ -1713,23 +1713,28 @@ function openBaumModal(id){
     ${archeNoahLink(merged)}
     <div class="grid2">
       ${fieldRow('Obstart', t.frucht)}
-      <div class="field"><b>Pflückreife</b><div>${originalPW||'–'}${mittelText}</div>${predictionHtml}</div>
-      ${verwendungField(t.sorte, merged.verwendung)}
-      ${fieldRow('Genussreife', merged.genuss_von&&merged.genuss_bis ? merged.genuss_von+' – '+merged.genuss_bis+' Monate ab Ernte' : merged.genussreife)}
-      ${fieldRow('Pflanzjahr', t.ausgepflanzt)}
-      ${fieldRow('Ertrag', merged.ertrag)}
-      ${fieldRow('Veredelungsjahr', t.veredelt)}
-      ${fieldRow('Unterlage', t.unterlage)}
+      <div class="field"><b>Pflückreife (historisch)</b><div>${originalPW||'–'}</div></div>
+      ${mittelText? `<div class="field"><b>Lokale Pflückreife</b><div>${mittelText}</div></div>`:''}
+      ${predictionHtml? `<div class="field">${predictionHtml}</div>`:''}
     </div>
     <div class="grid2">
-      ${fieldRow('Erstmals tragend', t.erstmals_tragend)}
-      ${fieldRow('Lagerfähigkeit', merged.lagerfaehig)}
-      ${fieldRow('Befruchtungspartner', merged.befruchtungspartner)}
-      ${fieldRow('Herkunft', merged.herkunft_jahr||merged.herkunft)}
+      ${fieldRow('Genussreife', merged.genuss_von&&merged.genuss_bis ? merged.genuss_von+' – '+merged.genuss_bis+' Monate ab Ernte' : merged.genussreife)}
+      ${verwendungField(t.sorte, merged.verwendung)}
+      ${merged.geschmack? `<div class="field"><b>Geschmack</b><div>${merged.geschmack}</div></div>`:''}
     </div>
-    ${merged.geschmack? `<div class="section-title">Geschmack / Nutzung</div><div class="field">${merged.geschmack}</div>`:''}
-    ${merged.frucht_beschreibung? `<div class="section-title">Frucht</div><div class="field">${merged.frucht_beschreibung}</div>`:''}
-    ${merged.eigenschaften? `<div class="section-title">Eigenschaften / Standortansprüche</div><div class="field">${merged.eigenschaften} ${merged.standort_anspruch||''}</div>`:''}
+    <div class="grid2">
+      ${fieldRow('Unterlage', t.unterlage)}
+      ${fieldRow('Veredelungsjahr', t.veredelt)}
+      ${fieldRow('Pflanzjahr', t.ausgepflanzt)}
+      ${fieldRow('Erstmals tragend', t.erstmals_tragend)}
+    </div>
+    <div class="grid2">
+      ${fieldRow('Ertrag', merged.ertrag)}
+      ${fieldRow('Befruchtungspartner', merged.befruchtungspartner)}
+      ${fieldRow('Lagerfähigkeit', merged.lagerfaehig)}
+    </div>
+    ${merged.frucht_beschreibung? `<div class="field" style="margin-top:8px;"><b>Frucht</b><div>${merged.frucht_beschreibung}</div></div>`:''}
+    ${merged.eigenschaften? `<div class="field" style="margin-top:8px;"><b>Eigenschaften</b><div>${merged.eigenschaften} ${merged.standort_anspruch||''}</div></div>`:''}
     ${merged.frucht ? `<div class="section-title">Begleitpflanzungen & Gilden</div><div class="field">${renderGuildSection(merged.frucht)}</div>`:''}
     ${ausSorte? `<div class="quelle-hinweis"><b>Quelle(n):</b> ${sorteInfo.quelle}<br>Sortenangaben aus Web-Recherche, nicht aus deiner Numbers-Tabelle – bitte am Baum verifizieren.</div>`:''}
 
@@ -3062,6 +3067,7 @@ function beraten(){
   const scored=pool.filter(s=>{const st=s.standort;return hoehe<=st.hmax&&toArr(st.expo).includes(expo)&&toArr(st.ns).includes(ns)&&!(frost==='hoch'&&st.frost==='gering');})
     .map(s=>({s, score:gZ.filter(z=>s.standort.ziele.includes(z)).length}))
     .sort((a,b)=>{ if(b.score!==a.score) return b.score-a.score; if(a.s.quelle==='hof'&&b.s.quelle!=='hof') return -1; if(a.s.quelle!=='hof'&&b.s.quelle==='hof') return 1; return (a.s.sorte||a.s.name||'').localeCompare(b.s.sorte||b.s.name||'','de'); });
+  if(beraterQuelle==='alle'){const _d=new Map();for(let i=scored.length-1;i>=0;i--){const n=scored[i].s.sorte||scored[i].s.name;if(_d.has(n)) scored.splice(i,1);else _d.set(n,1);}}
   const lbl=aktArt.charAt(0).toUpperCase()+aktArt.slice(1);
   const expoEl=document.getElementById('expo');
   if(!scored.length){document.getElementById('res').innerHTML='<div class="sb-leer">Keine passende Sorte für diesen Standort gefunden. Aktuell liegen Standort-Daten für '+pool.length+' '+lbl+'-Sorten vor.</div>';return;}
@@ -3091,8 +3097,7 @@ function renderBeraterBatch(count){
     const quelleLabel=s.quelle==='arche'?'Arche Noah':'Hofsorte';
     const idText=s.id?'<span class="idbadge" style="font-size:.72rem;margin-left:6px;">ID '+s.id+'</span>':'';
     const posBaumId=state.positions? Object.keys(state.positions).find(k=>{const t=getTree(k);return t&&t.sorte===sn;}) : null;
-    const LageplanBtn=posBaumId?'<button class="btn secondary" style="font-size:.78rem;padding:3px 10px;margin-top:6px;" onclick="event.stopPropagation();showOnLageplan(\''+String(posBaumId).replace(/'/g,"\\'")+'\')">Im Lageplan anzeigen</button>':'';
-    const guildHtml=renderGuildSection(s.frucht||'');
+    const btnRow='<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;padding-top:6px;border-top:1px solid var(--border);">'+(posBaumId?'<button class="btn secondary" style="font-size:.78rem;padding:3px 10px;" onclick="event.stopPropagation();showOnLageplan(\''+String(posBaumId).replace(/'/g,"\\'")+'\')">Im Lageplan anzeigen</button>':'')+(s.frucht?'<button class="btn secondary" style="font-size:.78rem;padding:3px 10px;" onclick="event.stopPropagation();showGuildQuellen()">Begleitpflanzen-Hinweis</button>':'')+'</div>';
     const preise=getPreisFuerSorte(sn);
     let preisHtml='';
     if(preise.length){
@@ -3105,7 +3110,7 @@ function renderBeraterBatch(count){
       });
       preisHtml+='</div>';
     }
-    html+='<div class="sb-sorte" style="cursor:pointer" onclick="openSortenModal(\''+sn.replace(/'/g,"\\'")+'\')"><div class="sb-sorte-name">'+sn+idText+'<span class="sb-reife">Pflueckzeit: '+reife+nTxt+' &middot; bis '+s.standort.hmax+'m</span></div><div class="sb-tags">'+tags+'</div><div class="sb-gilde"><strong>'+quelleLabel+'</strong> '+s.standort.basis+'</div>'+preisHtml+(guildHtml?'<div style="margin-top:6px;padding-top:6px;border-top:1px solid var(--border);">'+guildHtml+'</div>':'')+ LageplanBtn+'</div>';
+    html+='<div class="sb-sorte" style="cursor:pointer" onclick="openSortenModal(\''+sn.replace(/'/g,"\\'")+'\')"><div class="sb-sorte-name">'+sn+idText+'<span class="sb-reife">Pflueckzeit: '+reife+nTxt+' &middot; bis '+s.standort.hmax+'m</span></div><div class="sb-tags">'+tags+'</div><div class="sb-gilde"><strong>'+quelleLabel+'</strong> '+s.standort.basis+'</div>'+preisHtml+btnRow+'</div>';
   }
   container.insertAdjacentHTML('beforeend', html);
   window._beraterShown=end;
@@ -4283,6 +4288,14 @@ function getPreisFuerSorte(sorteName) {
 
 let bestellListe = [];
 
+function updateCartBadge(){
+  const badge=document.getElementById('cart-badge');
+  if(!badge) return;
+  const n=bestellListe.length;
+  badge.textContent=n;
+  badge.style.display=n>0?'inline':'none';
+}
+
 function addToBestellliste(sorteName, preisInfo) {
   const existing = bestellListe.find(e => e.sorte === sorteName && e.qid === preisInfo.qid);
   if(existing) { existing.menge += 1; }
@@ -4299,11 +4312,13 @@ function addToBestellliste(sorteName, preisInfo) {
     });
   }
   openBestelllisteModal();
+  updateCartBadge();
 }
 
 function removeFromBestellliste(idx) {
   bestellListe.splice(idx, 1);
   renderBestellModalContent();
+  updateCartBadge();
 }
 
 function updateBestellMenge(idx, menge) {
@@ -4311,6 +4326,7 @@ function updateBestellMenge(idx, menge) {
   if(menge <= 0) { bestellListe.splice(idx, 1); }
   else { bestellListe[idx].menge = menge; }
   renderBestellModalContent();
+  updateCartBadge();
 }
 
 function openBestelllisteModal() {
@@ -4379,8 +4395,34 @@ function bestellungDrucken() {
 
 function bestellungEmail() {
   if(!bestellListe.length) { alert('Keine Sorten in der Bestellliste.'); return; }
-  const body = bestellListe.map(e => e.sorte+(e.unterlage?' '+e.unterlage:'')+(e.alter?' '+e.alter:'')+' x'+e.menge+' = '+(e.preis*e.menge).toFixed(2)+' EUR').join('%0D%0A');
-  window.location.href = 'mailto:?subject=Bestellung%20Hendlberghof&body='+body;
+  const to = bestellListe[0].email || '';
+  const vname = (document.getElementById('bk-vname')||{}).value || '';
+  const nname = (document.getElementById('bk-nname')||{}).value || '';
+  const strasse = (document.getElementById('bk-strasse')||{}).value || '';
+  const plz = (document.getElementById('bk-plz')||{}).value || '';
+  const ort = (document.getElementById('bk-ort')||{}).value || '';
+  const email = (document.getElementById('bk-email')||{}).value || '';
+  const telefon = (document.getElementById('bk-telefon')||{}).value || '';
+  const gesamt = bestellListe.reduce((s,e) => s + e.preis * e.menge, 0);
+  const lines = [
+    'Bestellung Hendlberghof',
+    '',
+    'Kontakt: ' + vname + ' ' + nname,
+    'Adresse: ' + strasse + ', ' + plz + ' ' + ort,
+    'Email: ' + email,
+    'Tel: ' + telefon,
+    '',
+    'Sorten:',
+    ...bestellListe.map(e =>
+      '  ' + e.sorte + (e.unterlage ? ' (' + e.unterlage + ')' : '') +
+      (e.alter ? ' ' + e.alter : '') + ' x' + e.menge + ' = ' + (e.preis * e.menge).toFixed(2) + ' EUR'
+    ),
+    '',
+    'Gesamt: ' + gesamt.toFixed(2) + ' EUR'
+  ];
+  const body = lines.join('%0D%0A');
+  const subject = 'Bestellung Hendlberghof ' + vname + ' ' + nname;
+  window.location.href = 'mailto:' + to + '?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body);
 }
 
 function bestellungSpeichern() {
@@ -4403,6 +4445,7 @@ function bestellungSpeichern() {
   const order = {
     id: 'best_' + Date.now(),
     datum: new Date().toISOString(),
+    status: 'offen',
     kontakt,
     items: JSON.parse(JSON.stringify(bestellListe)),
     gesamt
@@ -4410,6 +4453,7 @@ function bestellungSpeichern() {
   state.bestellungen.push(order);
   saveState();
   bestellListe = [];
+  updateCartBadge();
   alert('Bestellung gespeichert!');
   closeModal();
   renderBestellhistorie();
@@ -4424,19 +4468,36 @@ function renderBestellhistorie() {
     document.getElementById('bestellhistorie-list').innerHTML = '<p style="font-size:.85rem;color:var(--muted);">Noch keine Bestellungen vorhanden.</p>';
     return;
   }
+  const statusCfg = {
+    offen: {label:'Offen', color:'#D97706', bg:'#FEF3C7'},
+    bestaetigt: {label:'Bestätigt', color:'#059669', bg:'#D1FAE5'},
+    versendet: {label:'Versendet', color:'#6366F1', bg:'#E0E7FF'}
+  };
   let html = '';
   orders.slice().reverse().forEach(o => {
     const d = new Date(o.datum).toLocaleDateString('de-AT',{day:'2-digit',month:'2-digit',year:'numeric'});
     const name = (o.kontakt?.vorname||'')+' '+(o.kontakt?.nachname||'');
-    html += '<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);font-size:.85rem;">';
+    const st = statusCfg[o.status] || statusCfg.offen;
+    html += '<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);font-size:.85rem;flex-wrap:wrap;">';
     html += '<span style="color:var(--muted);width:80px;">'+d+'</span>';
-    html += '<span style="flex:1;">'+name.trim()+'</span>';
+    html += '<span style="flex:1;min-width:100px;">'+name.trim()+'</span>';
     html += '<span style="font-weight:600;">'+(o.gesamt||0).toFixed(2)+' EUR</span>';
+    html += '<span style="font-size:.72rem;padding:2px 8px;border-radius:10px;background:'+st.bg+';color:'+st.color+';font-weight:600;">'+st.label+'</span>';
+    if(o.status==='offen') html += '<button class="btn secondary" style="font-size:.72rem;padding:2px 8px;color:#059669;" onclick="setOrderStatus(\''+o.id+'\',\'bestaetigt\')">Bestätigen</button>';
+    else if(o.status==='bestaetigt') html += '<button class="btn secondary" style="font-size:.72rem;padding:2px 8px;color:#6366F1;" onclick="setOrderStatus(\''+o.id+'\',\'versendet\')">Versendet</button>';
     html += '<button class="btn secondary" style="font-size:.75rem;padding:2px 8px;" onclick="showBestellDetails(\''+o.id+'\')">Details</button>';
     html += '<button class="btn secondary" style="font-size:.75rem;padding:2px 8px;color:var(--dachziegel);" onclick="storniereBestellung(\''+o.id+'\')">Stornieren</button>';
     html += '</div>';
   });
   document.getElementById('bestellhistorie-list').innerHTML = html;
+}
+
+function setOrderStatus(orderId, status) {
+  const o = (state.bestellungen||[]).find(x => x.id === orderId);
+  if(!o) return;
+  o.status = status;
+  saveState();
+  renderBestellhistorie();
 }
 
 function showBestellDetails(orderId) {
