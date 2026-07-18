@@ -4322,7 +4322,7 @@ function renderPreislistenAdmin() {
       html += '<td style="padding:2px 4px;"><input value="'+(p.unterlage||'').replace(/"/g,'&quot;')+'" style="width:60px;" onchange="updatePreisItem(\''+qid+'\','+i+',\'unterlage\',this.value)"></td>';
       html += '<td style="padding:2px 4px;"><input value="'+(p.alter||'').replace(/"/g,'&quot;')+'" style="width:50px;" onchange="updatePreisItem(\''+qid+'\','+i+',\'alter\',this.value)"></td>';
       html += '<td style="padding:2px 4px;"><input type="number" step="0.01" min="0" value="'+(p.preis||0)+'" style="width:60px;" onchange="updatePreisItem(\''+qid+'\','+i+',\'preis\',parseFloat(this.value)||0)"></td>';
-      html += '<td style="padding:2px 4px;"><select style="width:45px;font-size:.78rem;" onchange="updatePreisItem(\''+qid+'\','+i+',\'mwst_satz\',parseInt(this.value)||20)"><option value="10"'+((p.mwst_satz||20)===10?' selected':'')+'>10%</option><option value="20"'+((p.mwst_satz||20)===20?' selected':'')+'>20%</option></select></td>';
+      html += '<td style="padding:2px 4px;"><span style="font-size:.78rem;color:var(--muted);">13%</span></td>';
       html += '<td style="padding:2px 4px;text-align:center;"><input type="checkbox" '+(p.vorbestellbar?'checked':'')+' onchange="updatePreisItem(\''+qid+'\','+i+',\'vorbestellbar\',this.checked)"></td>';
       html += '<td style="padding:2px 4px;"><button style="background:none;border:none;color:var(--dachziegel);cursor:pointer;font-size:.8rem;" onclick="removePreisItem(\''+qid+'\','+i+')">x</button></td>';
       html += '</tr>';
@@ -4382,7 +4382,7 @@ function getPreisFuerSorte(sorteName) {
   Object.entries(state.preislisten||{}).forEach(([qid, q])=>{
     (q.preise||[]).forEach(p => {
       if(p.sorte && p.sorte.toLowerCase() === sorteName.toLowerCase()) {
-        results.push({ quelle: q.name, email: q.email, qid, preis: p.preis, unterlage: p.unterlage, alter: p.alter, vorbestellbar: p.vorbestellbar, mwst_satz: p.mwst_satz||20 });
+        results.push({ quelle: q.name, email: q.email, qid, preis: p.preis, unterlage: p.unterlage, alter: p.alter, vorbestellbar: p.vorbestellbar, mwst_satz: 13 });
       }
     });
   });
@@ -4502,12 +4502,7 @@ function parsePreisValue(val) {
 }
 
 function parseMwstValue(val) {
-  if(!val) return 20;
-  val = String(val).replace(/[%\s]/g,'').replace(',','.').trim();
-  const n = parseFloat(val);
-  if(isNaN(n)) return 20;
-  if(n <= 1) return Math.round(n * 100);
-  return Math.round(n);
+  return 13;
 }
 
 function parseVorbestellbar(val) {
@@ -4565,7 +4560,7 @@ function previewPreisImport() {
     const mwst = parseMwstValue(getPreisColVal(row, 'mwst'));
     const vorbestellbar = parseVorbestellbar(getPreisColVal(row, 'vorbestellbar'));
     const match = fuzzyMatchSorte(sorte, unterlage);
-    return { sorte, unterlage, alter, preis, mwst, vorbestellbar, match };
+    return { sorte, unterlage, alter, preis, mwst: 13, vorbestellbar, match };
   });
   preisImportState.preview = preview;
 
@@ -4651,7 +4646,7 @@ function addToBestellliste(sorteName, preisInfo) {
       unterlage: preisInfo.unterlage||'',
       alter: preisInfo.alter||'',
       preis: preisInfo.preis,
-      mwst_satz: preisInfo.mwst_satz||20,
+      mwst_satz: 13,
       menge: 1
     });
   }
@@ -4711,7 +4706,7 @@ function renderBestellModalContent() {
         const zeilenPreis = item.preis * item.menge;
         qSumme += zeilenPreis;
         html += '<div style="display:flex;align-items:center;gap:6px;font-size:.82rem;margin:3px 0;">';
-        html += '<span style="flex:1;">'+item.sorte+(item.unterlage?' '+item.unterlage:'')+(item.alter?' '+item.alter:'')+' &mdash; '+item.preis.toFixed(2)+' EUR <span style="font-size:.72rem;color:var(--muted);">(inkl. '+((item.mwst_satz||20))+'% MwSt)</span></span>';
+        html += '<span style="flex:1;">'+item.sorte+(item.unterlage?' '+item.unterlage:'')+(item.alter?' '+item.alter:'')+' &mdash; '+item.preis.toFixed(2)+' EUR <span style="font-size:.72rem;color:var(--muted);">(inkl. 13% MwSt)</span></span>';
         html += '<input type="number" min="1" value="'+item.menge+'" style="width:45px;font-size:.8rem;text-align:center;padding:2px;border:1px solid var(--border);border-radius:3px;" onchange="updateBestellMenge('+item.idx+',this.value)">';
         html += '<span style="width:55px;text-align:right;">'+zeilenPreis.toFixed(2)+' EUR</span>';
         html += '<button style="background:none;border:none;color:var(--dachziegel);cursor:pointer;font-size:.8rem;" onclick="removeFromBestellliste('+item.idx+')">x</button>';
@@ -4759,7 +4754,7 @@ function bestellungEmail() {
     'Sorten:',
     ...bestellListe.map(e =>
       '  ' + e.sorte + (e.unterlage ? ' (' + e.unterlage + ')' : '') +
-      (e.alter ? ' ' + e.alter : '') + ' x' + e.menge + ' = ' + (e.preis * e.menge).toFixed(2) + ' EUR (inkl. '+(e.mwst_satz||20)+'% MwSt)'
+      (e.alter ? ' ' + e.alter : '') + ' x' + e.menge + ' = ' + (e.preis * e.menge).toFixed(2) + ' EUR (inkl. 13% MwSt)'
     ),
     '',
     'Gesamt: ' + gesamt.toFixed(2) + ' EUR'
