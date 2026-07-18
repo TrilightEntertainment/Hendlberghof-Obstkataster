@@ -868,7 +868,7 @@
       <p class="import-hint">Ordne die Spalten aus deiner Datei den Feldern der App zu.</p>
       <div id="import-mapping"></div>
       <div style="margin-top:12px;display:flex;gap:8px;">
-        <button class="btn secondary" onclick="saveImportTemplate()">💾 Als Vorlage speichern</button>
+        <button class="btn secondary" onclick="const n=prompt('Name der Vorlage:');if(n)saveImportTemplate(n)">💾 Als Vorlage speichern</button>
       </div>
     </div>
     
@@ -1379,6 +1379,7 @@ function neuePdfKarte(){
     v1 = v1? String(v1) : ''; v2 = v2? String(v2) : ''; v3 = v3? String(v3) : '';
     if(!v1 && !v2 && !v3) return;
     const cw3 = (W - 2*M - 20) / 3;
+    doc.setFontSize(9.5);
     const lines1 = v1? doc.splitTextToSize(v1, cw3) : [];
     const lines2 = v2? doc.splitTextToSize(v2, cw3) : [];
     const lines3 = v3? doc.splitTextToSize(v3, cw3) : [];
@@ -1615,14 +1616,15 @@ function exportLageplanPDF(){
 
 /* ---------- Modal: Baum-Detail ---------- */
 function fieldRow(label, val){
-  if(!val) return '';
+  if(!val) return `<div class="field"><b>${label}</b>–</div>`;
   return `<div class="field"><b>${label}</b>${val}</div>`;
 }
 
 function archeNoahLink(obj){
-  if(!obj || !obj.arche_pdf) return '';
-  const sorte = (obj.sorte||'').replace(/'/g,"\\'");
-  return `<button type="button" class="arche-link" onclick="openArcheViewer('${obj.arche_pdf}','${sorte}')" title="Arche-Noah-Sortenblatt (PDF) anzeigen">
+  const pdf = obj && (obj.arche_pdf || obj.pdf);
+  if(!pdf) return '';
+  const sorte = (obj.sorte||obj.name||'').replace(/'/g,"\\'");
+  return `<button type="button" class="arche-link" onclick="openArcheViewer('${pdf}','${sorte}')" title="Arche-Noah-Sortenblatt (PDF) anzeigen">
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false" style="margin-right:6px;">
       <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
     Sortenblatt: Arche Noah</button>`;
@@ -1965,6 +1967,7 @@ function openSortenModal(sorteName){
     s=all.find(x=>x.name===sorteName);
   }
   if(!s) return;
+  s.sorte = s.sorte || s.name;
   const safeName = sorteName.replace(/'/g,"\\'");
   const originalPW = s.pflueckzeitpunkt||s.pflueck_reifezeit||'';
   const mittel = calcPfluckMittel(sorteName);
@@ -2465,11 +2468,11 @@ function editBaumWithLogin(id){
 }
 function editSorteWithLogin(sorteName){
   if(isAdmin()){
-    openSorteEditForm(sorteName);
+    openSortenModal(sorteName);
     return;
   }
   if(isEditMode()){
-    openSorteEditForm(sorteName);
+    openSortenModal(sorteName);
     return;
   }
   showLoginDialog();
@@ -3316,15 +3319,24 @@ function getAllSorten(){
     sortenMap.forEach(s=>result.push(s));
   }
   
+  // Deduplizierung nach Name (Hof hat Vorrang)
+  const seen=new Map();
+  result.forEach(s=>{
+    const key=s.name.toLowerCase();
+    if(!seen.has(key)) seen.set(key,s);
+    else{ const existing=seen.get(key); if(s.quelle==='hof') seen.set(key,s); }
+  });
+  const deduped=[...seen.values()];
+  
   // Sichtbarkeit filtern (nur wenn Admin-Einstellungen vorhanden)
   if(state.sortenSichtbar && Object.keys(state.sortenSichtbar).length>0){
-    return result.filter(s=>{
+    return deduped.filter(s=>{
       const key=s.quelle==='arche'?'arche':s.quelle==='hof'?'hof':s.quelle;
       return state.sortenSichtbar[key]!==false;
     });
   }
   
-  return result;
+  return deduped;
 }
 
 // ─── PFLÜCKZEIT: HILFSFUNKTIONEN ────────────────────────────────────────────
@@ -3763,6 +3775,7 @@ function parseImportFile(){
 }
 
 function parseCSV(text,delimiter=','){
+  text=text.replace(/\r\n/g,'\n').replace(/\r/g,'\n');
   const lines=[];
   let current=[];
   let inQuotes=false;
@@ -4197,7 +4210,7 @@ function showImportDetails(importId){
   const datum=new Date(entry.datum).toLocaleString('de-AT');
   const trees=entry.treeIds?.map(id=>getTree(id)).filter(Boolean)||[];
   
-  let html='<div class="modal" style="max-width:500px;">';
+  let html='<div style="max-width:500px;">';
   html+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">';
   html+='<h3 style="margin:0;font-family:Georgia,serif;">Import-Details</h3>';
   html+='<button class="btn secondary" onclick="closeModal()">✕</button>';
