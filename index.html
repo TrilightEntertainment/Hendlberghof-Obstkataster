@@ -4234,14 +4234,15 @@ function parseCSV(text,delimiter=','){
     } else {
       if(c==='"'){
         inQuotes=true;
-      } else if(c===delimiter||c==='\n'||c==='\r'){
+      } else if(c===delimiter){
+        current.push(value.trim());
+        value='';
+      } else if(c==='\n'||c==='\r'){
         if(c==='\r'&&next==='\n') i++;
         current.push(value.trim());
         value='';
-        if(c===delimiter||c==='\n'){
-          if(current.length>0) lines.push(current);
-          current=[];
-        }
+        if(current.length>0) lines.push(current);
+        current=[];
       } else {
         value+=c;
       }
