@@ -3629,8 +3629,9 @@ function renderBeraterBatch(count){
     const posBaumId=state.positions? Object.keys(state.positions).find(k=>{const t=getTree(k);return t&&t.sorte===sn;}) : null;
     const preise=getPreisFuerSorte(sn);
     const safeSn=escAttr(sn);
-    const bestellBtn=preise.length?'<button class="btn secondary" style="font-size:.78rem;padding:3px 10px;" onclick="event.stopPropagation();addToBestellliste(\''+safeSn+'\','+JSON.stringify(preise[0]).replace(/"/g,'&quot;')+')">Zur Bestellung hinzufügen</button>':'<button class="btn secondary" style="font-size:.78rem;padding:3px 10px;" onclick="event.stopPropagation();showToast(\'Keine Preise hinterlegt. Bitte zuerst eine Preisliste anlegen.\',\'error\')">Zur Bestellung hinzufügen</button>';
-    const btnRow='<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;padding-top:6px;border-top:1px solid var(--border);">'+(posBaumId?'<button class="btn secondary" style="font-size:.78rem;padding:3px 10px;" onclick="event.stopPropagation();showOnLageplan(\''+escAttr(posBaumId)+'\')">Im Lageplan anzeigen</button>':'')+bestellBtn+'</div>';
+    const lageplanBtn=posBaumId?'<button class="btn secondary" style="font-size:.78rem;padding:3px 10px;" onclick="event.stopPropagation();showOnLageplan(\''+escAttr(posBaumId)+'\')">Im Lageplan anzeigen</button>':'';
+    const guildBtn=s.frucht?'<button class="btn secondary" style="font-size:.78rem;padding:3px 10px;" onclick="event.stopPropagation();showGuildPopup(\''+escAttr(sn)+'\')">Begleitpflanzen</button>':'';
+    const btnRow=(lageplanBtn||guildBtn)?'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;padding-top:6px;border-top:1px solid var(--border);">'+lageplanBtn+guildBtn+'</div>':'';
     let preisHtml='';
     if(preise.length){
       preisHtml='<div style="margin-top:6px;padding-top:6px;border-top:1px solid var(--border);">';
@@ -3642,9 +3643,8 @@ function renderBeraterBatch(count){
       });
       preisHtml+='</div>';
     }
-    const guildBtn=s.frucht?'<button class="btn secondary" style="font-size:.78rem;padding:3px 10px;margin-top:6px;" onclick="event.stopPropagation();showGuildPopup(\''+escAttr(sn)+'\')">Begleitpflanzen</button>':'';
     const archeHtml=archeNoahLink(s);
-    html+='<div class="sb-sorte" style="cursor:pointer" onclick="openSortenModal(\''+safeSn+'\')"><div class="sb-sorte-name">'+sn+idText+'<span class="sb-reife">Pflueckzeit: '+reife+nTxt+' &middot; bis '+s.standort.hmax+'m</span></div><div class="sb-tags">'+tags+'</div><div class="sb-gilde"><strong>'+quelleLabel+'</strong> '+s.standort.basis+'</div>'+guildBtn+preisHtml+(archeHtml?'<div style="margin-top:6px;">'+archeHtml+'</div>':'')+btnRow+'</div>';
+    html+='<div class="sb-sorte" style="cursor:pointer" onclick="openSortenModal(\''+safeSn+'\')"><div class="sb-sorte-name">'+sn+idText+'<span class="sb-reife">Pflueckzeit: '+reife+nTxt+' &middot; bis '+s.standort.hmax+'m</span></div><div class="sb-tags">'+tags+'</div><div class="sb-gilde"><strong>'+quelleLabel+'</strong> '+s.standort.basis+'</div>'+preisHtml+(archeHtml?'<div style="margin-top:6px;">'+archeHtml+'</div>':'')+btnRow+'</div>';
   }
   container.insertAdjacentHTML('beforeend', html);
   window._beraterShown=end;
