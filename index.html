@@ -741,6 +741,29 @@
 <div style="max-width:760px;margin:0 auto;">
 <h2 style="font-family:Georgia,serif;color:var(--ackerde);margin:0 0 1.5rem;">Anleitung für neue Nutzer</h2>
 
+<div class="hilfe-card" style="border-left:3px solid var(--gold);background:rgba(217,180,88,.04);">
+<h3>Erste Schritte in 5 Minuten</h3>
+<p>Schalke die Obstdatenbank in 5 Schritten auf:</p>
+<dl>
+<dt>1. App installieren</dt>
+<dd>URL im Browser oeffnen. <strong>iOS:</strong> Safari → Teilen → "Zum Home-Bildschirm". <strong>Android:</strong> Chrome → Menu → "Zum Home-Bildschirm hinzufuegen". Danach oeffnet sich die App wie eine native App.</dd>
+
+<dt>2. Sorten entdecken</dt>
+<dd>Wechsle zum Tab <strong>Sortenberater</strong>. Waehle deine Exposition und Hoehe — die App zeigt dir passende Sorten an. Tippe auf eine Sorte fuer Details.</dd>
+
+<dt>3. Baumkataster anlegen</dt>
+<dd>Tippe auf <strong>"Baum anlegen"</strong> und traege deine Baeume ein. Waehle Sorte, Pflanzjahr und ggf. Unterlage (Info-Button erklaert die Unterschiede).</dd>
+
+<dt>4. Lageplan erstellen</dt>
+<dd>Wechsle zum Tab <strong>Lageplan</strong>. Waehle "Luftbild" oder "Satellit" und tippe auf die Karte, um Baeume zu platzieren. Du kannst sie auch per Drag & Drop verschieben.</dd>
+
+<dt>5. Ernten dokumentieren</dt>
+<dd>Oeffne einen Baum im Kataster, trage Ernte-Datum und Menge ein. Ab 1 Eintrag wird ein Pflueckzeit-Mittelwert berechnet.</dd>
+</dl>
+
+<p style="margin-top:12px;font-size:.82rem;color:var(--muted);"><em>Tipp: Alle Aenderungen werden automatisch gespeichert. Bei Login werden Daten in der Cloud gesichert.</em></p>
+</div>
+
 <div class="hilfe-card">
 <h3>1. Sortenberater öffnen</h3>
 <p>145 Arche Noah Sorten sind bereits verfügbar. Lass dich beraten, welche Sorten für deinen Standort passen.</p>
@@ -1934,9 +1957,9 @@ function openBaumModal(id){
     ])}
     ${fieldGrid([
       ['Gepflanzt', t.ausgepflanzt],
-      ['Veredelt', t.veredelt],
-      ['Unterlage', t.unterlage]
+      ['Veredelt', t.veredelt]
     ])}
+    ${t.unterlage ? '<div style="display:flex;align-items:center;gap:6px;padding:8px 12px;border:1px solid var(--rand);border-radius:10px;margin-bottom:8px;font-size:.88rem;"><b>Unterlage</b> '+escHtml(t.unterlage)+' <a href="#" onclick="event.preventDefault();event.stopPropagation();showUnterlageInfo(\''+escAttr(sortName)+'\')" style="font-size:.78rem;color:var(--waldrand);text-decoration:underline;cursor:pointer;white-space:nowrap;">Info</a></div>' : ''}
     ${fieldGrid([
       ['Ertrag', merged.ertrag],
       ['Befruchtungspartner', merged.befruchtungspartner]
@@ -2222,9 +2245,9 @@ function openSortenModal(sorteName){
     ])}
     ${fieldGrid([
       ['Pflanzjahr', s.ausgepflanzt],
-      ['Veredelungsjahr', s.veredelt],
-      ['Unterlage', s.unterlage]
+      ['Veredelungsjahr', s.veredelt]
     ])}
+    ${s.unterlage ? '<div style="display:flex;align-items:center;gap:6px;padding:8px 12px;border:1px solid var(--rand);border-radius:10px;margin-bottom:8px;font-size:.88rem;"><b>Unterlage</b> '+escHtml(s.unterlage)+' <a href="#" onclick="event.preventDefault();event.stopPropagation();showUnterlageInfo(\''+escAttr(sorteName)+'\')" style="font-size:.78rem;color:var(--waldrand);text-decoration:underline;cursor:pointer;white-space:nowrap;">Info</a></div>' : ''}
     ${fieldGrid([
       ['Ertrag', s.ertrag],
       ['Befruchtungspartner', s.befruchtungspartner]
@@ -3496,6 +3519,88 @@ const GUILD_QUELLEN = [
   { autor: 'Plants For A Future (PFAF)', titel: 'pfaf.org — Edible, Medicinal and Useful Plants', jahr: 'online', url: 'https://pfaf.org' },
   { autor: 'Bund Oekologische Lebensmittelwirtschaft', titel: 'Kompost & Gründüngung im Bio-Obstbau', jahr: 2020, url: 'https://www.boelw.de/themen/pflanze/duengung/' }
 ];
+
+/* ─── UNTERLAGEN (ROOTSTOCK) ──────────────────────────────────────────────── */
+const ROOTSTOCK_INFO = {
+  apfel: {
+    label: 'Apfelunterlagen',
+    intro: 'Die Unterlage (Rootstock) bestimmt Staerke, Groesse und Ertrag des Baumes. Sie beeinflusst, wie schnell der Baum Wurzeln schlaegt, wie gross er wird und wann er erstmals traegt.',
+    items: [
+      {code:'MM106', name:'MM106', stärke:'Halbstark wachsend', beschreibung:'Der Klassiker fuer Streuobst. Baum wird 4–5m hoch, traegt ab 4–5 Jahren regelmaessig und ergiebig. Vertraegt mittlere Boeden und ist winterhart.'},
+      {code:'M26', name:'M26', stärke:'Schwach bis halbstark', beschreibung:'Fuer kleinere Baeume (3–4m). Traegt frueher als MM106, braucht aber Haltstab. Gut fuer Hausgaerten und intensivere Anlagen.'},
+      {code:'M9', name:'M9', stärke:'Zwergunterlage', beschreibung:'Sehr schwach wachsend (2–3m). Ertragreich ab 2–3 Jahren, braucht Pfahl. Fuer Hochdichtpflanzung und Topfobst.'},
+      {code:'Bittenfelder', name:'Bittenfelder', stärke:'Saemlingsunterlage',beschreibung:'Starke Saemlingunterlage (5–6m). Robust, laengere Jungendphase, aber langlebig. Fuer Streuobst und historische Sorten.'},
+      {code:'Pyrodwarf', name:'Pyrodwarf', stärke:'Schwachwachsend', beschreibung:'Neuere Zwergunterlage (3–3,5m). Fruehtragend, gut veredelbar, breit gewachsener Kronentyp. Fuer kleine Gärten.'}
+    ]
+  },
+  birne: {
+    label: 'Birnunterlagen',
+    intro: 'Birnen werden fast ausschliesslich auf Quitte oder Quitte-Hybriden veredelt. Die Wahl der Unteralge bestimmt Wuchsstaerke und Anpassung an Bodenverhaeltnisse.',
+    items: [
+      {code:'Quitte BA29', name:'Quitte BA29', stärke:'Halbstark wachsend', beschreibung:'Standardunterlage fuer Birnen. Baum 4–5m, vertraegt kalkhaltige Boeden. Traegt ab 4–6 Jahren, zuverlaessig und ertragreich.'},
+      {code:'QBA', name:'QBA ( Quitte)', stärke:'Halbstark', beschreibung:'Klassische Quitte. Aehnlich wie BA29, gut angepasst an mitteleuropaeische Boeden. Fuer Streuobst und Hausgarten.'},
+      {code:'Pyrodwarf', name:'Pyrodwarf', stärke:'Schwachwachsend',beschreibung:'Fuer Birnen nutzbar, bleibt kleiner (3–3,5m). Fruehtragend, aber weniger verbreitet als Quitte-Unterlagen.'},
+      {code:'OHxF', name:'OHxF (Old Home x Farmingdale)', stärke:'Variabel', beschreibung:'Resistente Hybride aus USA. Verschiedene Stärken (OHxF 87, 97, 333). Resistent gegen Feuerbrand. Fuer professionelle Anlagen.'}
+    ]
+  },
+  walnuss: {
+    label: 'Walnuss-Unterlagen',
+    intro: 'Walnuesse werden selten veredelt — die meisten Baeume wachsen direkt aus Samen. Edelunterlagen sind fuer hochwertige Sorten noetig.',
+    items: [
+      {code:'Sämling', name:'Sämling', stärke:'Volle Staerke', beschreibung:'Direkt aus dem Samen gewachsen. Baum wird 10–15m, traegt ab 8–12 Jahren. Laengste Jugendphase, aber laanglebig und robust.'},
+      {code:'Baumpfirsich', name:'Baumpfirsich (Prunus persica)', stärke:'Edelunterlage', beschreibung:'Fuer veredelte Walnusssorten. Reduziert Wuchsstaerke, fuehrt zu frueherem Ertrag. Noch nicht weit verbreitet in Europa.'}
+    ]
+  }
+};
+
+function getRootstockInfo(frucht) {
+  const key = (frucht||'').toLowerCase();
+  return ROOTSTOCK_INFO[key] || null;
+}
+
+function showUnterlageInfo(sorteName) {
+  const s = getSorte(sorteName);
+  if(!s) return;
+  const frucht = (s.frucht||'').toLowerCase();
+  const info = getRootstockInfo(frucht);
+  const aktuelleUnterlage = s.unterlage || '';
+
+  let html = '<div style="max-width:520px;">';
+  html += '<h3 style="font-family:var(--font-heading);color:var(--dark);margin:0 0 12px;">Unterlagen (Rootstock)</h3>';
+
+  if(info) {
+    html += '<p style="font-size:.85rem;color:var(--text);line-height:1.5;margin-bottom:12px;">'+info.intro+'</p>';
+    html += '<div style="font-size:.82rem;color:var(--muted);margin-bottom:14px;font-weight:600;">'+info.label+':</div>';
+
+    info.items.forEach(item => {
+      const isActive = aktuelleUnterlage && (item.code === aktuelleUnterlage || item.name === aktuelleUnterlage);
+      const border = isActive ? 'border-left:3px solid var(--gold);background:rgba(217,180,88,.06);' : 'border-left:3px solid var(--border);';
+      html += '<div style="padding:8px 10px;margin-bottom:8px;border-radius:0 6px 6px 0;'+border+'">';
+      html += '<div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;">';
+      html += '<strong style="font-size:.88rem;color:var(--dark);">'+escHtml(item.name)+'</strong>';
+      html += '<span style="font-size:.75rem;color:var(--muted);">'+escHtml(item.stärke)+'</span>';
+      if(isActive) html += ' <span style="font-size:.7rem;background:var(--gold);color:#fff;padding:1px 6px;border-radius:4px;">diese Sorte</span>';
+      html += '</div>';
+      html += '<div style="font-size:.82rem;color:var(--text);line-height:1.45;">'+escHtml(item.beschreibung)+'</div>';
+      html += '</div>';
+    });
+  } else {
+    html += '<p style="font-size:.85rem;color:var(--text);line-height:1.5;margin-bottom:10px;">Fuer '+escHtml(s.frucht||'diese Obstart')+' liegen keine detaillierten Unterlagen-Daten vor.</p>';
+  }
+
+  if(aktuelleUnterlage) {
+    html += '<div style="margin-top:14px;padding:10px;background:var(--card-bg);border:1px solid var(--border);border-radius:8px;">';
+    html += '<div style="font-size:.82rem;color:var(--muted);margin-bottom:4px;">Aktuelle Unterlage dieser Sorte:</div>';
+    html += '<div style="font-size:1rem;font-weight:600;color:var(--dark);">'+escHtml(aktuelleUnterlage)+'</div>';
+    html += '</div>';
+  }
+
+  html += '<p style="font-size:.78rem;color:var(--muted);line-height:1.4;margin-top:14px;"><em>Quelle: Obstbaumschule Kriechbaumhof, Permakultur-Praxiserfahrung</em></p>';
+  html += '</div>';
+
+  document.getElementById('modal-content').innerHTML = html;
+  document.getElementById('overlay').classList.add('open');
+}
 
 function showGuildQuellen() {
   let listHtml = GUILD_QUELLEN.map(q =>
