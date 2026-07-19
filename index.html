@@ -243,7 +243,7 @@
   /* Modal */
   .overlay{
     position:fixed;inset:0;background:rgba(30,25,18,.55);
-    display:none;align-items:center;justify-content:center;z-index:50;padding:20px;
+    display:none;align-items:center;justify-content:center;z-index:1000;padding:20px;
   }
   .overlay.open{display:flex;}
   .modal{
@@ -1774,6 +1774,13 @@ function fieldRow(label, val){
   if(val === undefined || val === null || val === '') return `<div class="field"><b>${label}</b>–</div>`;
   return `<div class="field"><b>${label}</b>${escHtml(String(val))}</div>`;
 }
+function fieldGrid(fields){
+  const present = fields.filter(([_,v])=>v !== undefined && v !== null && v !== '');
+  if(!present.length) return '';
+  const cols = present.length >= 3 ? 3 : present.length >= 2 ? 2 : 1;
+  const cells = present.map(([l,v])=>`<div class="field"><b>${l}</b>${escHtml(String(v))}</div>`).join('');
+  return `<div style="display:grid;grid-template-columns:repeat(${cols},1fr);gap:0;border:1px solid var(--rand);border-radius:10px;overflow:hidden;margin-bottom:8px;">${cells}</div>`;
+}
 
 function archeNoahLink(obj){
   const pdf = obj && (obj.arche_pdf || obj.pdf);
@@ -1909,29 +1916,29 @@ function openBaumModal(id){
       <button class="btn-verify done" onclick="toggleVerifiziert('${escAttr(t.sorte)}', {baumId:'${escAttr(t.id)}'})">Verifizierung zurücknehmen</button>` : '')}
     <h2>${t.sorte||'Unbekannte Sorte'} <span class="idbadge">${t.id_placeholder? 'ID noch offen' : 'ID '+t.id}</span></h2>
     ${archeNoahLink(merged)}
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0;border:1px solid var(--rand);border-radius:10px;overflow:hidden;margin-bottom:8px;">
-      ${fieldRow('Obstart', t.frucht)}
-      <div class="field"><b>Pflückreife lt. Beschreibung</b><div>${originalPW||'–'}</div></div>
-      <div class="field"><b>Pflückreife ermittelt</b><div>${mittelText||predictionHtml||'–'}</div></div>
-    </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0;border:1px solid var(--rand);border-radius:10px;overflow:hidden;margin-bottom:8px;">
-      ${fieldRow('Verwendung', (merged.verwendung||[]).join(', ')||'–')}
-      ${fieldRow('Genussreife', merged.genuss_von&&merged.genuss_bis ? merged.genuss_von+' – '+merged.genuss_bis+' Monate ab Ernte' : merged.genussreife)}
-    </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0;border:1px solid var(--rand);border-radius:10px;overflow:hidden;margin-bottom:8px;">
-      ${fieldRow('Gepflanzt', t.ausgepflanzt)}
-      ${fieldRow('Veredelt', t.veredelt)}
-      ${fieldRow('Unterlage', t.unterlage)}
-    </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0;border:1px solid var(--rand);border-radius:10px;overflow:hidden;margin-bottom:8px;">
-      ${fieldRow('Ertrag', merged.ertrag)}
-      ${fieldRow('Befruchtungspartner', merged.befruchtungspartner)}
-    </div>
-    <div class="grid2">
-      ${fieldRow('Erstmals tragend', t.erstmals_tragend)}
-      ${fieldRow('Lagerfähigkeit', merged.lagerfaehig)}
-      ${fieldRow('Herkunft', merged.herkunft_jahr||merged.herkunft)}
-    </div>
+    ${fieldGrid([
+      ['Obstart', t.frucht],
+      ['Pflückreife lt. Beschreibung', originalPW],
+      ['Pflückreife ermittelt', mittelText||predictionHtml]
+    ])}
+    ${fieldGrid([
+      ['Verwendung', (merged.verwendung||[]).join(', ')],
+      ['Genussreife', merged.genuss_von&&merged.genuss_bis ? merged.genuss_von+' – '+merged.genuss_bis+' Monate ab Ernte' : merged.genussreife]
+    ])}
+    ${fieldGrid([
+      ['Gepflanzt', t.ausgepflanzt],
+      ['Veredelt', t.veredelt],
+      ['Unterlage', t.unterlage]
+    ])}
+    ${fieldGrid([
+      ['Ertrag', merged.ertrag],
+      ['Befruchtungspartner', merged.befruchtungspartner]
+    ])}
+    ${fieldGrid([
+      ['Erstmals tragend', t.erstmals_tragend],
+      ['Lagerfähigkeit', merged.lagerfaehig],
+      ['Herkunft', merged.herkunft_jahr||merged.herkunft]
+    ])}
     ${merged.geschmack? `<div class="section-title">Geschmack / Nutzung</div><div class="field">${escHtml(merged.geschmack)}</div>`:''}
     ${merged.frucht_beschreibung? `<div class="section-title">Frucht</div><div class="field">${escHtml(merged.frucht_beschreibung)}</div>`:''}
     ${merged.eigenschaften? `<div class="section-title">Eigenschaften / Standortansprüche</div><div class="field">${escHtml(merged.eigenschaften)} ${merged.standort_anspruch? escHtml(merged.standort_anspruch):''}</div>`:''}
@@ -1954,8 +1961,8 @@ function openBaumModal(id){
     </div>` : ''}
 
     <div class="section-title">Ernte-Dokumentation</div>
-    <div id="ernte-chart-wrap" style="margin-bottom:10px;"></div>
     <ul class="log-list" id="ernte-list"></ul>
+    <div id="ernte-chart-wrap" style="margin-bottom:10px;"></div>
     ${isEditMode()? `<div class="addlog">
       <input type="date" id="ernte-datum">
       <input type="number" step="0.001" min="0" class="txt" id="ernte-menge" placeholder="Menge in kg" style="width:120px;">
@@ -2197,28 +2204,35 @@ function openSortenModal(sorteName){
       <button class="btn-verify done" onclick="toggleVerifiziert('${escAttr(s.sorte)}')">Verifizierung zurücknehmen</button>` : '')}
     <h2>${s.sorte}${s.baum_ids&&s.baum_ids.length?' <span class="idbadge" style="font-size:.78rem;">'+s.baum_ids.join(', ')+'</span>':''}</h2>
     ${archeNoahLink(s)}
-    <div class="grid2">
-      ${fieldRow('Obstart', s.frucht)}
-      <div class="field"><b>Pflückreife</b><div>${originalPW||'–'}${mittelText}</div>${predictionHtml}</div>
-      ${fieldRow('Verwendung', (s.verwendung||[]).join(', '))}
-      ${fieldRow('Genussreife', s.genuss_von&&s.genuss_bis? s.genuss_von+' – '+s.genuss_bis+' Monate ab Ernte' : s.genussreife)}
-      ${fieldRow('Pflanzjahr', s.ausgepflanzt)}
-      ${fieldRow('Ertrag', s.ertrag)}
-      ${fieldRow('Veredelungsjahr', s.veredelt)}
-      ${fieldRow('Unterlage', s.unterlage)}
-    </div>
-    <div class="grid2">
-      ${fieldRow('Erstmals tragend', s.erstmals_tragend)}
-      ${fieldRow('Lagerfähigkeit', s.lagerfaehig)}
-      ${fieldRow('Befruchtungspartner', s.befruchtungspartner)}
-      ${fieldRow('Herkunft', s.herkunft_jahr||s.herkunft)}
-      ${fieldRow('Anzahl Bäume', (s.baum_ids||[]).length + ' (' + (s.baum_ids||[]).join(', ') + ')')}
-      ${fieldRow('Synonyme', s.synonyme)}
-    </div>
-    ${s.frucht_beschreibung? `<div class="section-title">Frucht</div><div class="field">${escHtml(s.frucht_beschreibung)}</div>`:''}
+    ${fieldGrid([
+      ['Obstart', s.frucht],
+      ['Pflückreife lt. Beschreibung', originalPW],
+      ['Pflückreife ermittelt', mittelText]
+    ])}
+    ${fieldGrid([
+      ['Verwendung', (s.verwendung||[]).join(', ')],
+      ['Genussreife', s.genuss_von&&s.genuss_bis? s.genuss_von+' – '+s.genuss_bis+' Monate ab Ernte' : s.genussreife]
+    ])}
+    ${fieldGrid([
+      ['Pflanzjahr', s.ausgepflanzt],
+      ['Veredelungsjahr', s.veredelt],
+      ['Unterlage', s.unterlage]
+    ])}
+    ${fieldGrid([
+      ['Ertrag', s.ertrag],
+      ['Befruchtungspartner', s.befruchtungspartner]
+    ])}
+    ${fieldGrid([
+      ['Erstmals tragend', s.erstmals_tragend],
+      ['Lagerfähigkeit', s.lagerfaehig],
+      ['Herkunft', s.herkunft_jahr||s.herkunft],
+      ['Anzahl Bäume', (s.baum_ids||[]).length + ' (' + (s.baum_ids||[]).join(', ') + ')'],
+      ['Synonyme', s.synonyme]
+    ])}
     ${s.geschmack? `<div class="section-title">Geschmack / Nutzung</div><div class="field">${escHtml(s.geschmack)}</div>`:''}
+    ${s.frucht_beschreibung? `<div class="section-title">Frucht</div><div class="field">${escHtml(s.frucht_beschreibung)}</div>`:''}
     ${s.eigenschaften||s.standort_anspruch? `<div class="section-title">Eigenschaften / Standortansprüche</div><div class="field">${escHtml((s.eigenschaften||'')+(s.eigenschaften&&s.standort_anspruch?' ':'')+(s.standort_anspruch||''))}</div>`:''}
-    ${s.frucht ? `<div class="section-title" style="cursor:pointer;color:var(--gruen);text-decoration:underline;text-decoration-style:dotted;text-underline-offset:3px;" onclick="showGuildQuellen()">Begleitpflanzungen & Gilden</div><div class="field">${renderGuildSection(s.frucht)}</div>`:''}
+    ${s.frucht ? `<div class="section-title" style="cursor:pointer;color:var(--gruen);text-decoration:underline;text-decoration-style:dotted;text-underline-offset:3px;" onclick="showGuildPopup('${escAttr(s.sorte||s.name||'')}')">Begleitpflanzungen & Gilden</div><div class="field">${renderGuildSection(s.frucht)}</div>`:''}
     ${!s.geschmack && !s.eigenschaften && !s.frucht_beschreibung ? '<p class="empty">Für diese Sorte liegt noch keine ausführliche Beschreibung vor.</p>':''}
     ${s.recherchiert? `<div class="quelle-hinweis"><b>Quelle(n):</b> ${s.quelle}<br>Diese Angaben stammen aus einer Web-Recherche (nicht aus deiner Numbers-Tabelle) und sollten anhand der Bäume vor Ort verifiziert werden.</div>`:''}
   `;
@@ -2382,15 +2396,26 @@ function renderSatMarkers(){
   satMarkers = [];
   const farben = {apfel:'#dc2626', birne:'#22c55e', walnuss:'#b98e1a', zwetschke:'#6b21a8', kirsch:'#be185d', marille:'#f59e0b', quitte:'#84cc16', pflaume:'#7c3aed', sonne:'#f97316'};
   const bounds = [];
+  const editing = isAdmin();
   Object.entries(state.positions).forEach(([id,pos])=>{
     const t = getTree(id);
     const farbe = t? (farben[(t.frucht||'').toLowerCase()]||'#B2543A') : '#B2543A';
     let gps;
     if(pos.lat && pos.lng) { gps = {lat: pos.lat, lng: pos.lng}; }
     else { gps = percentToGps(pos.x, pos.y); }
-    const m = L.circleMarker([gps.lat, gps.lng], {radius:7, color:'#fff', weight:2, fillColor:farbe, fillOpacity:1});
-    if(t) m.bindTooltip(`${id} — ${t.sorte}`);
+    const m = L.circleMarker([gps.lat, gps.lng], {radius:7, color:'#fff', weight:2, fillColor:farbe, fillOpacity:1, draggable:editing});
+    if(t) m.bindTooltip(`${id} — ${t.sorte}${editing?' (ziehen zum Verschieben)':''}`);
     m.on('click', ()=>openBaumModal(id));
+    if(editing){
+      m.on('dragend', function(e){
+        const ll=e.target.getLatLng();
+        const xy=gpsToPercent(ll.lat,ll.lng);
+        const existing=state.positions[id]||{};
+        state.positions[id]=Object.assign({},existing,{lat:ll.lat,lng:ll.lng,x:Math.round(xy.x*100)/100,y:Math.round(xy.y*100)/100});
+        saveState();
+        showToast('Position verschoben','success');
+      });
+    }
     m.addTo(satMap);
     satMarkers.push(m);
     bounds.push([gps.lat, gps.lng]);
@@ -2648,21 +2673,21 @@ function showLoginDialog(){
 
 function loginAsRole(role){
   pendingLoginRole = role;
+  const email = LOGIN_ACCOUNTS[role];
   closeModal();
   const html = `
     <button class="close" onclick="closeModal()">&times;</button>
     <h2>Anmeldung — ${role==='admin'?'Admin':'Mitarbeiter:in'}</h2>
     <div style="max-width:320px;margin-top:16px;">
-      <div style="margin-bottom:12px;">
-        <label style="display:block;font-size:.82rem;color:var(--muted);margin-bottom:4px;">E-Mail</label>
-        <input type="email" id="login-email" value="${LOGIN_ACCOUNTS[role]}" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:1rem;font-family:inherit;">
-      </div>
+      <input type="hidden" id="login-email" value="${escAttr(email)}">
+      <p style="font-size:.85rem;color:var(--muted);margin-bottom:12px;">Angemeldet als: <b>${escHtml(email)}</b></p>
       <div style="margin-bottom:16px;">
         <label style="display:block;font-size:.82rem;color:var(--muted);margin-bottom:4px;">Passwort</label>
-        <input type="password" id="login-pw" placeholder="Passwort eingeben" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:1rem;font-family:inherit;">
+        <input type="password" id="login-pw" placeholder="Passwort eingeben"
+          style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:1rem;font-family:inherit;"
+          onkeydown="if(event.key==='Enter')submitLogin()">
       </div>
       <div id="login-error" style="color:var(--dachziegel);font-size:.82rem;margin-bottom:12px;display:none;"></div>
-      <button class="btn" onclick="submitLogin()" style="width:100%;">Anmelden</button>
     </div>`;
   document.getElementById('modal-content').innerHTML = html;
   document.getElementById('overlay').classList.add('open');
@@ -3356,13 +3381,50 @@ function showGuildQuellen() {
   document.getElementById('overlay').classList.add('open');
 }
 
+function showGuildPopup(sorteName){
+  const s=getSorte(sorteName);
+  const frucht=s?(s.frucht||'').toLowerCase():'';
+  const g=getGuildRecommendations(frucht);
+  let html='<div style="max-width:520px;">';
+  html+='<h3 style="font-family:var(--font-heading);color:var(--dark);margin:0 0 12px;">Gilden & Begleitpflanzung</h3>';
+  html+='<p style="font-size:.85rem;color:var(--text);line-height:1.5;margin-bottom:10px;">Empfehlungen fuer Begleitpflanzen rund um Obstbaeume. Gilden sind Pflanzen, die sich gegenseitig unterstuetzen — durch Naehrstoffanreicherung, Schaedlingsabwehr oder Bestaeuberfoerderung.</p>';
+  html+='<p style="font-size:.78rem;color:var(--muted);line-height:1.4;margin-bottom:14px;"><em>Hinweis: Gilden-Empfehlungen basieren auf Permakultur-Praxiserfahrung, nicht auf wissenschaftlich validierten Studien.</em></p>';
+  const cats=[{key:'naehrstoff',label:'Naehrstoff-Akkumulatoren'},{key:'boden',label:'Bodenverbesserer'},{key:'schaedling',label:'Schaedlingsabwehr'},{key:'bestaeuber',label:'Bestaeuber-Anziehung'}];
+  let hasPlants=false;
+  cats.forEach(c=>{
+    const items=g[c.key];
+    if(!items||!items.length) return;
+    hasPlants=true;
+    html+='<div style="margin-bottom:6px;"><span style="color:var(--muted);font-size:.78rem;font-weight:600;">'+c.label+':</span> <span style="font-size:.85rem;">'+items.join(', ')+'</span></div>';
+  });
+  if(g.warnung&&g.warnung.length){
+    html+='<div style="margin:8px 0;padding:8px;background:rgba(220,38,38,.08);border-radius:6px;font-size:.82rem;color:#991b1b;">'+g.warnung.join(' ')+'</div>';
+  }
+  if(!hasPlants&&!g.warnung?.length){
+    html+='<p class="empty">Fuer diese Obstart liegen keine Begleitpflanzen-Daten vor.</p>';
+  }
+  html+='<div class="section-title" style="margin-top:14px;">Quellen</div>';
+  html+='<ol style="font-size:.82rem;padding-left:18px;margin:6px 0;">';
+  GUILD_QUELLEN.forEach(q=>{
+    html+='<li style="margin-bottom:4px;"><strong>'+q.autor+'</strong> ('+q.jahr+'): ';
+    html+=q.url?'<a href="'+q.url+'" target="_blank" rel="noopener">'+q.titel+'</a>':q.titel;
+    html+='</li>';
+  });
+  html+='</ol></div>';
+  document.getElementById('modal-content').innerHTML=html;
+  document.getElementById('overlay').classList.add('open');
+}
+
 let beraterQuelle='alle';
 function beraterPool(){
   const all=getAllSorten();
   return all.map(s=>{
     const full=getSorte(s.name);
-    const standort=full?.standort||null;
-    return Object.assign({}, s, standort?{standort,sorte:full.sorte}:null);
+    let standort=full?.standort||null;
+    if(!standort && s.quelle==='arche'){
+      standort={hmax:1000,expo:['sued','ost','west'],frost:'mittel',ns:['mittel'],ziele:['tafel','most'],basis:'Keine detaillierten Standortdaten vorhanden.'};
+    }
+    return Object.assign({}, s, standort?{standort,sorte:full?.sorte||s.name}:null);
   }).filter(s=>s.standort);
 }
 function beraterPoolFiltered(){
@@ -3445,9 +3507,9 @@ function renderBeraterBatch(count){
       });
       preisHtml+='</div>';
     }
-    const guildHtml=s.frucht?'<div style="margin-top:4px;font-size:.82rem;">'+renderGuildSection(s.frucht)+'</div>':'';
+    const guildBtn=s.frucht?'<button class="btn secondary" style="font-size:.78rem;padding:3px 10px;margin-top:6px;" onclick="event.stopPropagation();showGuildPopup(\''+escAttr(sn)+'\')">Begleitpflanzen</button>':'';
     const archeHtml=archeNoahLink(s);
-    html+='<div class="sb-sorte" style="cursor:pointer" onclick="openSortenModal(\''+safeSn+'\')"><div class="sb-sorte-name">'+sn+idText+'<span class="sb-reife">Pflueckzeit: '+reife+nTxt+' &middot; bis '+s.standort.hmax+'m</span></div><div class="sb-tags">'+tags+'</div><div class="sb-gilde"><strong>'+quelleLabel+'</strong> '+s.standort.basis+'</div>'+guildHtml+preisHtml+(archeHtml?'<div style="margin-top:6px;">'+archeHtml+'</div>':'')+btnRow+'</div>';
+    html+='<div class="sb-sorte" style="cursor:pointer" onclick="openSortenModal(\''+safeSn+'\')"><div class="sb-sorte-name">'+sn+idText+'<span class="sb-reife">Pflueckzeit: '+reife+nTxt+' &middot; bis '+s.standort.hmax+'m</span></div><div class="sb-tags">'+tags+'</div><div class="sb-gilde"><strong>'+quelleLabel+'</strong> '+s.standort.basis+'</div>'+guildBtn+preisHtml+(archeHtml?'<div style="margin-top:6px;">'+archeHtml+'</div>':'')+btnRow+'</div>';
   }
   container.insertAdjacentHTML('beforeend', html);
   window._beraterShown=end;
