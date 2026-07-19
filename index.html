@@ -4857,11 +4857,17 @@ function downloadPreisCsvTemplate() {
 }
 
 function getPreisFuerSorte(sorteName) {
+  if(!sorteName) return [];
+  const norm = s => s.toLowerCase().replace(/[^a-z0-9äöüß]/g,'');
+  const sn = norm(sorteName);
   const results = [];
   Object.entries(state.preislisten||{}).forEach(([qid, q])=>{
     (q.preise||[]).forEach(p => {
-      if(p.sorte && p.sorte.toLowerCase() === sorteName.toLowerCase()) {
-        results.push({ quelle: q.name, email: q.email, qid, preis: p.preis, unterlage: p.unterlage, alter: p.alter, vorbestellbar: p.vorbestellbar, mwst_satz: 13 });
+      if(!p.sorte) return;
+      const ps = norm(p.sorte);
+      const match = ps === sn || ps.includes(sn) || sn.includes(ps) || levenshtein(ps, sn) <= 2;
+      if(match) {
+        results.push({ quelle: q.name, email: q.email, qid, preis: p.preis, unterlage: p.unterlage, alter: p.alter, vorbestellbar: p.vorbestellbar, mwst_satz: p.mwst_satz || 13 });
       }
     });
   });
