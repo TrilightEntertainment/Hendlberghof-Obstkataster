@@ -4872,11 +4872,11 @@ let preisImportState = { qid: null, rows: [], headers: [], mapping: {}, preview:
 
 const PREIS_CSV_FIELDS = [
   {id:'sorte', label:'Sorte', required:true, autoDetect:['sorte','Sorte','name','Name','sortenname']},
-  {id:'unterlage', label:'Unterlage', required:false, autoDetect:['unterlage','Unterlage','rootstock','Unterl.']},
-  {id:'alter', label:'Veredelt (Jahr)', required:false, autoDetect:['veredelt','Veredelt','alter','Alter','Jahr','veredelungsjahr']},
+  {id:'unterlage', label:'Unterlage', required:true, autoDetect:['unterlage','Unterlage','rootstock','Unterl.']},
+  {id:'alter', label:'Alter', required:true, autoDetect:['veredelt','Veredelt','alter','Alter','Jahr','veredelungsjahr']},
   {id:'preis', label:'Preis inkl. MWST', required:true, autoDetect:['preis','Preis','price','Preis inkl','brutto','ep','EP','Einzelpreis']},
-  {id:'mwst', label:'MWST Satz (%)', required:false, autoDetect:['mwst','MWSt','USt','ust','steuersatz','mehrwertsteuer','tax','vat']},
-  {id:'vorbestellbar', label:'Nur auf Vorbestellung', required:false, autoDetect:['vorbestellbar','Vorbestellung','pre-order','nur vorbestellung','vorbestellbar?','auf Bestellung','auf bestellung']}
+  {id:'vorbestellbar', label:'auf Bestellung', required:true, autoDetect:['vorbestellbar','Vorbestellung','pre-order','nur vorbestellung','vorbestellbar?','auf Bestellung','auf bestellung']},
+  {id:'mwst', label:'MWST Satz (%)', required:false, autoDetect:['mwst','MWSt','USt','ust','steuersatz','mehrwertsteuer','tax','vat']}
 ];
 
 function openPreisImport(qid) {
