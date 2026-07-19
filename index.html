@@ -4937,11 +4937,51 @@ function handlePreisImportFile(file) {
 function detectPreisMapping() {
   preisImportState.mapping = {};
   const headers = preisImportState.headers.map(h=>h.toLowerCase().trim());
+  const usedCols = new Set();
   PREIS_CSV_FIELDS.forEach(field => {
     const found = field.autoDetect.find(ad => headers.includes(ad.toLowerCase()));
     if(found){
       const idx = headers.indexOf(found.toLowerCase());
       preisImportState.mapping[field.id] = preisImportState.headers[idx];
+      usedCols.add(idx);
+    }
+  });
+  const rows = preisImportState.rows.slice(0, 5);
+  PREIS_CSV_FIELDS.forEach(field => {
+    if(preisImportState.mapping[field.id]) return;
+    let bestIdx = -1, bestScore = 0;
+    preisImportState.headers.forEach((h, idx) => {
+      if(usedCols.has(idx)) return;
+      let score = 0;
+      const sampleVals = rows.map(r => String(r[idx]||'').trim()).filter(v => v);
+      if(!sampleVals.length) return;
+      if(field.id === 'sorte'){
+        const hasText = sampleVals.filter(v => /^[A-ZÄÖÜ]/.test(v)).length;
+        const hasObst = sampleVals.filter(v => /apfel|birne|zwetsch|kirsch|marille|quitte|pflaum|nuss|walnuss|sonne|pepping|rosen|gold/i.test(v)).length;
+        const noPrice = sampleVals.filter(v => !/[€$]/.test(v) && !/^\d+[.,]\d{2}$/.test(v)).length;
+        score = (hasText * 3) + (hasObst * 5) + (noPrice * 2);
+      } else if(field.id === 'preis'){
+        const hasDecimal = sampleVals.filter(v => /^\d+[.,]\d{1,2}$/.test(v.replace(/[€$\s]/g,''))).length;
+        const hasEuro = sampleVals.filter(v => /[€$]/.test(v)).length;
+        score = (hasDecimal * 5) + (hasEuro * 3);
+      } else if(field.id === 'unterlage'){
+        const hasCode = sampleVals.filter(v => /^(MM|Bf|A|B|C|Keine|OHNE|\d)/i.test(v) && v.length < 15).length;
+        score = hasCode * 5;
+      } else if(field.id === 'alter'){
+        const hasRange = sampleVals.filter(v => /^\d+[\s-]+\d+$/.test(v) || /^\d+$/.test(v)).length;
+        score = hasRange * 5;
+      } else if(field.id === 'mwst'){
+        const hasPercent = sampleVals.filter(v => /^\d{1,2}$/.test(v.replace('%','').trim()) && parseInt(v) <= 30).length;
+        score = hasPercent * 5;
+      } else if(field.id === 'vorbestellbar'){
+        const isBool = sampleVals.every(v => /^(ja|nein|true|false|0|1|x|yes|no)$/i.test(v));
+        score = isBool ? 5 : 0;
+      }
+      if(score > bestScore){ bestScore = score; bestIdx = idx; }
+    });
+    if(bestIdx >= 0 && bestScore >= 5){
+      preisImportState.mapping[field.id] = preisImportState.headers[bestIdx];
+      usedCols.add(bestIdx);
     }
   });
   renderPreisMappingUI();
