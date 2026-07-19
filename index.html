@@ -312,7 +312,7 @@
   }
   .map-wrap img{width:100%;height:100%;object-fit:contain;display:block;transition:transform .15s ease;transform-origin:center center;}
   .pin{
-    position:absolute;width:14px;height:14px;border-radius:50%;
+    position:absolute;width:13px;height:13px;border-radius:50%;
     background:var(--dachziegel);border:2px solid #fff;
     transform:translate(-50%,-50%);cursor:grab;
     box-shadow:0 1px 4px rgba(0,0,0,.4);
@@ -1590,7 +1590,7 @@ function exportBaumKartePDF(id){
   k.kopf(t.sorte || 'Unbekannte Sorte', t.id_placeholder? 'ID noch offen' : 'ID '+t.id, hinweis, hinweisFarbe);
 
   const mittel = t.sorte ? calcPfluckMittel(t.sorte) : null;
-  const mittelText = mittel ? ' → '+mittel.wert : '';
+  const mittelText = mittel ? ' → '+mittel.wert+' ('+mittel.anzahl+' Ernten, '+mittel.jahre.join(', ')+')' : '';
   const pflBeschreibung = merged.pflueckzeitpunkt||merged.pflueck_reifezeit||'';
 
   feldDrei('Obstart', t.frucht, 'Pflückreife lt. Beschreibung', pflBeschreibung, 'Pflückreife ermittelt', mittelText||'–');
@@ -1646,7 +1646,11 @@ function exportSortenKartePDF(sorteName){
   else if(s.recherchiert){ hinweis = 'Web-recherchiert – bitte prüfen'; hinweisFarbe = [138,90,0]; }
   k.kopf(s.sorte, null, hinweis, hinweisFarbe);
 
+  const mittel = calcPfluckMittel(s.sorte);
+  const mittelText = mittel ? ' → '+mittel.wert+' ('+mittel.anzahl+' Ernten, '+mittel.jahre.join(', ')+')' : '';
+
   feldPaar('Obstart', s.frucht, 'Pflückreife', s.pflueckzeitpunkt||s.pflueck_reifezeit);
+  if(mittelText){ feldPaar('Pflückreife ermittelt', mittel.wert+' ('+mittel.anzahl+' Ernten, '+mittel.jahre.join(', ')+')', '', ''); }
   feldPaar('Verwendung', (s.verwendung||[]).join(', '), 'Genussreife', s.genuss_von&&s.genuss_bis? s.genuss_von+' – '+s.genuss_bis+' Monate ab Ernte' : s.genussreife);
   feldPaar('Pflanzjahr', s.ausgepflanzt, 'Ertrag', s.ertrag);
   feldPaar('Veredelungsjahr', s.veredelt, 'Unterlage', s.unterlage);
@@ -2435,7 +2439,7 @@ function renderSatMarkers(){
     const farbe = t? (farben[(t.frucht||'').toLowerCase()]||'#B2543A') : '#B2543A';
     const isSelected = movePinMode && selectedPinId===id;
     const ringHtml = isSelected ? '<div style="position:absolute;top:-5px;left:-5px;width:22px;height:22px;border-radius:50%;border:3px solid #D9B458;pointer-events:none;"></div>' : '';
-    const icon = L.divIcon({className:'',html:ringHtml+'<div style="width:12px;height:12px;border-radius:50%;border:2px solid #fff;background:'+farbe+';box-shadow:0 0 4px rgba(0,0,0,.4);position:relative;z-index:1;"></div>',iconSize:[22,22],iconAnchor:[11,11]});
+    const icon = L.divIcon({className:'',html:ringHtml+'<div style="width:11px;height:11px;border-radius:50%;border:2px solid #fff;background:'+farbe+';box-shadow:0 0 4px rgba(0,0,0,.4);position:relative;z-index:1;"></div>',iconSize:[22,22],iconAnchor:[11,11]});
     const m = L.marker([pos.lat, pos.lng], {icon:icon});
     if(t) m.bindTooltip(`${id} — ${t.sorte}${movePinMode?' (antippen zum Verschieben)':''}`);
     m.on('click', function(){
@@ -4768,6 +4772,7 @@ function renderPreislistenAdmin() {
     html += '<input value="'+escAttr(quelle.name||'')+'" style="font-weight:600;font-size:.9rem;border:none;border-bottom:1px solid var(--border);background:transparent;width:160px;" onchange="updateQuelleName(\''+qid+'\',this.value)">';
     html += '<input value="'+escAttr(quelle.email||'')+'" placeholder="Email" style="font-size:.8rem;border:none;border-bottom:1px solid var(--border);background:transparent;width:180px;" onchange="updateQuelleEmail(\''+qid+'\',this.value)">';
     html += '<button class="btn secondary" style="font-size:.75rem;padding:2px 8px;" onclick="openPreisImport(\''+qid+'\')">CSV importieren</button>';
+    html += '<button class="btn secondary" style="font-size:.75rem;padding:2px 8px;" onclick="downloadPreisCsvTemplate()">Vorlage</button>';
     html += '<button class="btn secondary" style="font-size:.75rem;padding:2px 8px;" onclick="removePreisquelle(\''+qid+'\')">Entfernen</button>';
     html += '</div>';
     html += '<table style="width:100%;font-size:.8rem;border-collapse:collapse;">';
@@ -4796,6 +4801,7 @@ function addPreisquelle() {
   state.preislisten[qid] = { name:'Neue Quelle', email:'', preise:[] };
   saveState();
   renderPreislistenAdmin();
+  showToast('Quelle angelegt','success');
 }
 
 function removePreisquelle(qid) {
@@ -4803,14 +4809,15 @@ function removePreisquelle(qid) {
   delete state.preislisten[qid];
   saveState();
   renderPreislistenAdmin();
+  showToast('Quelle entfernt','success');
 }
 
 function updateQuelleName(qid, val) {
-  if(state.preislisten[qid]) { state.preislisten[qid].name = val; saveState(); }
+  if(state.preislisten[qid]) { state.preislisten[qid].name = val; saveState(); showToast('Name gespeichert','success'); }
 }
 
 function updateQuelleEmail(qid, val) {
-  if(state.preislisten[qid]) { state.preislisten[qid].email = val; saveState(); }
+  if(state.preislisten[qid]) { state.preislisten[qid].email = val; saveState(); showToast('Email gespeichert','success'); }
 }
 
 function addPreisItem(qid) {
@@ -4818,6 +4825,7 @@ function addPreisItem(qid) {
   state.preislisten[qid].preise.push({sorte:'',unterlage:'',alter:'',preis:0,vorbestellbar:false});
   saveState();
   renderPreislistenAdmin();
+  showToast('Preis hinterlegt','success');
 }
 
 function removePreisItem(qid, idx) {
@@ -4825,12 +4833,26 @@ function removePreisItem(qid, idx) {
   state.preislisten[qid].preise.splice(idx, 1);
   saveState();
   renderPreislistenAdmin();
+  showToast('Preis entfernt','success');
 }
 
 function updatePreisItem(qid, idx, field, val) {
   if(!state.preislisten[qid] || !state.preislisten[qid].preise[idx]) return;
   state.preislisten[qid].preise[idx][field] = val;
   saveState();
+  showToast('Gespeichert','success');
+}
+
+function downloadPreisCsvTemplate() {
+  const csv = 'Sorte,Unterlage,Alter,Preis,auf Bestellung\nBernhardiner Apfel,MM106,2-3,8.50,nein\n';
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'preisliste_vorlage.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('Vorlage heruntergeladen','success');
 }
 
 function getPreisFuerSorte(sorteName) {
@@ -4854,7 +4876,7 @@ const PREIS_CSV_FIELDS = [
   {id:'alter', label:'Veredelt (Jahr)', required:false, autoDetect:['veredelt','Veredelt','alter','Alter','Jahr','veredelungsjahr']},
   {id:'preis', label:'Preis inkl. MWST', required:true, autoDetect:['preis','Preis','price','Preis inkl','brutto','ep','EP','Einzelpreis']},
   {id:'mwst', label:'MWST Satz (%)', required:false, autoDetect:['mwst','MWSt','USt','ust','steuersatz','mehrwertsteuer','tax','vat']},
-  {id:'vorbestellbar', label:'Nur auf Vorbestellung', required:false, autoDetect:['vorbestellbar','Vorbestellung','pre-order','nur vorbestellung','vorbestellbar?']}
+  {id:'vorbestellbar', label:'Nur auf Vorbestellung', required:false, autoDetect:['vorbestellbar','Vorbestellung','pre-order','nur vorbestellung','vorbestellbar?','auf Bestellung','auf bestellung']}
 ];
 
 function openPreisImport(qid) {
@@ -4866,7 +4888,7 @@ function openPreisImport(qid) {
     <div id="preis-import-step1">
       <p style="font-size:.85rem;margin-bottom:8px;">CSV- oder Excel-Datei wählen:</p>
       <input type="file" id="preis-import-file" accept=".csv,.tsv,.xlsx,.xls" onchange="handlePreisImportFile(this.files[0])" style="font-size:.85rem;">
-      <p style="font-size:.78rem;color:var(--muted);margin-top:6px;">Erwartete Spalten: Sorte, Unterlage, Veredelt (Jahr), Preis inkl. MWST, MWST Satz, Nur auf Vorbestellung</p>
+      <p style="font-size:.78rem;color:var(--muted);margin-top:6px;">Erwartete Spalten: Sorte, Unterlage, Alter, Preis, auf Bestellung</p>
     </div>
     <div id="preis-import-step2" style="display:none;"></div>
     <div id="preis-import-step3" style="display:none;"></div>
