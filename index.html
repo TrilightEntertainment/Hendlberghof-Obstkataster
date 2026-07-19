@@ -4884,17 +4884,47 @@ function openPreisImport(qid) {
   const html = `
     <button class="close" onclick="closeModal()">&times;</button>
     <h2 style="font-family:var(--font-heading);color:var(--dark);margin:0 0 12px;">Preisliste importieren</h2>
-    <p style="font-size:.85rem;color:var(--muted);margin-bottom:12px;">Quelle: <b>${(state.preislisten[qid]?.name||qid)}</b> — Alle bestehenden Preise werden durch die CSV-Daten ersetzt.</p>
+    <p style="font-size:.85rem;color:var(--muted);margin-bottom:12px;">Quelle: <b>${(state.preislisten[qid]?.name||qid)}</b></p>
     <div id="preis-import-step1">
-      <p style="font-size:.85rem;margin-bottom:8px;">CSV- oder Excel-Datei wählen:</p>
-      <input type="file" id="preis-import-file" accept=".csv,.tsv,.xlsx,.xls" onchange="handlePreisImportFile(this.files[0])" style="font-size:.85rem;">
-      <p style="font-size:.78rem;color:var(--muted);margin-top:6px;">Erwartete Spalten: Sorte, Unterlage, Alter, Preis, auf Bestellung</p>
+      <p style="font-size:.85rem;font-weight:600;margin-bottom:6px;">CSV-Datei wählen:</p>
+      <input type="file" id="preis-import-file" accept=".csv,.tsv,.xlsx,.xls,.txt" onchange="handlePreisImportFile(this.files[0])" style="font-size:.85rem;width:100%;">
+      <p style="font-size:.78rem;color:var(--muted);margin:8px 0 14px;">Format: Sorte,Unterlage,Alter,Preis,auf Bestellung</p>
+      <p style="font-size:.85rem;font-weight:600;margin-bottom:6px;">Oder CSV-Text einfügen:</p>
+      <textarea id="preis-import-paste" rows="6" placeholder="Sorte,Unterlage,Alter,Preis,auf Bestellung&#10;Berner Rosen Apfel,MM106,2-3,8.50,nein&#10;Goldparone,Keine,3-4,12.00,ja" style="width:100%;font-size:.82rem;font-family:monospace;padding:8px;border:1px solid var(--border);border-radius:6px;resize:vertical;"></textarea>
+      <button class="btn" style="margin-top:8px;" onclick="handlePreisImportText()">Text einlesen</button>
     </div>
     <div id="preis-import-step2" style="display:none;"></div>
     <div id="preis-import-step3" style="display:none;"></div>
   `;
   document.getElementById('modal-content').innerHTML = html;
   document.getElementById('overlay').classList.add('open');
+}
+
+function handlePreisImportText(){
+  const text = (document.getElementById('preis-import-paste')||{}).value||'';
+  if(!text.trim()){ showToast('Bitte CSV-Text einfügen.','error'); return; }
+  parsePreisCsvText(text);
+}
+
+function parsePreisCsvText(text){
+  text = text.replace(/^\ufeff/,'');
+  const delimiters = [';', ',', '\t'];
+  let bestData = null, bestCols = 0;
+  for(const delim of delimiters){
+    const data = parseCSV(text, delim);
+    if(data.length >= 2 && data[0].length > bestCols){
+      bestData = data;
+      bestCols = data[0].length;
+    }
+    if(bestCols >= 4) break;
+  }
+  if(!bestData || bestData.length < 2 || bestCols < 2){
+    showToast('CSV konnte nicht gelesen werden ('+bestCols+' Spalten erkannt).','error');
+    return;
+  }
+  preisImportState.headers = bestData[0].map(h=>h.replace(/^\ufeff/,'').trim());
+  preisImportState.rows = bestData.slice(1).filter(r=>r.some(v=>v));
+  detectPreisMapping();
 }
 
 function handlePreisImportFile(file) {
@@ -4908,34 +4938,17 @@ function handlePreisImportFile(file) {
         const wb = XLSX.read(e.target.result, {type:'array'});
         const ws = wb.Sheets[wb.SheetNames[0]];
         const data = XLSX.utils.sheet_to_json(ws, {header:1});
-        if(data.length < 2){ alert('Die Datei enthält keine Daten.'); return; }
+        if(data.length < 2){ showToast('Die Datei enthält keine Daten.','error'); return; }
         preisImportState.headers = data[0].map(h=>String(h||'').trim().replace(/^\ufeff/,''));
         preisImportState.rows = data.slice(1).filter(r=>r.some(v=>v));
         detectPreisMapping();
-      } catch(err){ alert('Fehler beim Lesen der Excel-Datei: '+err.message); }
+      } catch(err){ showToast('Fehler: '+err.message,'error'); }
     };
     reader.readAsArrayBuffer(file);
   } else {
     const reader = new FileReader();
     reader.onload = function(e){
-      let text = e.target.result.replace(/^\ufeff/,'');
-      const delimiters = [',', ';', '\t'];
-      let bestData = null, bestCols = 0;
-      for(const delim of delimiters){
-        const data = parseCSV(text, delim);
-        if(data.length >= 2 && data[0].length > bestCols){
-          bestData = data;
-          bestCols = data[0].length;
-        }
-        if(bestCols >= 3) break;
-      }
-      if(!bestData || bestData.length < 2){
-        alert('Die Datei konnte nicht gelesen werden. Bitte als CSV im Format: Sorte,Unterlage,Alter,Preis,auf Bestellung');
-        return;
-      }
-      preisImportState.headers = bestData[0].map(h=>h.replace(/^\ufeff/,'').trim());
-      preisImportState.rows = bestData.slice(1).filter(r=>r.some(v=>v));
-      detectPreisMapping();
+      parsePreisCsvText(e.target.result);
     };
     reader.readAsText(file);
   }
