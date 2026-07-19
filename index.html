@@ -1920,11 +1920,11 @@ function openBaumModal(id){
       <button class="btn-verify done" onclick="toggleVerifiziert('${escAttr(t.sorte)}', {baumId:'${escAttr(t.id)}'})">Verifizierung zurücknehmen</button>` : '')}
     <h2>${t.sorte||'Unbekannte Sorte'} <span class="idbadge">${t.id_placeholder? 'ID noch offen' : 'ID '+t.id}</span></h2>
     ${archeNoahLink(merged)}
-    ${fieldGrid([
-      ['Obstart', t.frucht],
-      ['Pflückreife lt. Beschreibung', originalPW],
-      ['Pflückreife ermittelt', mittelText||predictionHtml]
-    ])}
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:0;border:1px solid var(--rand);border-radius:10px;overflow:hidden;margin-bottom:8px;">
+      <div class="field"><b>Obstart</b>${escHtml(t.frucht||'')}</div>
+      <div class="field"><b>Pflückreife lt. Beschreibung</b>${escHtml(originalPW||'')}</div>
+      <div class="field"><b>Pflückreife ermittelt</b>${mittelText||predictionHtml||'–'}</div>
+    </div>
     ${fieldGrid([
       ['Verwendung', (merged.verwendung||[]).join(', ')],
       ['Genussreife', merged.genuss_von&&merged.genuss_bis ? merged.genuss_von+' – '+merged.genuss_bis+' Monate ab Ernte' : merged.genussreife]
