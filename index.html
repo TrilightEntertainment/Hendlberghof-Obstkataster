@@ -312,7 +312,7 @@
   }
   .map-wrap img{width:100%;height:100%;object-fit:contain;display:block;transition:transform .15s ease;transform-origin:center center;}
   .pin{
-    position:absolute;width:16px;height:16px;border-radius:50%;
+    position:absolute;width:14px;height:14px;border-radius:50%;
     background:var(--dachziegel);border:2px solid #fff;
     transform:translate(-50%,-50%);cursor:grab;
     box-shadow:0 1px 4px rgba(0,0,0,.4);
@@ -2434,8 +2434,8 @@ function renderSatMarkers(){
     const t = getTree(id);
     const farbe = t? (farben[(t.frucht||'').toLowerCase()]||'#B2543A') : '#B2543A';
     const isSelected = movePinMode && selectedPinId===id;
-    const ringHtml = isSelected ? '<div style="position:absolute;top:-5px;left:-5px;width:24px;height:24px;border-radius:50%;border:3px solid #D9B458;pointer-events:none;"></div>' : '';
-    const icon = L.divIcon({className:'',html:ringHtml+'<div style="width:14px;height:14px;border-radius:50%;border:2px solid #fff;background:'+farbe+';box-shadow:0 0 4px rgba(0,0,0,.4);position:relative;z-index:1;"></div>',iconSize:[24,24],iconAnchor:[12,12]});
+    const ringHtml = isSelected ? '<div style="position:absolute;top:-5px;left:-5px;width:22px;height:22px;border-radius:50%;border:3px solid #D9B458;pointer-events:none;"></div>' : '';
+    const icon = L.divIcon({className:'',html:ringHtml+'<div style="width:12px;height:12px;border-radius:50%;border:2px solid #fff;background:'+farbe+';box-shadow:0 0 4px rgba(0,0,0,.4);position:relative;z-index:1;"></div>',iconSize:[22,22],iconAnchor:[11,11]});
     const m = L.marker([pos.lat, pos.lng], {icon:icon});
     if(t) m.bindTooltip(`${id} — ${t.sorte}${movePinMode?' (antippen zum Verschieben)':''}`);
     m.on('click', function(){
