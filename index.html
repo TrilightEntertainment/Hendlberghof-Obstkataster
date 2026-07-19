@@ -1036,10 +1036,9 @@ function loadState(){
       }
       return parsed;
     }
-  }catch(e){}
+  }catch(e){ console.error('State corrupted, resetting:', e); setTimeout(()=>showToast('Gespeicherte Daten beschädigt — Zurückgesetzt.','error',5000),500); }
   return { positions: Object.assign({}, SEED_POSITIONS), sukzession:{}, ernten:{}, verifiziert:{}, customTrees:[], baumEdits:{}, sortenEdits:{}, importLog:[], importSnapshots:[], phaenologie:{}, sortenSichtbar:{}, preislisten:{}, bestellungen:[] };
 }
-let _saving = false;
 let _saveTimer = null;
 function saveState(){
   _sortenCache = null;
@@ -1110,11 +1109,11 @@ function applyRemoteState(remote){
     }
     return out;
   };
-  const _mergeArr=(local, remote)=>{
+  const _mergeArr=(local, remote, key='id')=>{
     if(!Array.isArray(remote)) return local||[];
     if(!Array.isArray(local)) return remote;
-    const ids=new Set(local.map(x=>x.id));
-    return local.concat(remote.filter(x=>!ids.has(x.id)));
+    const ids=new Set(local.map(x=>x[key]));
+    return local.concat(remote.filter(x=>!ids.has(x[key])));
   };
   state.verifiziert = _mergeObj(state.verifiziert, remote.verifiziert);
   state.baumEdits = _mergeObj(state.baumEdits, remote.baumEdits);
@@ -1127,7 +1126,7 @@ function applyRemoteState(remote){
   state.ernten = _mergeObj(state.ernten, remote.ernten);
   state.bestellungen = _mergeArr(state.bestellungen, remote.bestellungen);
   state.importLog = _mergeArr(state.importLog, remote.importLog);
-  state.importSnapshots = _mergeArr(state.importSnapshots, remote.importSnapshots);
+  state.importSnapshots = _mergeArr(state.importSnapshots, remote.importSnapshots, 'importId');
   state.customTrees = _mergeArr(state.customTrees, remote.customTrees);
   _mittelCache=null;
   _sortenCache=null;
@@ -1168,6 +1167,7 @@ function getTree(id){ return getAllTrees().find(t=>t.id===id); }
 
 /* ---------- Tabs ---------- */
 function activateTab(tabName){
+  if(tabName==='daten' && !isAdmin()) return;
   document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active', b.dataset.tab===tabName));
   document.querySelectorAll('main > section').forEach(s=>s.style.display='none');
   document.getElementById('tab-'+tabName).style.display='block';
@@ -1185,7 +1185,7 @@ function activateTab(tabName){
     renderImportLog();
   }
 }
-document.querySelectorAll('.tab-btn').forEach(btn=>{
+document.querySelectorAll('.tab-btn[data-tab]').forEach(btn=>{
   btn.addEventListener('click', ()=> activateTab(btn.dataset.tab));
 });
 
@@ -1257,7 +1257,7 @@ function toggleSortenSichtbar(key, visible){
 
 function refreshFilterOptions(){
   const alle = getAllTrees();
-  const fruchtArten = [...new Set(alle.map(t=>t.frucht))].sort();
+  const fruchtArten = [...new Set(alle.map(t=>t.frucht).filter(Boolean))].sort();
   fillSelect(document.getElementById('baum-filter-frucht'), fruchtArten);
 }
 
@@ -1318,7 +1318,7 @@ function getFilteredBaumRows(){
   let rows = getAllTrees().filter(t=>{
     if(fFrucht && t.frucht!==fFrucht) return false;
     if(fVerwendung && !getVerwendung(t).includes(fVerwendung)) return false;
-    const hay = (t.id+' '+t.sorte+' '+t.standort_zeile).toLowerCase();
+    const hay = (t.id+' '+(t.sorte||'')+' '+(t.standort_zeile||'')).toLowerCase();
     return !q || hay.includes(q);
   });
   return sortRows(rows, baumSort);
@@ -1727,7 +1727,7 @@ function exportLageplanPDF(){
   canvas.width = cw; canvas.height = ch;
   const ctx = canvas.getContext('2d');
   ctx.drawImage(img, 0, 0, cw, ch);
-  const farben = {apfel:'#dc2626', birne:'#22c55e', walnuss:'#b98e1a'};
+  const farben = {apfel:'#dc2626', birne:'#22c55e', walnuss:'#b98e1a', zwetschke:'#6b21a8', kirsch:'#be185d', marille:'#f59e0b', quitte:'#84cc16', pflaume:'#7c3aed', sonne:'#f97316'};
   const r = cw * 0.008;
   Object.entries(state.positions).forEach(([id,pos])=>{
     const t = getTree(id);
@@ -1771,7 +1771,7 @@ function exportLageplanPDF(){
 
 /* ---------- Modal: Baum-Detail ---------- */
 function fieldRow(label, val){
-  if(!val) return `<div class="field"><b>${label}</b>–</div>`;
+  if(val === undefined || val === null || val === '') return `<div class="field"><b>${label}</b>–</div>`;
   return `<div class="field"><b>${label}</b>${escHtml(String(val))}</div>`;
 }
 
@@ -1932,9 +1932,9 @@ function openBaumModal(id){
       ${fieldRow('Lagerfähigkeit', merged.lagerfaehig)}
       ${fieldRow('Herkunft', merged.herkunft_jahr||merged.herkunft)}
     </div>
-    ${merged.geschmack? `<div class="section-title">Geschmack / Nutzung</div><div class="field">${merged.geschmack}</div>`:''}
-    ${merged.frucht_beschreibung? `<div class="section-title">Frucht</div><div class="field">${merged.frucht_beschreibung}</div>`:''}
-    ${merged.eigenschaften? `<div class="section-title">Eigenschaften / Standortansprüche</div><div class="field">${merged.eigenschaften} ${merged.standort_anspruch||''}</div>`:''}
+    ${merged.geschmack? `<div class="section-title">Geschmack / Nutzung</div><div class="field">${escHtml(merged.geschmack)}</div>`:''}
+    ${merged.frucht_beschreibung? `<div class="section-title">Frucht</div><div class="field">${escHtml(merged.frucht_beschreibung)}</div>`:''}
+    ${merged.eigenschaften? `<div class="section-title">Eigenschaften / Standortansprüche</div><div class="field">${escHtml(merged.eigenschaften)} ${merged.standort_anspruch? escHtml(merged.standort_anspruch):''}</div>`:''}
     ${merged.frucht ? `<div class="section-title" style="cursor:pointer;color:var(--gruen);text-decoration:underline;text-decoration-style:dotted;text-underline-offset:3px;" onclick="showGuildQuellen()">Begleitpflanzungen & Gilden</div><div class="field">${renderGuildSection(merged.frucht)}</div>`:''}
     ${ausSorte? `<div class="quelle-hinweis"><b>Quelle(n):</b> ${sorteInfo.quelle}<br>Sortenangaben aus Web-Recherche, nicht aus deiner Numbers-Tabelle – bitte am Baum verifizieren.</div>`:''}
 
@@ -1987,26 +1987,27 @@ function openBaumModal(id){
 function renderSukzList(id){
   const list = document.getElementById('sukz-list');
   if(!list) return;
-  const items = (state.sukzession[id]||[]).slice().sort((a,b)=>{
-    const da=String(a.jahr||''), db=String(b.jahr||'');
-    return db.localeCompare(da);
-  });
-  list.innerHTML = items.length? '' : '<li class="empty" style="background:none;">Noch keine Einträge.</li>';
+  const src = state.sukzession[id]||[];
+  const indices = src.map((_,i)=>i).sort((a,b)=>String(src[b].jahr||'').localeCompare(String(src[a].jahr||'')));
+  list.innerHTML = indices.length? '' : '<li class="empty" style="background:none;">Noch keine Einträge.</li>';
   const editing = isEditMode();
-  items.forEach((it,idx)=>{
+  indices.forEach(si=>{
+    const it = src[si];
     const li = document.createElement('li');
     const datumAnzeige = it.jahr? new Date(it.jahr).toLocaleDateString('de-AT',{day:'2-digit',month:'2-digit',year:'numeric'}) : '–';
-    li.innerHTML = `<span><b>${datumAnzeige}</b> — ${escHtml(it.text)}</span>${editing? `<span class="del" onclick="delSukz('${id}', ${idx})">✕</span>`:''}`;
+    li.innerHTML = `<span><b>${datumAnzeige}</b> — ${escHtml(it.text)}</span>${editing? `<span class="del" onclick="delSukz('${id}', ${si})">✕</span>`:''}`;
     list.appendChild(li);
   });
 }
 function renderErnteList(id){
   const list = document.getElementById('ernte-list');
   if(!list) return;
-  const items = (state.ernten[id]||[]).slice().sort((a,b)=> (b.datum||'').localeCompare(a.datum||''));
-  list.innerHTML = items.length? '' : '<li class="empty" style="background:none;">Noch keine Einträge.</li>';
+  const src = state.ernten[id]||[];
+  const indices = src.map((_,i)=>i).sort((a,b)=>(src[b].datum||'').localeCompare(src[a].datum||''));
+  list.innerHTML = indices.length? '' : '<li class="empty" style="background:none;">Noch keine Einträge.</li>';
   const editing = isEditMode();
-  items.forEach((it,idx)=>{
+  indices.forEach(si=>{
+    const it = src[si];
     const li = document.createElement('li');
     let mengeText = '';
     if(it.menge !== null && it.menge !== undefined && it.menge !== ''){
@@ -2017,7 +2018,7 @@ function renderErnteList(id){
         mengeText = String(it.menge);
       }
     }
-    li.innerHTML = `<span><b>${it.datum||'–'}</b> — ${mengeText} ${it.bemerkung? '('+escHtml(it.bemerkung)+')':''}</span>${editing? `<span class="del" onclick="delErnte('${id}', ${idx})">✕</span>`:''}`;
+    li.innerHTML = `<span><b>${it.datum||'–'}</b> — ${mengeText} ${it.bemerkung? '('+escHtml(it.bemerkung)+')':''}</span>${editing? `<span class="del" onclick="delErnte('${id}', ${si})">✕</span>`:''}`;
     list.appendChild(li);
   });
   renderErnteChart(id);
@@ -2131,8 +2132,8 @@ function renderPhaenoDisplay(){
   el.innerHTML=entries.map(([k,v])=>{
     const tag=tagDesJahres(v);
     const std=PHAENO_STANDARDS[k];
-    const diff=std? tag-std : null;
-    const diffText=diff!==null?` <span style="font-size:.78rem;color:${diff<0?'var(--gruen)':'var(--dachziegel)'};">(${diff>0?'+':''}${diff} Tage vs. Standard)</span>`:'';
+    const diff=(std!=null&&!isNaN(std))? tag-std : null;
+    const diffText=(diff!=null&&!isNaN(diff))?` <span style="font-size:.78rem;color:${diff<0?'var(--gruen)':'var(--dachziegel)'};">(${diff>0?'+':''}${diff} Tage vs. Standard)</span>`:'';
     return `<div style="margin-bottom:4px;"><b>${_PHAENO_LABELS[k]||k}:</b> ${v}${diffText}</div>`;
   }).join('');
 }
@@ -2154,7 +2155,7 @@ function openSortenModal(sorteName){
     s=all.find(x=>x.name===sorteName);
   }
   if(!s) return;
-  s.sorte = s.sorte || s.name;
+  s = Object.assign({}, s, {sorte: s.sorte || s.name});
   const safeName = escAttr(sorteName);
   const originalPW = s.pflueckzeitpunkt||s.pflueck_reifezeit||'';
   const mittel = calcPfluckMittel(sorteName);
@@ -2214,9 +2215,9 @@ function openSortenModal(sorteName){
       ${fieldRow('Anzahl Bäume', (s.baum_ids||[]).length + ' (' + (s.baum_ids||[]).join(', ') + ')')}
       ${fieldRow('Synonyme', s.synonyme)}
     </div>
-    ${s.frucht_beschreibung? `<div class="section-title">Frucht</div><div class="field">${s.frucht_beschreibung}</div>`:''}
-    ${s.geschmack? `<div class="section-title">Geschmack / Nutzung</div><div class="field">${s.geschmack}</div>`:''}
-    ${s.eigenschaften||s.standort_anspruch? `<div class="section-title">Eigenschaften / Standortansprüche</div><div class="field">${(s.eigenschaften||'')+(s.eigenschaften&&s.standort_anspruch?' ':'')+(s.standort_anspruch||'')}</div>`:''}
+    ${s.frucht_beschreibung? `<div class="section-title">Frucht</div><div class="field">${escHtml(s.frucht_beschreibung)}</div>`:''}
+    ${s.geschmack? `<div class="section-title">Geschmack / Nutzung</div><div class="field">${escHtml(s.geschmack)}</div>`:''}
+    ${s.eigenschaften||s.standort_anspruch? `<div class="section-title">Eigenschaften / Standortansprüche</div><div class="field">${escHtml((s.eigenschaften||'')+(s.eigenschaften&&s.standort_anspruch?' ':'')+(s.standort_anspruch||''))}</div>`:''}
     ${s.frucht ? `<div class="section-title" style="cursor:pointer;color:var(--gruen);text-decoration:underline;text-decoration-style:dotted;text-underline-offset:3px;" onclick="showGuildQuellen()">Begleitpflanzungen & Gilden</div><div class="field">${renderGuildSection(s.frucht)}</div>`:''}
     ${!s.geschmack && !s.eigenschaften && !s.frucht_beschreibung ? '<p class="empty">Für diese Sorte liegt noch keine ausführliche Beschreibung vor.</p>':''}
     ${s.recherchiert? `<div class="quelle-hinweis"><b>Quelle(n):</b> ${s.quelle}<br>Diese Angaben stammen aus einer Web-Recherche (nicht aus deiner Numbers-Tabelle) und sollten anhand der Bäume vor Ort verifiziert werden.</div>`:''}
@@ -2379,7 +2380,7 @@ function renderSatMarkers(){
   if(!satMap) return;
   satMarkers.forEach(m=>satMap.removeLayer(m));
   satMarkers = [];
-  const farben = {apfel:'#dc2626', birne:'#22c55e', walnuss:'#b98e1a'};
+  const farben = {apfel:'#dc2626', birne:'#22c55e', walnuss:'#b98e1a', zwetschke:'#6b21a8', kirsch:'#be185d', marille:'#f59e0b', quitte:'#84cc16', pflaume:'#7c3aed', sonne:'#f97316'};
   const bounds = [];
   Object.entries(state.positions).forEach(([id,pos])=>{
     const t = getTree(id);
@@ -2504,7 +2505,8 @@ function makePinDraggable(pin, id, editing){
     pin.classList.remove('dragging');
     if(moved){
       const x = parseFloat(pin.dataset.x), y = parseFloat(pin.dataset.y);
-      state.positions[id] = {x: Math.round(x*100)/100, y: Math.round(y*100)/100};
+      const existing = state.positions[id] || {};
+      state.positions[id] = Object.assign({}, existing, {x: Math.round(x*100)/100, y: Math.round(y*100)/100});
       saveState();
       document.getElementById('place-status').textContent = 'Position verschoben';
     } else if(!placeMode){
@@ -2727,7 +2729,7 @@ function buildEditForm(t, isNew){
         const val = (t && t[f.key]) ? t[f.key] : '';
         const cls = f.full ? ' full' : '';
         if(f.type==='textarea'){
-          return `<div class="${cls}"><label>${f.label}</label><textarea name="${f.key}">${val}</textarea></div>`;
+          return `<div class="${cls}"><label>${f.label}</label><textarea name="${f.key}">${escHtml(String(val))}</textarea></div>`;
         } else if(f.type==='select'){
           const opts = f.opts.map(o=>`<option${o===val?' selected':''}>${o}</option>`).join('');
           return `<div class="${cls}"><label>${f.label}</label><select name="${f.key}"><option value="">– wählen –</option>${opts}</select></div>`;
@@ -2738,7 +2740,7 @@ function buildEditForm(t, isNew){
           </label>`).join('');
           return `<div class="${cls}"><label>${f.label}</label><div>${boxes}</div></div>`;
         } else {
-          return `<div class="${cls}"><label>${f.label}</label><input type="text" name="${f.key}" value="${val.replace(/"/g,'&quot;')}"></div>`;
+          return `<div class="${cls}"><label>${f.label}</label><input type="text" name="${f.key}" value="${escAttr(String(val))}"></div>`;
         }
       }).join('')}
     </div>`;
@@ -2850,7 +2852,7 @@ function saveBaumEdit(id){
   if(!form) return;
   const vals = formValues(form);
   if(!state.baumEdits) state.baumEdits = {};
-  state.baumEdits[id] = vals;
+  state.baumEdits[id] = Object.assign({}, state.baumEdits[id] || {}, vals);
   if(vals.sorte && vals.verwendung){
     if(!state.sortenEdits) state.sortenEdits = {};
     if(!state.sortenEdits[vals.sorte]) state.sortenEdits[vals.sorte] = {};
@@ -2870,7 +2872,7 @@ function saveNewBaum(){
   // Eigene ID verwenden, oder NEU-n generieren
   if(!vals.id || vals.id.trim()===''){
     const existing = getAllTrees().map(t=>t.id);
-    let n = (state.customTrees||[]).length + 1;
+    let n = 1;
     while(existing.includes('NEU-'+n)) n++;
     vals.id = 'NEU-'+n;
   }
@@ -3395,7 +3397,7 @@ function beraten(){
   const gZ=zdef.filter(z=>{var e=document.getElementById('z-'+z.id);return e&&e.checked;}).map(z=>z.id);
   const pool=beraterPoolFiltered().filter(s=>(s.frucht||'').toLowerCase()===aktArt);
   const toArr=v=>Array.isArray(v)?v:[v];
-  const scored=pool.filter(s=>{const st=s.standort;return hoehe<=st.hmax&&toArr(st.expo).includes(expo)&&toArr(st.ns).includes(ns)&&!(frost==='hoch'&&st.frost==='gering');})
+  const scored=pool.filter(s=>{const st=s.standort;return hoehe>=((st.hmin||0))&&hoehe<=st.hmax&&toArr(st.expo).includes(expo)&&toArr(st.ns).includes(ns)&&!(frost==='hoch'&&st.frost==='gering');})
     .map(s=>({s, score:gZ.filter(z=>s.standort.ziele.includes(z)).length}))
     .sort((a,b)=>{ if(b.score!==a.score) return b.score-a.score; if(a.s.quelle==='hof'&&b.s.quelle!=='hof') return -1; if(a.s.quelle!=='hof'&&b.s.quelle==='hof') return 1; return (a.s.sorte||a.s.name||'').localeCompare(b.s.sorte||b.s.name||'','de'); });
   if(beraterQuelle==='alle'){const _d=new Map();for(let i=scored.length-1;i>=0;i--){const n=scored[i].s.sorte||scored[i].s.name;if(_d.has(n)) scored.splice(i,1);else _d.set(n,1);}}
@@ -3430,7 +3432,7 @@ function renderBeraterBatch(count){
     const posBaumId=state.positions? Object.keys(state.positions).find(k=>{const t=getTree(k);return t&&t.sorte===sn;}) : null;
     const preise=getPreisFuerSorte(sn);
     const safeSn=escAttr(sn);
-    const bestellBtn=preise.length?'<button class="btn secondary" style="font-size:.78rem;padding:3px 10px;" onclick="event.stopPropagation();addToBestellliste(\''+safeSn+'\','+JSON.stringify(preise[0]).replace(/"/g,'&quot;')+')">Zur Bestellung hinzufügen</button>':'<button class="btn secondary" style="font-size:.78rem;padding:3px 10px;" onclick="event.stopPropagation();alert(\'Keine Preise hinterlegt. Bitte zuerst eine Preisliste anlegen.\')">Zur Bestellung hinzufügen</button>';
+    const bestellBtn=preise.length?'<button class="btn secondary" style="font-size:.78rem;padding:3px 10px;" onclick="event.stopPropagation();addToBestellliste(\''+safeSn+'\','+JSON.stringify(preise[0]).replace(/"/g,'&quot;')+')">Zur Bestellung hinzufügen</button>':'<button class="btn secondary" style="font-size:.78rem;padding:3px 10px;" onclick="event.stopPropagation();showToast(\'Keine Preise hinterlegt. Bitte zuerst eine Preisliste anlegen.\',\'error\')">Zur Bestellung hinzufügen</button>';
     const btnRow='<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;padding-top:6px;border-top:1px solid var(--border);">'+(posBaumId?'<button class="btn secondary" style="font-size:.78rem;padding:3px 10px;" onclick="event.stopPropagation();showOnLageplan(\''+escAttr(posBaumId)+'\')">Im Lageplan anzeigen</button>':'')+bestellBtn+'</div>';
     let preisHtml='';
     if(preise.length){
@@ -3449,12 +3451,12 @@ function renderBeraterBatch(count){
   }
   container.insertAdjacentHTML('beforeend', html);
   window._beraterShown=end;
+  const oldBtn=document.getElementById('berater-more-btn');
+  if(oldBtn) oldBtn.remove();
   if(end<scored.length){
     const moreBtn='<button class="btn secondary" id="berater-more-btn" style="margin:12px auto;display:block;" onclick="renderBeraterBatch(12)">Mehr laden ('+(scored.length-end)+' weitere)</button>';
     container.insertAdjacentHTML('beforeend', moreBtn);
   }
-  const oldBtn=document.getElementById('berater-more-btn');
-  if(oldBtn && window._beraterShown>=scored.length) oldBtn.remove();
 }
 
 // ─── SORTENÜBERSICHT ─────────────────────────────────────────────────────────
@@ -3795,8 +3797,8 @@ function renderSortenUebersicht(){
   const page=pool.slice(start,start+ITEMS_PER_PAGE);
   
   // Statistik
-  const stats={Apfel:0,Birne:0,Walnuss:0};
-  pool.forEach(s=>{if(stats[s.frucht]!==undefined)stats[s.frucht]++;});
+  const stats={};
+  pool.forEach(s=>{ const f=s.frucht||'Sonstiges'; stats[f]=(stats[f]||0)+1; });
   const statsText=Object.entries(stats).filter(([,n])=>n>0).map(([f,n])=>n+' '+f).join(', ');
   
   document.getElementById('sl-count').textContent=gesamt+' Sorten'+(statsText?' ('+statsText+')':'');
@@ -4394,6 +4396,7 @@ function applyLastTemplateMapping(){
 }
 
 function showSaveTemplateDialog(){
+  closeImportModal();
   const html='<button class="close" onclick="closeModal()">&times;</button>'+
     '<h2>Mapping speichern?</h2>'+
     '<p style="font-size:.88rem;color:var(--muted);margin:8px 0 16px;">Dieses Mapping als Vorlage speichern? Beim nächsten Import gleicher Datei wird die Zuordnung automatisch übernommen.</p>'+
@@ -4572,8 +4575,8 @@ function renderPreislistenAdmin() {
   Object.entries(pl).forEach(([qid, quelle])=>{
     html += '<div style="margin-bottom:14px;padding:10px;border:1px solid var(--border);border-radius:8px;">';
     html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">';
-    html += '<input value="'+(quelle.name||'').replace(/"/g,'&quot;')+'" style="font-weight:600;font-size:.9rem;border:none;border-bottom:1px solid var(--border);background:transparent;width:160px;" onchange="updateQuelleName(\''+qid+'\',this.value)">';
-    html += '<input value="'+(quelle.email||'').replace(/"/g,'&quot;')+'" placeholder="Email" style="font-size:.8rem;border:none;border-bottom:1px solid var(--border);background:transparent;width:180px;" onchange="updateQuelleEmail(\''+qid+'\',this.value)">';
+    html += '<input value="'+escAttr(quelle.name||'')+'" style="font-weight:600;font-size:.9rem;border:none;border-bottom:1px solid var(--border);background:transparent;width:160px;" onchange="updateQuelleName(\''+qid+'\',this.value)">';
+    html += '<input value="'+escAttr(quelle.email||'')+'" placeholder="Email" style="font-size:.8rem;border:none;border-bottom:1px solid var(--border);background:transparent;width:180px;" onchange="updateQuelleEmail(\''+qid+'\',this.value)">';
     html += '<button class="btn secondary" style="font-size:.75rem;padding:2px 8px;" onclick="openPreisImport(\''+qid+'\')">CSV importieren</button>';
     html += '<button class="btn secondary" style="font-size:.75rem;padding:2px 8px;" onclick="removePreisquelle(\''+qid+'\')">Entfernen</button>';
     html += '</div>';
@@ -4581,9 +4584,9 @@ function renderPreislistenAdmin() {
     html += '<tr style="color:var(--muted);font-size:.75rem;"><td style="padding:2px 4px;">Sorte</td><td style="padding:2px 4px;">Unterlage</td><td style="padding:2px 4px;">Alter</td><td style="padding:2px 4px;">Preis</td><td style="padding:2px 4px;">MWST</td><td style="padding:2px 4px;">Vorbestellbar</td><td></td></tr>';
     (quelle.preise||[]).forEach((p, i)=>{
       html += '<tr>';
-      html += '<td style="padding:2px 4px;"><input value="'+(p.sorte||'').replace(/"/g,'&quot;')+'" style="width:120px;" onchange="updatePreisItem(\''+qid+'\','+i+',\'sorte\',this.value)"></td>';
-      html += '<td style="padding:2px 4px;"><input value="'+(p.unterlage||'').replace(/"/g,'&quot;')+'" style="width:60px;" onchange="updatePreisItem(\''+qid+'\','+i+',\'unterlage\',this.value)"></td>';
-      html += '<td style="padding:2px 4px;"><input value="'+(p.alter||'').replace(/"/g,'&quot;')+'" style="width:50px;" onchange="updatePreisItem(\''+qid+'\','+i+',\'alter\',this.value)"></td>';
+      html += '<td style="padding:2px 4px;"><input value="'+escAttr(p.sorte||'')+'" style="width:120px;" onchange="updatePreisItem(\''+qid+'\','+i+',\'sorte\',this.value)"></td>';
+      html += '<td style="padding:2px 4px;"><input value="'+escAttr(p.unterlage||'')+'" style="width:60px;" onchange="updatePreisItem(\''+qid+'\','+i+',\'unterlage\',this.value)"></td>';
+      html += '<td style="padding:2px 4px;"><input value="'+escAttr(p.alter||'')+'" style="width:50px;" onchange="updatePreisItem(\''+qid+'\','+i+',\'alter\',this.value)"></td>';
       html += '<td style="padding:2px 4px;"><input type="number" step="0.01" min="0" value="'+(p.preis||0)+'" style="width:60px;" onchange="updatePreisItem(\''+qid+'\','+i+',\'preis\',parseFloat(this.value)||0)"></td>';
       html += '<td style="padding:2px 4px;"><span style="font-size:.78rem;color:var(--muted);">13%</span></td>';
       html += '<td style="padding:2px 4px;text-align:center;"><input type="checkbox" '+(p.vorbestellbar?'checked':'')+' onchange="updatePreisItem(\''+qid+'\','+i+',\'vorbestellbar\',this.checked)"></td>';
@@ -4765,7 +4768,9 @@ function parsePreisValue(val) {
 }
 
 function parseMwstValue(val) {
-  return 13;
+  if(!val) return 13;
+  const n = parseFloat(String(val).replace('%','').replace(',','.').trim());
+  return isNaN(n) ? 13 : Math.round(n);
 }
 
 function parseVorbestellbar(val) {
@@ -4921,17 +4926,21 @@ function addToBestellliste(sorteName, preisInfo) {
 }
 
 function removeFromBestellliste(idx) {
+  const kf = _bestellFeldWerte();
   bestellListe.splice(idx, 1);
   renderBestellModalContent();
+  _restoreBestellFelder(kf);
   updateCartBadge();
   saveCart();
 }
 
 function updateBestellMenge(idx, menge) {
   menge = parseInt(menge) || 0;
+  const kf = _bestellFeldWerte();
   if(menge <= 0) { bestellListe.splice(idx, 1); }
   else { bestellListe[idx].menge = menge; }
   renderBestellModalContent();
+  _restoreBestellFelder(kf);
   updateCartBadge();
   saveCart();
 }
@@ -5023,16 +5032,22 @@ function _bestellFeldWerte(){
     telefon: (document.getElementById('bk-telefon')||{}).value || ''
   };
 }
+function _restoreBestellFelder(kf){
+  if(!kf) return;
+  const ids=['bk-vname','bk-nname','bk-strasse','bk-plz','bk-ort','bk-email','bk-telefon'];
+  const keys=Object.keys(kf);
+  ids.forEach((id,i)=>{ const el=document.getElementById(id); if(el&&keys[i]) el.value=kf[keys[i]]; });
+}
 function bestellungDrucken() {
   if(!_validateBestellfelder()){ showToast('Bitte alle Pflichtfelder ausfüllen.','error'); return; }
   window.print();
 }
 
 function bestellungEmail() {
-  if(!bestellListe.length) { alert('Keine Sorten in der Bestellliste.'); return; }
+  if(!bestellListe.length) { showToast('Keine Sorten in der Bestellliste.','error'); return; }
   if(!_validateBestellfelder()){ showToast('Bitte alle Pflichtfelder ausfüllen.','error'); return; }
   const kf = _bestellFeldWerte();
-  const to = bestellListe[0].email || '';
+  const to = [...new Set(bestellListe.map(e=>e.email).filter(Boolean))].join(',');
   const gesamt = bestellListe.reduce((s,e) => s + e.preis * e.menge, 0);
   const lines = [
     'Bestellung Hendlberghof',
@@ -5106,20 +5121,17 @@ function bestellungPdf(){
 }
 
 function bestellungSpeichern() {
-  if(!bestellListe.length) { alert('Keine Sorten in der Bestellliste.'); return; }
-  const required = ['bk-vname','bk-nname','bk-strasse','bk-plz','bk-ort','bk-email','bk-telefon'];
-  for(const id of required) {
-    const el = document.getElementById(id);
-    if(!el || !el.value.trim()) { alert('Bitte alle Pflichtfelder ausfuellen.'); return; }
-  }
+  if(!bestellListe.length) { showToast('Keine Sorten in der Bestellliste.','error'); return; }
+  if(!_validateBestellfelder()){ showToast('Bitte alle Pflichtfelder ausfüllen.','error'); return; }
+  const kf = _bestellFeldWerte();
   const kontakt = {
-    vorname: document.getElementById('bk-vname').value.trim(),
-    nachname: document.getElementById('bk-nname').value.trim(),
-    strasse: document.getElementById('bk-strasse').value.trim(),
-    plz: document.getElementById('bk-plz').value.trim(),
-    ort: document.getElementById('bk-ort').value.trim(),
-    email: document.getElementById('bk-email').value.trim(),
-    telefon: document.getElementById('bk-telefon').value.trim()
+    vorname: kf.vname,
+    nachname: kf.nname,
+    strasse: kf.strasse,
+    plz: kf.plz,
+    ort: kf.ort,
+    email: kf.email,
+    telefon: kf.telefon
   };
   const gesamt = bestellListe.reduce((s,e) => s + e.preis * e.menge, 0);
   const order = {
@@ -5135,7 +5147,7 @@ function bestellungSpeichern() {
   bestellListe = [];
   saveCart();
   updateCartBadge();
-  alert('Bestellung gespeichert!');
+  showToast('Bestellung gespeichert!');
   closeModal();
   renderBestellhistorie();
 }
@@ -5243,6 +5255,17 @@ document.addEventListener('DOMContentLoaded',function(){
       if(e.target.files[0]) handleImportFile(e.target.files[0]);
     });
   });
+});
+
+document.addEventListener('keydown', function(e){
+  if(e.key==='Escape' || e.key==='Esc'){
+    const pdfOv=document.getElementById('pdf-overlay');
+    if(pdfOv && pdfOv.classList.contains('open')){ closeArcheViewer(); return; }
+    const impOv=document.getElementById('import-overlay');
+    if(impOv && impOv.style.display!=='none'){ closeImportModal(); return; }
+    const ov=document.getElementById('overlay');
+    if(ov && ov.classList.contains('open')){ closeModal(); }
+  }
 });
 
 function handleImportFile(file){
