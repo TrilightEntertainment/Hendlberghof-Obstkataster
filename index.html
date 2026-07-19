@@ -1027,6 +1027,14 @@ function shareSorte(name){
   if(s.genussreife) lines.push('Genussreife: '+s.genussreife);
   if(s.geschmack) lines.push('Geschmack: '+s.geschmack);
   if(s.befruchtungspartner) lines.push('Befruchtung: '+s.befruchtungspartner);
+  if(s.ertrag) lines.push('Ertrag: '+s.ertrag);
+  if(s.herkunft_jahr||s.herkunft) lines.push('Herkunft: '+(s.herkunft_jahr||s.herkunft));
+  if(s.frucht_beschreibung) lines.push('Frucht: '+s.frucht_beschreibung);
+  if(s.eigenschaften) lines.push('Eigenschaften: '+s.eigenschaften);
+  if(s.standort_anspruch) lines.push('Standortansprüche: '+s.standort_anspruch);
+  const mittel = calcPfluckMittel(s.sorte);
+  if(mittel) lines.push('Pflückreife ermittelt: → '+mittel.wert+' ('+mittel.anzahl+' Ernten)');
+  if(s.baum_ids&&s.baum_ids.length) lines.push('Bäume: '+s.baum_ids.join(', '));
   _shareText('Sorte '+s.sorte, lines.join('\n'));
 }
 
@@ -1051,6 +1059,7 @@ function loadState(){
 let _saveTimer = null;
 function saveState(){
   _sortenCache = null;
+  _mittelCache = null;
   clearTimeout(_saveTimer);
   _saveTimer = setTimeout(()=>{
     localStorage.setItem(LS_KEY, JSON.stringify(state));
@@ -1908,12 +1917,6 @@ function openBaumModal(id){
         <rect x="6" y="14" width="12" height="7"/>
       </svg>
     </button>
-    <button class="close" style="right:108px;" title="Teilen" onclick="shareBaum('${id}')">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false" style="vertical-align:middle;">
-        <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
-        <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
-      </svg>
-    </button>
     ${ausSorte? `<div class="badge-recherche">🔍 Sortenangaben web-recherchiert – bitte prüfen</div>
       <button class="btn-verify" onclick="toggleVerifiziert('${escAttr(t.sorte)}', {baumId:'${escAttr(t.id)}'})">✓ Als verifiziert markieren</button>`
       : (state.verifiziert[t.sorte]? `<div class="badge-verifiziert">✓ Verifiziert am ${state.verifiziert[t.sorte]}</div>
@@ -2208,11 +2211,11 @@ function openSortenModal(sorteName){
       <button class="btn-verify done" onclick="toggleVerifiziert('${escAttr(s.sorte)}')">Verifizierung zurücknehmen</button>` : '')}
     <h2>${s.sorte}${s.baum_ids&&s.baum_ids.length?' <span class="idbadge" style="font-size:.78rem;">'+s.baum_ids.join(', ')+'</span>':''}</h2>
     ${archeNoahLink(s)}
-    ${fieldGrid([
-      ['Obstart', s.frucht],
-      ['Pflückreife lt. Beschreibung', originalPW],
-      ['Pflückreife ermittelt', mittelText]
-    ])}
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:0;border:1px solid var(--rand);border-radius:10px;overflow:hidden;margin-bottom:8px;">
+      <div class="field"><b>Obstart</b>${escHtml(s.frucht||'')}</div>
+      <div class="field"><b>Pflückreife lt. Beschreibung</b>${escHtml(originalPW||'')}</div>
+      <div class="field"><b>Pflückreife ermittelt</b>${mittelText||predictionHtml||'–'}</div>
+    </div>
     ${fieldGrid([
       ['Verwendung', (s.verwendung||[]).join(', ')],
       ['Genussreife', s.genuss_von&&s.genuss_bis? s.genuss_von+' – '+s.genuss_bis+' Monate ab Ernte' : s.genussreife]
@@ -3846,24 +3849,20 @@ function calcPfluckMittel(sorteName){
   if(!sorteName || !state.ernten) return null;
   if(!_mittelCache) _mittelCache={};
   if(_mittelCache[sorteName]!==undefined) return _mittelCache[sorteName];
-  const jahrJetzt=new Date().getFullYear();
-  const jahre=[];
-  for(let y=jahrJetzt;y>=jahrJetzt-2 && y>=2020;y--) jahre.push(y);
   // Alle Bäume dieser Sorte finden
   const baeume=getAllTrees().filter(t=>t.sorte===sorteName);
   if(!baeume.length) return null;
-  // Ernten der letzten 3 Jahre sammeln
+  // Alle Ernten aller Jahre sammeln
   const werte=[];
-  jahre.forEach(j=>{
-    baeume.forEach(b=>{
-      const ernten=(state.ernten[b.id]||[]).filter(e=>e.datum && e.datum.startsWith(String(j)));
-      ernten.forEach(e=>{
-        const pw=ernteToPfluckwert(e.datum);
-        if(pw){
-          const teile=pw.split(',');
-          werte.push({wert:pw, numerisch:parseInt(teile[0])+parseInt(teile[1])/10, jahr:j, baumId:b.id, datum:e.datum});
-        }
-      });
+  baeume.forEach(b=>{
+    (state.ernten[b.id]||[]).forEach(e=>{
+      if(!e.datum) return;
+      const jahr=parseInt(e.datum.substring(0,4));
+      const pw=ernteToPfluckwert(e.datum);
+      if(pw){
+        const teile=pw.split(',');
+        werte.push({wert:pw, numerisch:parseInt(teile[0])+parseInt(teile[1])/10, jahr:jahr, baumId:b.id, datum:e.datum});
+      }
     });
   });
   if(!werte.length){ _mittelCache[sorteName]=null; return null; }
@@ -4951,18 +4950,17 @@ function detectPreisMapping() {
 function renderPreisMappingUI() {
   const s = preisImportState;
   let html = '<p style="font-size:.85rem;margin-bottom:8px;">Spalten zuordnen:</p>';
-  html += '<table style="width:100%;font-size:.82rem;border-collapse:collapse;margin-bottom:12px;">';
   PREIS_CSV_FIELDS.forEach(field => {
-    html += '<tr><td style="padding:4px 6px;font-weight:600;width:140px;">'+field.label+(field.required?' *':'')+'</td>';
-    html += '<td style="padding:4px 6px;"><select id="pim-'+field.id+'" style="font-size:.82rem;padding:3px 6px;border:1px solid var(--border);border-radius:4px;width:100%;">';
+    html += '<div style="margin-bottom:8px;">';
+    html += '<div style="font-weight:600;font-size:.82rem;margin-bottom:2px;">'+field.label+(field.required?' *':'')+'</div>';
+    html += '<select id="pim-'+field.id+'" style="font-size:.9rem;padding:8px 10px;border:1px solid var(--border);border-radius:6px;width:100%;min-height:44px;">';
     html += '<option value="">— nicht importieren —</option>';
     s.headers.forEach(h => {
       const sel = s.mapping[field.id] === h ? 'selected' : '';
       html += '<option value="'+h.replace(/"/g,'&quot;')+'" '+sel+'>'+h+'</option>';
     });
-    html += '</select></td></tr>';
+    html += '</select></div>';
   });
-  html += '</table>';
   html += '<button class="btn" onclick="previewPreisImport()">Vorschau</button>';
   document.getElementById('preis-import-step2').innerHTML = html;
   document.getElementById('preis-import-step2').style.display = '';
