@@ -4909,7 +4909,7 @@ function handlePreisImportFile(file) {
         const ws = wb.Sheets[wb.SheetNames[0]];
         const data = XLSX.utils.sheet_to_json(ws, {header:1});
         if(data.length < 2){ alert('Die Datei enthält keine Daten.'); return; }
-        preisImportState.headers = data[0].map(h=>String(h||'').trim());
+        preisImportState.headers = data[0].map(h=>String(h||'').trim().replace(/^\ufeff/,''));
         preisImportState.rows = data.slice(1).filter(r=>r.some(v=>v));
         detectPreisMapping();
       } catch(err){ alert('Fehler beim Lesen der Excel-Datei: '+err.message); }
@@ -4918,16 +4918,23 @@ function handlePreisImportFile(file) {
   } else {
     const reader = new FileReader();
     reader.onload = function(e){
-      const text = e.target.result;
-      const firstLine = text.split('\n')[0] || '';
-      const delimCounts = [[0, ';'], [0, ','], [0, '\t']];
-      delimCounts.forEach(d => { d[0] = (firstLine.match(new RegExp(d[1]==='\\t'?'\\t':d[1],'g'))||[]).length; });
-      delimCounts.sort((a,b)=>b[0]-a[0]);
-      const delimiter = delimCounts[0][0] > 0 ? delimCounts[0][1] : ',';
-      const data = parseCSV(text, delimiter);
-      if(data.length < 2){ alert('Die Datei enthält keine Daten.'); return; }
-      preisImportState.headers = data[0];
-      preisImportState.rows = data.slice(1).filter(r=>r.some(v=>v));
+      let text = e.target.result.replace(/^\ufeff/,'');
+      const delimiters = [',', ';', '\t'];
+      let bestData = null, bestCols = 0;
+      for(const delim of delimiters){
+        const data = parseCSV(text, delim);
+        if(data.length >= 2 && data[0].length > bestCols){
+          bestData = data;
+          bestCols = data[0].length;
+        }
+        if(bestCols >= 3) break;
+      }
+      if(!bestData || bestData.length < 2){
+        alert('Die Datei konnte nicht gelesen werden. Bitte als CSV im Format: Sorte,Unterlage,Alter,Preis,auf Bestellung');
+        return;
+      }
+      preisImportState.headers = bestData[0].map(h=>h.replace(/^\ufeff/,'').trim());
+      preisImportState.rows = bestData.slice(1).filter(r=>r.some(v=>v));
       detectPreisMapping();
     };
     reader.readAsText(file);
@@ -4989,7 +4996,13 @@ function detectPreisMapping() {
 
 function renderPreisMappingUI() {
   const s = preisImportState;
-  let html = '<p style="font-size:.85rem;margin-bottom:8px;">Spalten zuordnen:</p>';
+  let html = '<p style="font-size:.85rem;margin-bottom:4px;"><b>'+s.rows.length+'</b> Zeilen, <b>'+s.headers.length+'</b> Spalten erkannt: <span style="color:var(--gruen);">'+s.headers.join(', ')+'</span></p>';
+  const allRequired = PREIS_CSV_FIELDS.filter(f=>f.required).every(f=>s.mapping[f.id]);
+  if(allRequired){
+    html += '<p style="font-size:.8rem;color:var(--gruen);margin-bottom:8px;">✓ Alle Pflichtspalten zugeordnet. Du kannst direkt importieren oder unten die Zuordnung prüfen.</p>';
+  } else {
+    html += '<p style="font-size:.82rem;margin-bottom:8px;">Spalten zuordnen (Pflichtfelder mit *):</p>';
+  }
   PREIS_CSV_FIELDS.forEach(field => {
     html += '<div style="margin-bottom:8px;">';
     html += '<div style="font-weight:600;font-size:.82rem;margin-bottom:2px;">'+field.label+(field.required?' *':'')+'</div>';
@@ -5001,7 +5014,12 @@ function renderPreisMappingUI() {
     });
     html += '</select></div>';
   });
-  html += '<button class="btn" onclick="previewPreisImport()">Vorschau</button>';
+  html += '<div style="display:flex;gap:8px;margin-top:12px;">';
+  html += '<button class="btn secondary" onclick="previewPreisImport()">Vorschau</button>';
+  if(allRequired){
+    html += '<button class="btn" onclick="executePreisImport()">Direkt importieren</button>';
+  }
+  html += '</div>';
   document.getElementById('preis-import-step2').innerHTML = html;
   document.getElementById('preis-import-step2').style.display = '';
 }
@@ -5118,6 +5136,12 @@ function previewPreisImport() {
 }
 
 function executePreisImport() {
+  PREIS_CSV_FIELDS.forEach(field => {
+    const sel = document.getElementById('pim-'+field.id);
+    if(sel) preisImportState.mapping[field.id] = sel.value || '';
+  });
+  if(!preisImportState.mapping.sorte){ showToast('Bitte Spalte "Sorte" zuordnen.','error'); return; }
+  if(!preisImportState.mapping.preis){ showToast('Bitte Spalte "Preis" zuordnen.','error'); return; }
   const qid = preisImportState.qid;
   if(!state.preislisten[qid]) return;
   const neuePreise = preisImportState.rows.map(row => {
