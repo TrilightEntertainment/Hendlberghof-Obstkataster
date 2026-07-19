@@ -2376,7 +2376,7 @@ function setMapLayer(layer){
     initSatMap();
   } else {
     movePinMode = false; selectedPinId = null;
-    lageScale = 1; _lageApplyTransform();
+    lageScale = 1; lageTx = 0; lageTy = 0; _lageApplyTransform();
   }
   applyEditModeUI();
 }
@@ -2486,8 +2486,8 @@ document.getElementById('map-wrap').addEventListener('click', (e)=>{
   let x = (e.clientX-rect.left)/rect.width*100;
   let y = (e.clientY-rect.top)/rect.height*100;
   if(lageScale > 1){
-    x = (x - 50) / lageScale + 50;
-    y = (y - 50) / lageScale + 50;
+    x = (x - 50) / lageScale + 50 - (lageTx / rect.width * 100);
+    y = (y - 50) / lageScale + 50 - (lageTy / rect.height * 100);
   }
   x = Math.max(0, Math.min(100, parseFloat(x.toFixed(2))));
   y = Math.max(0, Math.min(100, parseFloat(y.toFixed(2))));
@@ -2499,17 +2499,18 @@ document.getElementById('map-wrap').addEventListener('click', (e)=>{
   document.getElementById('place-status').textContent = 'Position gespeichert – nächsten Baum wählen.';
 });
 
-/* ---------- Lageplan Zoom ---------- */
-let lageScale = 1;
+/* ---------- Lageplan Zoom & Pan ---------- */
+let lageScale = 1, lageTx = 0, lageTy = 0;
 function _lageApplyTransform(){
   const el = document.getElementById('lage-inner');
-  if(el) el.style.transform = 'scale('+lageScale+')';
+  if(el) el.style.transform = 'scale('+lageScale+') translate('+lageTx+'px,'+lageTy+'px)';
 }
 function lageZoom(dir){
   lageScale = Math.max(1, Math.min(4, lageScale + dir * 0.5));
+  if(lageScale===1){ lageTx=0; lageTy=0; }
   _lageApplyTransform();
 }
-function lageZoomReset(){ lageScale=1; _lageApplyTransform(); }
+function lageZoomReset(){ lageScale=1; lageTx=0; lageTy=0; _lageApplyTransform(); }
 
 (function(){
   const wrap = document.getElementById('map-wrap');
@@ -2519,6 +2520,26 @@ function lageZoomReset(){ lageScale=1; _lageApplyTransform(); }
     e.preventDefault();
     lageZoom(e.deltaY<0 ? 1 : -1);
   }, {passive:false});
+
+  let panning = false, panStart = null;
+  wrap.addEventListener('mousedown', function(e){
+    if(lageScale<=1) return;
+    if(e.target.closest('.pin') || e.target.closest('#zoom-controls')) return;
+    panning = true;
+    panStart = {x: e.clientX - lageTx, y: e.clientY - lageTy};
+    wrap.style.cursor = 'grabbing';
+    e.preventDefault();
+  });
+  window.addEventListener('mousemove', function(e){
+    if(!panning) return;
+    lageTx = e.clientX - panStart.x;
+    lageTy = e.clientY - panStart.y;
+    _lageApplyTransform();
+  });
+  window.addEventListener('mouseup', function(){
+    if(panning){ panning = false; wrap.style.cursor = ''; }
+  });
+
   let lastDist = 0;
   wrap.addEventListener('touchstart', function(e){
     if(e.touches.length===2){
@@ -2534,6 +2555,7 @@ function lageZoomReset(){ lageScale=1; _lageApplyTransform(); }
       if(lastDist>0){
         const ratio=dist/lastDist;
         lageScale = Math.max(1, Math.min(4, lageScale * ratio));
+        if(lageScale===1){ lageTx=0; lageTy=0; }
         _lageApplyTransform();
       }
       lastDist=dist;
@@ -2593,8 +2615,8 @@ function makePinDraggable(pin, id, editing){
     let x = (e.clientX-rect.left)/rect.width*100;
     let y = (e.clientY-rect.top)/rect.height*100;
     if(lageScale > 1){
-      x = (x - 50) / lageScale + 50;
-      y = (y - 50) / lageScale + 50;
+      x = (x - 50) / lageScale + 50 - (lageTx / rect.width * 100);
+      y = (y - 50) / lageScale + 50 - (lageTy / rect.height * 100);
     }
     x = Math.max(0, Math.min(100, x));
     y = Math.max(0, Math.min(100, y));
