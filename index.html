@@ -1959,7 +1959,7 @@ function openBaumModal(id){
       ['Gepflanzt', t.ausgepflanzt],
       ['Veredelt', t.veredelt]
     ])}
-    ${t.unterlage ? '<div style="display:flex;align-items:center;gap:6px;padding:8px 12px;border:1px solid var(--rand);border-radius:10px;margin-bottom:8px;font-size:.88rem;"><b>Unterlage</b> '+escHtml(t.unterlage)+' <a href="#" onclick="event.preventDefault();event.stopPropagation();showUnterlageInfo(\''+escAttr(sortName)+'\')" style="font-size:.78rem;color:var(--waldrand);text-decoration:underline;cursor:pointer;white-space:nowrap;">Info</a></div>' : ''}
+    ${t.unterlage ? '<div style="display:flex;align-items:center;gap:6px;padding:8px 12px;border:1px solid var(--rand);border-radius:10px;margin-bottom:8px;font-size:.88rem;"><b>Unterlage</b> '+escHtml(t.unterlage)+' <a href="#" onclick="event.preventDefault();event.stopPropagation();showUnterlageInfo(\''+escAttr(t.sorte)+'\')" style="font-size:.78rem;color:var(--waldrand);text-decoration:underline;cursor:pointer;white-space:nowrap;">Info</a></div>' : ''}
     ${fieldGrid([
       ['Ertrag', merged.ertrag],
       ['Befruchtungspartner', merged.befruchtungspartner]
