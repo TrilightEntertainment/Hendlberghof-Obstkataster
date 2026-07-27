@@ -713,6 +713,7 @@
   <button class="sbr-btn" onclick="beraten()">Sorten empfehlen</button>
   <button class="sbr-btn" onclick="openBestelllisteModal()">🛒 Bestellliste <span id="cart-badge" style="display:none;background:var(--dachziegel);color:#fff;border-radius:50%;padding:1px 6px;font-size:.7rem;margin-left:4px;">0</span></button>
 </div>
+<div id="sb-count" style="font-family:'DM Sans',sans-serif;font-size:12px;color:var(--text-leicht);margin-bottom:12px"></div>
 <div class="sb-sec">
   <div class="sb-title">Standort</div>
   <div class="sb-grid">
@@ -3745,12 +3746,18 @@ function onSbQuelleChange(){
 function setBeraterQuelle(){renderSbArten();}
 function renderSbArten(){
   const prio=['Apfel','Birne','Walnuss'];
-  const arten=[...new Set(beraterPoolFiltered().map(s=>s.frucht).filter(Boolean))];
+  const pool=beraterPoolFiltered();
+  const arten=[...new Set(pool.map(s=>s.frucht).filter(Boolean))];
   arten.sort((a,b)=>{const ia=prio.indexOf(a),ib=prio.indexOf(b);return (ia<0?99:ia)-(ib<0?99:ib)||a.localeCompare(b,'de');});
   if(arten.length && !arten.some(a=>a.toLowerCase()===aktArt)) aktArt=arten[0].toLowerCase();
   const el=document.getElementById('sb-filter-frucht');
   if(!el) return;
-  el.innerHTML='<option value="">Obstarten</option>'+arten.map(a=>'<option value="'+escAttr(a.toLowerCase())+'"'+(a.toLowerCase()===aktArt?' selected':'')+'>'+a+'</option>').join('');
+  el.innerHTML='<option value="">Obstarten ('+arten.length+')</option>'+arten.map(a=>'<option value="'+escAttr(a.toLowerCase())+'"'+(a.toLowerCase()===aktArt?' selected':'')+'>'+a+'</option>').join('');
+  const stats={};
+  pool.forEach(s=>{const f=s.frucht||'Sonstiges';stats[f]=(stats[f]||0)+1;});
+  const statsText=Object.entries(stats).filter(([,n])=>n>0).map(([f,n])=>n+' '+f).join(', ');
+  const countEl=document.getElementById('sb-count');
+  if(countEl) countEl.textContent=pool.length+' Sorten'+(statsText?' ('+statsText+')':'');
   renderVerwendung();
 }
 function setArt(art){aktArt=art;renderVerwendung();}
