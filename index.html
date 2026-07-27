@@ -415,6 +415,10 @@
 #tab-sortenberater .sb-field label{font-family:'DM Sans',sans-serif;font-size:12px;color:var(--text-mid);font-weight:500}
 #tab-sortenberater select{width:100%;padding:8px 10px;border:1px solid var(--rand);border-radius:var(--radius);background:var(--weiss);font-family:'Cormorant Garamond',serif;font-size:1rem;color:var(--text);appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888780' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;cursor:pointer}
 #tab-sortenberater select:focus{outline:2px solid var(--gruen);outline-offset:1px}
+#tab-sortenberater select[multiple]{min-height:38px;max-height:110px;padding:4px 8px;font-size:.9rem;background-image:none;overflow-y:auto}
+#tab-sortenberater select[multiple] option{padding:4px 6px;border-radius:4px;margin:1px 0}
+#tab-sortenberater select[multiple] option:checked{background:var(--gruen-hell);color:var(--gruen)}
+#tab-sortenberater select[multiple] option:first-child{border-bottom:1px solid var(--rand);margin-bottom:3px;padding-bottom:5px}
 #tab-sortenberater .sb-slider-row{display:flex;align-items:center;gap:10px}
 #tab-sortenberater .sb-slider-row input[type=range]{flex:1;accent-color:var(--gruen);cursor:pointer}
 #tab-sortenberater .sb-val{font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;min-width:48px;color:var(--gruen)}
@@ -686,16 +690,16 @@
 <!-- BERATER -->
 <div class="sbr-panel active" id="panel-berater">
 <div class="toolbar">
-  <select id="sb-filter-quelle" onchange="setBeraterQuelle(this.value)">
-    <option value="alle">Alle Quellen</option>
-    <option value="hof">Hofsorten</option>
-    <option value="arche">Arche Noah</option>
-  </select>
   <select id="sb-filter-frucht" onchange="setArt(this.value)">
     <option value="">Obstarten</option>
   </select>
-  <select id="sb-filter-ziel" onchange="beraten()">
-    <option value="">Nutzungsziel</option>
+  <select id="sb-filter-verwendung" multiple onchange="handleMultiAlle(this,'sb-verw-alle');beraten()">
+    <option value="__alle" id="sb-verw-alle" selected>Alle</option>
+  </select>
+  <select id="sb-filter-quelle" multiple onchange="handleMultiAlle(this,'sb-q-alle');beraten()">
+    <option value="__alle" id="sb-q-alle" selected>Alle</option>
+    <option value="arche">Arche Noah</option>
+    <option value="hof">Hofsorten</option>
   </select>
   <button class="sbr-btn" onclick="beraten()">Sorten empfehlen</button>
   <button class="sbr-btn" onclick="openBestelllisteModal()">🛒 Bestellliste <span id="cart-badge" style="display:none;background:var(--dachziegel);color:#fff;border-radius:50%;padding:1px 6px;font-size:.7rem;margin-left:4px;">0</span></button>
@@ -3674,7 +3678,7 @@ function showGuildPopup(sorteName){
   document.getElementById('overlay').classList.add('open');
 }
 
-let beraterQuelle='alle';
+let beraterQuelle=new Set();
 function beraterPool(){
   const all=getAllSorten();
   return all.map(s=>{
@@ -3686,17 +3690,37 @@ function beraterPool(){
     return Object.assign({}, s, standort?{standort,sorte:full?.sorte||s.name}:null);
   }).filter(s=>s.standort);
 }
+function getMultiSelectValues(id){
+  const el=document.getElementById(id);
+  if(!el) return [];
+  const vals=Array.from(el.selectedOptions).map(o=>o.value).filter(v=>v!=='__alle');
+  return vals;
+}
+function handleMultiAlle(sel,alleId){
+  const alleEl=document.getElementById(alleId);
+  if(!alleEl) return;
+  const vals=Array.from(sel.selectedOptions).map(o=>o.value);
+  if(vals.includes('__alle')&&vals.length>1){
+    Array.from(sel.options).forEach(o=>{o.selected=o.value==='__alle';});
+  } else if(!vals.includes('__alle')&&vals.length===0){
+    alleEl.selected=true;
+  }
+}
 function beraterPoolFiltered(){
   let pool=beraterPool();
-  if(beraterQuelle!=='alle') pool=pool.filter(s=>s.quelle===beraterQuelle);
+  const qVals=getMultiSelectValues('sb-filter-quelle');
+  if(qVals.length>0) pool=pool.filter(s=>qVals.includes(s.quelle));
   return pool;
 }
 function renderBeraterQuellen(){
   const el=document.getElementById('sb-filter-quelle');
   if(!el) return;
-  el.value=beraterQuelle;
+  Array.from(el.options).forEach(o=>{
+    if(o.value==='__alle') o.selected=beraterQuelle.size===0;
+    else o.selected=beraterQuelle.has(o.value);
+  });
 }
-function setBeraterQuelle(q){beraterQuelle=q;renderSbArten();}
+function setBeraterQuelle(q){renderSbArten();}
 function renderSbArten(){
   const prio=['Apfel','Birne','Walnuss'];
   const arten=[...new Set(beraterPoolFiltered().map(s=>s.frucht).filter(Boolean))];
@@ -3705,27 +3729,27 @@ function renderSbArten(){
   const el=document.getElementById('sb-filter-frucht');
   if(!el) return;
   el.innerHTML='<option value="">Obstarten</option>'+arten.map(a=>'<option value="'+escAttr(a.toLowerCase())+'"'+(a.toLowerCase()===aktArt?' selected':'')+'>'+a+'</option>').join('');
-  renderZiele();
+  renderVerwendung();
 }
-function setArt(art){aktArt=art;renderZiele();}
-function renderZiele(){
+function setArt(art){aktArt=art;renderVerwendung();}
+function renderVerwendung(){
   const zdef=ZIELE_DEF[aktArt]||ZIELE_DEF.apfel;
-  const el=document.getElementById('sb-filter-ziel');
+  const el=document.getElementById('sb-filter-verwendung');
   if(!el) return;
-  el.innerHTML='<option value="">Nutzungsziel</option>'+zdef.map(z=>'<option value="'+escAttr(z.id)+'">'+z.label+'</option>').join('');
+  el.innerHTML='<option value="__alle" id="sb-verw-alle" selected>Alle</option>'+zdef.map(z=>'<option value="'+escAttr(z.id)+'">'+z.label+'</option>').join('');
 }
-renderZiele();
+renderVerwendung();
 function tagCls(t){const tl=t.toLowerCase();if(['pilzresistent','robust','winterhart','resistent','feuerbrand','scharka','bio','schorfresistent'].some(k=>tl.includes(k)))return 'tg';if(['most','cider','einkochen','schnaps','destillat','saft'].some(k=>tl.includes(k)))return 'ta';if(['bestäuber','wildtier','streuobst','historisch','österreichisch','rarität'].some(k=>tl.includes(k)))return 'tp';return 'tb';}
 function beraten(){
   const hoehe=parseInt(document.getElementById('hoehe').value),expo=document.getElementById('expo').value,frost=document.getElementById('frost').value,ns=document.getElementById('ns').value;
-  const zielVal=document.getElementById('sb-filter-ziel').value;
-  const gZ=zielVal?[zielVal]:(ZIELE_DEF[aktArt]||ZIELE_DEF.apfel).map(z=>z.id);
+  const verwVals=getMultiSelectValues('sb-filter-verwendung');
+  const gZ=verwVals.length>0?verwVals:(ZIELE_DEF[aktArt]||ZIELE_DEF.apfel).map(z=>z.id);
   const pool=beraterPoolFiltered().filter(s=>(s.frucht||'').toLowerCase()===aktArt);
   const toArr=v=>Array.isArray(v)?v:[v];
   const scored=pool.filter(s=>{const st=s.standort;return hoehe>=((st.hmin||0))&&hoehe<=st.hmax&&toArr(st.expo).includes(expo)&&toArr(st.ns).includes(ns)&&!(frost==='hoch'&&st.frost==='gering');})
     .map(s=>({s, score:gZ.filter(z=>s.standort.ziele.includes(z)).length}))
     .sort((a,b)=>{ if(b.score!==a.score) return b.score-a.score; if(a.s.quelle==='hof'&&b.s.quelle!=='hof') return -1; if(a.s.quelle!=='hof'&&b.s.quelle==='hof') return 1; return (a.s.sorte||a.s.name||'').localeCompare(b.s.sorte||b.s.name||'','de'); });
-  if(beraterQuelle==='alle'){const _d=new Map();for(let i=scored.length-1;i>=0;i--){const n=scored[i].s.sorte||scored[i].s.name;if(_d.has(n)) scored.splice(i,1);else _d.set(n,1);}}
+  if(beraterQuelle.size===0){const _d=new Map();for(let i=scored.length-1;i>=0;i--){const n=scored[i].s.sorte||scored[i].s.name;if(_d.has(n)) scored.splice(i,1);else _d.set(n,1);}}
   const lbl=aktArt.charAt(0).toUpperCase()+aktArt.slice(1);
   const expoEl=document.getElementById('expo');
   if(!scored.length){document.getElementById('res').innerHTML='<div class="sb-leer">Keine passende Sorte für diesen Standort gefunden. Aktuell liegen Standort-Daten für '+pool.length+' '+lbl+'-Sorten vor.</div>';return;}
