@@ -685,13 +685,20 @@
 
 <!-- BERATER -->
 <div class="sbr-panel active" id="panel-berater">
-<div class="sb-sec">
-  <div class="sb-title">Quelle</div>
-  <div class="sb-arten" id="sb-quellen"></div>
-</div>
-<div class="sb-sec">
-  <div class="sb-title">Obstart</div>
-  <div class="sb-arten" id="sb-arten"></div>
+<div class="toolbar">
+  <select id="sb-filter-quelle" onchange="setBeraterQuelle(this.value)">
+    <option value="alle">Alle Quellen</option>
+    <option value="hof">Hofsorten</option>
+    <option value="arche">Arche Noah</option>
+  </select>
+  <select id="sb-filter-frucht" onchange="setArt(this.value)">
+    <option value="">Obstarten</option>
+  </select>
+  <select id="sb-filter-ziel" onchange="beraten()">
+    <option value="">Nutzungsziel</option>
+  </select>
+  <button class="sbr-btn" onclick="beraten()">Sorten empfehlen</button>
+  <button class="sbr-btn" onclick="openBestelllisteModal()">🛒 Bestellliste <span id="cart-badge" style="display:none;background:var(--dachziegel);color:#fff;border-radius:50%;padding:1px 6px;font-size:.7rem;margin-left:4px;">0</span></button>
 </div>
 <div class="sb-sec">
   <div class="sb-title">Standort</div>
@@ -713,24 +720,36 @@
     </div>
   </div>
 </div>
-<div class="sb-sec">
-  <div class="sb-title">Nutzungsziel</div>
-  <div class="sb-checks" id="ziele-box"></div>
-</div>
-<div style="display:flex;gap:8px;align-items:center;">
-  <button class="sbr-btn" onclick="beraten()">Sorten empfehlen</button>
-  <button class="sbr-btn" onclick="openBestelllisteModal()">🛒 Bestellliste <span id="cart-badge" style="display:none;background:var(--dachziegel);color:#fff;border-radius:50%;padding:1px 6px;font-size:.7rem;margin-left:4px;">0</span></button>
-</div>
 <div id="res"><div class="sb-leer">Standort und Ziele wahlen — der Berater empfiehlt Sorten mit passenden Standort-Daten.</div></div>
 </div>
 
 <!-- SORTENÜBERSICHT -->
 <div class="sbr-panel" id="panel-sorten">
-<div class="sl-art-tabs" id="sl-art-tabs"></div>
-<div class="sl-toolbar">
-  <input class="sl-search" type="text" id="sl-search" placeholder="Sorte suchen…" oninput="renderSortenUebersicht()">
-  <div id="sl-filter-buttons"></div>
-  <button class="btn secondary" style="padding:6px 12px;font-size:11px;" onclick="exportSortenbeschreibungenPDF()" title="Sortenbeschreibungen der aktuellen Filterauswahl als PDF exportieren">⬇ Beschreibungen (PDF)</button>
+<div class="toolbar">
+  <div class="search-wrap">
+    <svg class="search-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <circle cx="10" cy="10" r="7" fill="none" stroke="currentColor" stroke-width="2"/>
+      <line x1="15" y1="15" x2="21" y2="21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+    </svg>
+    <input type="text" id="sl-search" placeholder="Sorte suchen…" oninput="renderSortenUebersicht()">
+  </div>
+  <select id="sl-filter-frucht" onchange="setSortenFilter()">
+    <option value="">Obstarten</option>
+  </select>
+  <select id="sl-filter-verwendung" onchange="setSortenFilter()">
+    <option value="">Verwendung</option>
+    <option value="Tafelobst">Tafelobst</option>
+    <option value="Wirtschaftsobst">Wirtschaftsobst</option>
+    <option value="Saft/Most">Saft/Most</option>
+  </select>
+  <select id="sl-filter-quelle" onchange="setSortenFilter()">
+    <option value="">Quelle</option>
+    <option value="arche">Arche Noah</option>
+    <option value="hof">Hofsorten</option>
+    <option value="import">Importe</option>
+  </select>
+  <button class="btn field" onclick="resetSortenFilters()">✕ Zurücksetzen</button>
+  <button class="btn field" onclick="exportSortenbeschreibungenPDF()" title="Sortenbeschreibungen der aktuellen Filterauswahl als PDF exportieren">⬇ Beschreibungen (PDF)</button>
 </div>
 <div id="sl-count" class="sl-count"></div>
 <div class="sl-grid" id="sl-grid"></div>
@@ -3413,7 +3432,7 @@ function sbrShowTab(t){
     document.getElementById('panel-'+id).classList.toggle('active',id===t);
   });
   if(t==='berater'){renderBeraterQuellen();renderSbArten();}
-  if(t==='sorten'){renderSortenUebersicht();}
+  if(t==='sorten'){renderSortenQuellenTabs();renderSortenUebersicht();}
 }
 
 // ─── BERATER ──────────────────────────────────────────────────────────────────
@@ -3673,30 +3692,34 @@ function beraterPoolFiltered(){
   return pool;
 }
 function renderBeraterQuellen(){
-  const el=document.getElementById('sb-quellen');
+  const el=document.getElementById('sb-filter-quelle');
   if(!el) return;
-  const opts=[{id:'alle',label:'Alle Quellen'},{id:'hof',label:'Hofsorten'},{id:'arche',label:'Arche Noah'}];
-  el.innerHTML=opts.map(o=>'<div class="sb-art'+(beraterQuelle===o.id?' active':'')+'" onclick="setBeraterQuelle(\''+o.id+'\')">'+o.label+'</div>').join('');
+  el.value=beraterQuelle;
 }
-function setBeraterQuelle(q){beraterQuelle=q;renderBeraterQuellen();renderSbArten();}
+function setBeraterQuelle(q){beraterQuelle=q;renderSbArten();}
 function renderSbArten(){
   const prio=['Apfel','Birne','Walnuss'];
   const arten=[...new Set(beraterPoolFiltered().map(s=>s.frucht).filter(Boolean))];
   arten.sort((a,b)=>{const ia=prio.indexOf(a),ib=prio.indexOf(b);return (ia<0?99:ia)-(ib<0?99:ib)||a.localeCompare(b,'de');});
   if(arten.length && !arten.some(a=>a.toLowerCase()===aktArt)) aktArt=arten[0].toLowerCase();
-  document.getElementById('sb-arten').innerHTML = arten.length
-    ? arten.map(a=>'<div class="sb-art'+(a.toLowerCase()===aktArt?' active':'')+'" onclick="setArt(\''+escAttr(a.toLowerCase())+'\')">'+a+'</div>').join('')
-    : '<div class="sl-empty">Keine Sorten mit Standort-Daten vorhanden.</div>';
+  const el=document.getElementById('sb-filter-frucht');
+  if(!el) return;
+  el.innerHTML='<option value="">Obstarten</option>'+arten.map(a=>'<option value="'+escAttr(a.toLowerCase())+'"'+(a.toLowerCase()===aktArt?' selected':'')+'>'+a+'</option>').join('');
   renderZiele();
 }
-function setArt(art){aktArt=art;renderSbArten();}
-function renderZiele(){const zdef=ZIELE_DEF[aktArt]||ZIELE_DEF.apfel;document.getElementById('ziele-box').innerHTML=zdef.map(z=>'<label class="sb-check"><input type="checkbox" id="z-'+z.id+'" checked> '+z.label+'</label>').join('');}
+function setArt(art){aktArt=art;renderZiele();}
+function renderZiele(){
+  const zdef=ZIELE_DEF[aktArt]||ZIELE_DEF.apfel;
+  const el=document.getElementById('sb-filter-ziel');
+  if(!el) return;
+  el.innerHTML='<option value="">Nutzungsziel</option>'+zdef.map(z=>'<option value="'+escAttr(z.id)+'">'+z.label+'</option>').join('');
+}
 renderZiele();
 function tagCls(t){const tl=t.toLowerCase();if(['pilzresistent','robust','winterhart','resistent','feuerbrand','scharka','bio','schorfresistent'].some(k=>tl.includes(k)))return 'tg';if(['most','cider','einkochen','schnaps','destillat','saft'].some(k=>tl.includes(k)))return 'ta';if(['bestäuber','wildtier','streuobst','historisch','österreichisch','rarität'].some(k=>tl.includes(k)))return 'tp';return 'tb';}
 function beraten(){
   const hoehe=parseInt(document.getElementById('hoehe').value),expo=document.getElementById('expo').value,frost=document.getElementById('frost').value,ns=document.getElementById('ns').value;
-  const zdef=ZIELE_DEF[aktArt]||ZIELE_DEF.apfel;
-  const gZ=zdef.filter(z=>{var e=document.getElementById('z-'+z.id);return e&&e.checked;}).map(z=>z.id);
+  const zielVal=document.getElementById('sb-filter-ziel').value;
+  const gZ=zielVal?[zielVal]:(ZIELE_DEF[aktArt]||ZIELE_DEF.apfel).map(z=>z.id);
   const pool=beraterPoolFiltered().filter(s=>(s.frucht||'').toLowerCase()===aktArt);
   const toArr=v=>Array.isArray(v)?v:[v];
   const scored=pool.filter(s=>{const st=s.standort;return hoehe>=((st.hmin||0))&&hoehe<=st.hmax&&toArr(st.expo).includes(expo)&&toArr(st.ns).includes(ns)&&!(frost==='hoch'&&st.frost==='gering');})
@@ -4025,30 +4048,23 @@ function getSortenQuelleLabel(q){
 }
 
 function renderSortenQuellenTabs(){
-  const html=SORTEN_QUELLEN.map(q=>'<div class="sl-art-tab'+(sortenQuelle===q?' active':'')+'" onclick="setSortenQuelle(\''+q+'\')">'+getSortenQuelleLabel(q)+'</div>').join('');
-  document.getElementById('sl-art-tabs').innerHTML=html;
+  const fruchtEl=document.getElementById('sl-filter-frucht');
+  if(!fruchtEl) return;
+  const arten=[...new Set(getAllSorten().map(s=>s.frucht).filter(Boolean))].sort();
+  fruchtEl.innerHTML='<option value="">Obstarten</option>'+arten.map(a=>'<option value="'+escAttr(a)+'">'+a+'</option>').join('');
 }
 
-function setSortenQuelle(q){
-  sortenQuelle=q;
+function setSortenFilter(){
+  sortenQuelle=document.getElementById('sl-filter-quelle').value||'alle';
+  const verwVal=document.getElementById('sl-filter-verwendung').value;
+  sortenVerwendung=verwVal?new Set([verwVal]):new Set();
   sortenSeite=1;
-  renderSortenQuellenTabs();
-  renderSortenVerwendungsButtons();
   renderSortenUebersicht();
 }
 
-function renderSortenVerwendungsButtons(){
-  const html=SORTEN_VERWENDUNG.map(v=>'<button class="sl-filter-btn'+(sortenVerwendung.has(v)?' active':'')+'" onclick="toggleSortenVerwendung(\''+v+'\')">'+v+'</button>').join('');
-  document.getElementById('sl-filter-buttons').innerHTML=html+'<button class="sl-filter-btn" onclick="resetSortenFilters()">✕ Zurücksetzen</button>';
-}
+function renderSortenVerwendungsButtons(){}
 
-function toggleSortenVerwendung(v){
-  if(sortenVerwendung.has(v))sortenVerwendung.delete(v);
-  else sortenVerwendung.add(v);
-  sortenSeite=1;
-  renderSortenVerwendungsButtons();
-  renderSortenUebersicht();
-}
+function toggleSortenVerwendung(){}
 
 function resetSortenFilters(){
   sortenQuelle='alle';
@@ -4056,18 +4072,25 @@ function resetSortenFilters(){
   sortenSuche='';
   sortenSeite=1;
   document.getElementById('sl-search').value='';
-  renderSortenQuellenTabs();
-  renderSortenVerwendungsButtons();
+  document.getElementById('sl-filter-frucht').value='';
+  document.getElementById('sl-filter-verwendung').value='';
+  document.getElementById('sl-filter-quelle').value='';
   renderSortenUebersicht();
 }
 
 function renderSortenUebersicht(){
   const suche=(document.getElementById('sl-search').value||'').toLowerCase();
+  const fruchtFilter=(document.getElementById('sl-filter-frucht')||{}).value||'';
   let pool=getAllSorten();
   
   // Quellen-Filter
   if(sortenQuelle!=='alle'){
     pool=pool.filter(s=>s.quelle===sortenQuelle);
+  }
+  
+  // Obstarten-Filter
+  if(fruchtFilter){
+    pool=pool.filter(s=>s.frucht===fruchtFilter);
   }
   
   // Verwendungs-Filter
