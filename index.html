@@ -3734,6 +3734,21 @@ function beraterPoolFiltered(){
   if(qVals.length>0) pool=pool.filter(s=>qVals.includes(s.quelle));
   return pool;
 }
+function sbFullPool(){
+  let pool=beraterPoolFiltered();
+  if(aktArt) pool=pool.filter(s=>(s.frucht||'').toLowerCase()===aktArt);
+  const verwVals=getSbDropdownValues('sb-verw-panel');
+  if(verwVals.length>0) pool=pool.filter(s=>verwVals.some(v=>(s.standort&&s.standort.ziele||[]).includes(v)));
+  return pool;
+}
+function updateSbCount(){
+  const pool=sbFullPool();
+  const stats={};
+  pool.forEach(s=>{const f=s.frucht||'Sonstiges';stats[f]=(stats[f]||0)+1;});
+  const statsText=Object.entries(stats).filter(([,n])=>n>0).map(([f,n])=>n+' '+f).join(', ');
+  const countEl=document.getElementById('sb-count');
+  if(countEl) countEl.textContent=pool.length+' Sorten'+(statsText?' ('+statsText+')':'');
+}
 function renderBeraterQuellen(){
   renderSbDropdownPanel('sb-q-panel',[{value:'arche',label:'Arche Noah'},{value:'hof',label:'Hofsorten'}],'onSbQuelleChange()');
   updateSbDropdownCount('sb-q-panel','sb-q-count');
@@ -3742,6 +3757,7 @@ function onSbQuelleChange(){
   beraterQuelle=new Set(getSbDropdownValues('sb-q-panel'));
   updateSbDropdownCount('sb-q-panel','sb-q-count');
   renderSbArten();
+  beraten();
 }
 function setBeraterQuelle(){renderSbArten();}
 function renderSbArten(){
@@ -3753,14 +3769,10 @@ function renderSbArten(){
   const el=document.getElementById('sb-filter-frucht');
   if(!el) return;
   el.innerHTML='<option value="">Obstarten ('+arten.length+')</option>'+arten.map(a=>'<option value="'+escAttr(a.toLowerCase())+'"'+(a.toLowerCase()===aktArt?' selected':'')+'>'+a+'</option>').join('');
-  const stats={};
-  pool.forEach(s=>{const f=s.frucht||'Sonstiges';stats[f]=(stats[f]||0)+1;});
-  const statsText=Object.entries(stats).filter(([,n])=>n>0).map(([f,n])=>n+' '+f).join(', ');
-  const countEl=document.getElementById('sb-count');
-  if(countEl) countEl.textContent=pool.length+' Sorten'+(statsText?' ('+statsText+')':'');
+  updateSbCount();
   renderVerwendung();
 }
-function setArt(art){aktArt=art;renderVerwendung();}
+function setArt(art){aktArt=art;updateSbCount();beraten();}
 function renderVerwendung(){
   const zdef=ZIELE_DEF[aktArt]||ZIELE_DEF.apfel;
   renderSbDropdownPanel('sb-verw-panel',zdef.map(z=>({value:z.id,label:z.label})),'onSbVerwChange()');
@@ -3768,6 +3780,8 @@ function renderVerwendung(){
 }
 function onSbVerwChange(){
   updateSbDropdownCount('sb-verw-panel','sb-v-count');
+  updateSbCount();
+  beraten();
 }
 renderVerwendung();
 function tagCls(t){const tl=t.toLowerCase();if(['pilzresistent','robust','winterhart','resistent','feuerbrand','scharka','bio','schorfresistent'].some(k=>tl.includes(k)))return 'tg';if(['most','cider','einkochen','schnaps','destillat','saft'].some(k=>tl.includes(k)))return 'ta';if(['bestäuber','wildtier','streuobst','historisch','österreichisch','rarität'].some(k=>tl.includes(k)))return 'tp';return 'tb';}
