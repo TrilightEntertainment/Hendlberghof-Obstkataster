@@ -415,10 +415,19 @@
 #tab-sortenberater .sb-field label{font-family:'DM Sans',sans-serif;font-size:12px;color:var(--text-mid);font-weight:500}
 #tab-sortenberater select{width:100%;padding:8px 10px;border:1px solid var(--rand);border-radius:var(--radius);background:var(--weiss);font-family:'Cormorant Garamond',serif;font-size:1rem;color:var(--text);appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888780' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;cursor:pointer}
 #tab-sortenberater select:focus{outline:2px solid var(--gruen);outline-offset:1px}
-#tab-sortenberater select[multiple]{min-height:38px;max-height:110px;padding:4px 8px;font-size:.9rem;background-image:none;overflow-y:auto}
-#tab-sortenberater select[multiple] option{padding:4px 6px;border-radius:4px;margin:1px 0}
-#tab-sortenberater select[multiple] option:checked{background:var(--gruen-hell);color:var(--gruen)}
-#tab-sortenberater select[multiple] option:first-child{border-bottom:1px solid var(--rand);margin-bottom:3px;padding-bottom:5px}
+#tab-sortenberater select[multiple]{display:none}
+#tab-sortenberater .sb-dropdown{position:relative;flex:1;min-width:140px}
+#tab-sortenberater .sb-dropdown-trigger{width:100%;padding:8px 28px 8px 10px;border:1px solid #C9C0A9;border-radius:7px;background:transparent url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888780' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 10px center;font-size:.88rem;font-family:inherit;color:#8A7F63;cursor:pointer;text-align:left;display:flex;align-items:center;gap:6px}
+#tab-sortenberater .sb-dropdown-trigger:hover{background-color:#faf7ef}
+#tab-sortenberater .sb-dd-label{font-weight:600;color:var(--text)}
+#tab-sortenberater .sb-dd-count{font-size:.78rem;color:var(--gruen);font-weight:500}
+#tab-sortenberater .sb-dropdown.open .sb-dropdown-trigger{border-color:var(--gruen);outline:2px solid var(--gruen);outline-offset:1px}
+#tab-sortenberater .sb-dropdown-panel{display:none;position:absolute;top:100%;left:0;right:0;margin-top:4px;background:var(--weiss);border:1px solid var(--rand);border-radius:8px;padding:6px 0;z-index:50;max-height:200px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,.1)}
+#tab-sortenberater .sb-dropdown.open .sb-dropdown-panel{display:block}
+#tab-sortenberater .sb-dropdown-panel label{display:flex;align-items:center;gap:8px;padding:6px 12px;font-size:.88rem;color:var(--text);cursor:pointer;transition:background .1s}
+#tab-sortenberater .sb-dropdown-panel label:hover{background:var(--gruen-hell)}
+#tab-sortenberater .sb-dropdown-panel label input[type=checkbox]{accent-color:var(--gruen);width:15px;height:15px;cursor:pointer}
+#tab-sortenberater .sb-dropdown-panel .sb-dd-sep{border-top:1px solid var(--rand);margin:4px 0}
 #tab-sortenberater .sb-slider-row{display:flex;align-items:center;gap:10px}
 #tab-sortenberater .sb-slider-row input[type=range]{flex:1;accent-color:var(--gruen);cursor:pointer}
 #tab-sortenberater .sb-val{font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;min-width:48px;color:var(--gruen)}
@@ -693,14 +702,14 @@
   <select id="sb-filter-frucht" onchange="setArt(this.value)">
     <option value="">Obstarten</option>
   </select>
-  <select id="sb-filter-verwendung" multiple onchange="handleMultiAlle(this,'sb-verw-alle');beraten()">
-    <option value="__alle" id="sb-verw-alle" selected>Alle</option>
-  </select>
-  <select id="sb-filter-quelle" multiple onchange="handleMultiAlle(this,'sb-q-alle');beraten()">
-    <option value="__alle" id="sb-q-alle" selected>Alle</option>
-    <option value="arche">Arche Noah</option>
-    <option value="hof">Hofsorten</option>
-  </select>
+  <div class="sb-dropdown" id="sb-dd-verwendung">
+    <button class="sb-dropdown-trigger" onclick="toggleSbDropdown('sb-dd-verwendung')"><span class="sb-dd-label">Verwendung</span> <span class="sb-dd-count" id="sb-v-count">Alle</span></button>
+    <div class="sb-dropdown-panel" id="sb-verw-panel"></div>
+  </div>
+  <div class="sb-dropdown" id="sb-dd-quelle">
+    <button class="sb-dropdown-trigger" onclick="toggleSbDropdown('sb-dd-quelle')"><span class="sb-dd-label">Quellen</span> <span class="sb-dd-count" id="sb-q-count">Alle</span></button>
+    <div class="sb-dropdown-panel" id="sb-q-panel"></div>
+  </div>
   <button class="sbr-btn" onclick="beraten()">Sorten empfehlen</button>
   <button class="sbr-btn" onclick="openBestelllisteModal()">🛒 Bestellliste <span id="cart-badge" style="display:none;background:var(--dachziegel);color:#fff;border-radius:50%;padding:1px 6px;font-size:.7rem;margin-left:4px;">0</span></button>
 </div>
@@ -3690,37 +3699,50 @@ function beraterPool(){
     return Object.assign({}, s, standort?{standort,sorte:full?.sorte||s.name}:null);
   }).filter(s=>s.standort);
 }
-function getMultiSelectValues(id){
-  const el=document.getElementById(id);
-  if(!el) return [];
-  const vals=Array.from(el.selectedOptions).map(o=>o.value).filter(v=>v!=='__alle');
-  return vals;
+function toggleSbDropdown(id){
+  const dd=document.getElementById(id);
+  if(!dd) return;
+  const isOpen=dd.classList.contains('open');
+  document.querySelectorAll('#tab-sortenberater .sb-dropdown.open').forEach(d=>d.classList.remove('open'));
+  if(!isOpen) dd.classList.add('open');
 }
-function handleMultiAlle(sel,alleId){
-  const alleEl=document.getElementById(alleId);
-  if(!alleEl) return;
-  const vals=Array.from(sel.selectedOptions).map(o=>o.value);
-  if(vals.includes('__alle')&&vals.length>1){
-    Array.from(sel.options).forEach(o=>{o.selected=o.value==='__alle';});
-  } else if(!vals.includes('__alle')&&vals.length===0){
-    alleEl.selected=true;
-  }
+document.addEventListener('click',e=>{
+  if(!e.target.closest('.sb-dropdown')) document.querySelectorAll('#tab-sortenberater .sb-dropdown.open').forEach(d=>d.classList.remove('open'));
+});
+function getSbDropdownValues(ddId){
+  const panel=document.getElementById(ddId);
+  if(!panel) return [];
+  const alleCb=panel.querySelector('input[value="__alle"]');
+  if(alleCb&&alleCb.checked) return [];
+  return Array.from(panel.querySelectorAll('input[type=checkbox]:not([value="__alle"])')).filter(cb=>cb.checked).map(cb=>cb.value);
+}
+function updateSbDropdownCount(ddId,countElId){
+  const vals=getSbDropdownValues(ddId);
+  const countEl=document.getElementById(countElId);
+  if(!countEl) return;
+  countEl.textContent=vals.length===0?'Alle':vals.length+' ausgewählt';
+}
+function renderSbDropdownPanel(panelId,items,onChange){
+  const el=document.getElementById(panelId);
+  if(!el) return;
+  el.innerHTML='<label><input type="checkbox" value="__alle" checked onchange="'+onChange+'"> Alle</label><div class="sb-dd-sep"></div>'+items.map(it=>'<label><input type="checkbox" value="'+escAttr(it.value)+'" onchange="'+onChange+'">'+escHtml(it.label)+'</label>').join('');
 }
 function beraterPoolFiltered(){
   let pool=beraterPool();
-  const qVals=getMultiSelectValues('sb-filter-quelle');
+  const qVals=getSbDropdownValues('sb-q-panel');
   if(qVals.length>0) pool=pool.filter(s=>qVals.includes(s.quelle));
   return pool;
 }
 function renderBeraterQuellen(){
-  const el=document.getElementById('sb-filter-quelle');
-  if(!el) return;
-  Array.from(el.options).forEach(o=>{
-    if(o.value==='__alle') o.selected=beraterQuelle.size===0;
-    else o.selected=beraterQuelle.has(o.value);
-  });
+  renderSbDropdownPanel('sb-q-panel',[{value:'arche',label:'Arche Noah'},{value:'hof',label:'Hofsorten'}],'onSbQuelleChange()');
+  updateSbDropdownCount('sb-q-panel','sb-q-count');
 }
-function setBeraterQuelle(q){renderSbArten();}
+function onSbQuelleChange(){
+  beraterQuelle=new Set(getSbDropdownValues('sb-q-panel'));
+  updateSbDropdownCount('sb-q-panel','sb-q-count');
+  renderSbArten();
+}
+function setBeraterQuelle(){renderSbArten();}
 function renderSbArten(){
   const prio=['Apfel','Birne','Walnuss'];
   const arten=[...new Set(beraterPoolFiltered().map(s=>s.frucht).filter(Boolean))];
@@ -3734,15 +3756,17 @@ function renderSbArten(){
 function setArt(art){aktArt=art;renderVerwendung();}
 function renderVerwendung(){
   const zdef=ZIELE_DEF[aktArt]||ZIELE_DEF.apfel;
-  const el=document.getElementById('sb-filter-verwendung');
-  if(!el) return;
-  el.innerHTML='<option value="__alle" id="sb-verw-alle" selected>Alle</option>'+zdef.map(z=>'<option value="'+escAttr(z.id)+'">'+z.label+'</option>').join('');
+  renderSbDropdownPanel('sb-verw-panel',zdef.map(z=>({value:z.id,label:z.label})),'onSbVerwChange()');
+  updateSbDropdownCount('sb-verw-panel','sb-v-count');
+}
+function onSbVerwChange(){
+  updateSbDropdownCount('sb-verw-panel','sb-v-count');
 }
 renderVerwendung();
 function tagCls(t){const tl=t.toLowerCase();if(['pilzresistent','robust','winterhart','resistent','feuerbrand','scharka','bio','schorfresistent'].some(k=>tl.includes(k)))return 'tg';if(['most','cider','einkochen','schnaps','destillat','saft'].some(k=>tl.includes(k)))return 'ta';if(['bestäuber','wildtier','streuobst','historisch','österreichisch','rarität'].some(k=>tl.includes(k)))return 'tp';return 'tb';}
 function beraten(){
   const hoehe=parseInt(document.getElementById('hoehe').value),expo=document.getElementById('expo').value,frost=document.getElementById('frost').value,ns=document.getElementById('ns').value;
-  const verwVals=getMultiSelectValues('sb-filter-verwendung');
+  const verwVals=getSbDropdownValues('sb-verw-panel');
   const gZ=verwVals.length>0?verwVals:(ZIELE_DEF[aktArt]||ZIELE_DEF.apfel).map(z=>z.id);
   const pool=beraterPoolFiltered().filter(s=>(s.frucht||'').toLowerCase()===aktArt);
   const toArr=v=>Array.isArray(v)?v:[v];
