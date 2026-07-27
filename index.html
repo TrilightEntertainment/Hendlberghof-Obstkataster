@@ -697,7 +697,6 @@
     <option value="arche">Arche Noah</option>
     <option value="hof">Hofsorten</option>
   </select>
-  <button class="sbr-btn" onclick="beraten()">Sorten empfehlen</button>
   <button class="sbr-btn" onclick="openBestelllisteModal()">🛒 Bestellliste <span id="cart-badge" style="display:none;background:var(--dachziegel);color:#fff;border-radius:50%;padding:1px 6px;font-size:.7rem;margin-left:4px;">0</span></button>
 </div>
 <div id="sb-count" style="font-family:'DM Sans',sans-serif;font-size:12px;color:var(--text-leicht);margin-bottom:12px"></div>
@@ -706,18 +705,18 @@
   <div class="sb-grid">
     <div class="sb-field"><label>Höhenlage</label>
       <div class="sb-slider-row">
-        <input type="range" min="200" max="1200" step="10" value="720" id="hoehe" oninput="document.getElementById('hv').textContent=this.value+'m'">
+        <input type="range" min="200" max="1200" step="10" value="720" id="hoehe" oninput="document.getElementById('hv').textContent=this.value+'m';beraten()">
         <span class="sb-val" id="hv">720m</span>
       </div>
     </div>
     <div class="sb-field"><label>Exposition</label>
-      <select id="expo"><option value="sued">Südhang</option><option value="nord">Nordhang</option><option value="ost">Osthang</option><option value="west">Westhang</option><option value="mulde" selected>Ebene / Mulde</option></select>
+      <select id="expo" onchange="beraten()"><option value="sued">Südhang</option><option value="nord">Nordhang</option><option value="ost">Osthang</option><option value="west">Westhang</option><option value="mulde" selected>Ebene / Mulde</option></select>
     </div>
     <div class="sb-field"><label>Spätfrostrisiko</label>
-      <select id="frost"><option value="hoch">hoch (Mulde, Talboden)</option><option value="mittel" selected>mittel</option><option value="gering">gering (Hanglagen)</option></select>
+      <select id="frost" onchange="beraten()"><option value="hoch">hoch (Mulde, Talboden)</option><option value="mittel" selected>mittel</option><option value="gering">gering (Hanglagen)</option></select>
     </div>
     <div class="sb-field"><label>Niederschlag</label>
-      <select id="ns"><option value="trocken">trocken (&lt;600mm)</option><option value="mittel" selected>mittel (600–900mm)</option><option value="feucht">feucht (&gt;900mm)</option></select>
+      <select id="ns" onchange="beraten()"><option value="trocken">trocken (&lt;600mm)</option><option value="mittel" selected>mittel (600–900mm)</option><option value="feucht">feucht (&gt;900mm)</option></select>
     </div>
   </div>
 </div>
