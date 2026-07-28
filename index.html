@@ -3919,6 +3919,150 @@ function renderBeraterBatch(count){
   }
 }
 
+// ─── PFLÜCKZEIT: HILFSFUNKTIONEN ────────────────────────────────────────────
+const _TAGE_IM_MONAT=[0,31,28,31,30,31,30,31,31,30,31,30,31];
+const _MONAT_NAMEN=['','Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];
+
+function _daysInMonth(m,jahr){
+  if(m===2 && jahr%4===0 && (jahr%100!==0 || jahr%400===0)) return 29;
+  return _TAGE_IM_MONAT[m]||30;
+}
+
+function ernteToPfluckwert(datum){
+  if(!datum) return '';
+  const teile=String(datum).split('-');
+  if(teile.length<3) return '';
+  const jahr=parseInt(teile[0]), monat=parseInt(teile[1]), tag=parseInt(teile[2]);
+  if(!monat || !tag) return '';
+  const dim=_daysInMonth(monat,jahr);
+  const pos=Math.round(1 + (tag-1)/(dim-1) * 8);
+  return monat+','+Math.min(9,Math.max(1,pos));
+}
+
+function pfluckWertToText(wert){
+  if(!wert) return '';
+  const teile=String(wert).split(',');
+  if(teile.length<2) return '';
+  const monat=parseInt(teile[0]), pos=parseInt(teile[1]);
+  if(!monat || !_MONAT_NAMEN[monat]) return wert;
+  let prefix='';
+  if(pos<=1) prefix='Anfang ';
+  else if(pos<=3) prefix='erstes Drittel ';
+  else if(pos<=6) prefix='Mitte ';
+  else if(pos<=8) prefix='letztes Drittel ';
+  else prefix='Ende ';
+  return prefix+_MONAT_NAMEN[monat];
+}
+
+function tagDesJahres(datum){
+  if(!datum) return 0;
+  const teile=String(datum).split('-');
+  if(teile.length<3) return 0;
+  const jahr=parseInt(teile[0]), monat=parseInt(teile[1]), tag=parseInt(teile[2]);
+  let tage=tag;
+  for(let m=1;m<monat;m++) tage+=_daysInMonth(m,jahr);
+  return tage;
+}
+
+function pfluckWertToTag(wert,jahr){
+  if(!wert) return 0;
+  if(!jahr) jahr=new Date().getFullYear();
+  const teile=String(wert).split(',');
+  if(teile.length<2) return 0;
+  const monat=parseInt(teile[0]), pos=parseInt(teile[1]);
+  if(!monat) return 0;
+  const dim=_daysInMonth(monat,jahr);
+  const tag=Math.round(1 + (pos-1)/8 * (dim-1));
+  return tagDesJahres(jahr+'-'+String(monat).padStart(2,'0')+'-'+String(Math.min(dim,Math.max(1,tag))).padStart(2,'0'));
+}
+
+function tagToPfluckWert(tag,jahr){
+  if(!tag || !jahr) return '';
+  tag=Math.max(1,Math.min(tag,365));
+  let monat=1, rest=tag;
+  for(let m=1;m<=12;m++){
+    const dim=_daysInMonth(m,jahr);
+    if(rest<=dim){ monat=m; break; }
+    rest-=dim;
+    if(m===12) monat=12;
+  }
+  const dim=_daysInMonth(monat,jahr);
+  const pos=Math.round(1 + (rest-1)/Math.max(1,dim-1) * 8);
+  return monat+','+Math.min(9,Math.max(1,pos));
+}
+
+let _mittelCache=null;
+function calcPfluckMittel(sorteName){
+  if(!sorteName || !state.ernten) return null;
+  if(!_mittelCache) _mittelCache={};
+  if(_mittelCache[sorteName]!==undefined) return _mittelCache[sorteName];
+  const baeume=getAllTrees().filter(t=>t.sorte===sorteName);
+  if(!baeume.length) return null;
+  const werte=[];
+  baeume.forEach(b=>{
+    (state.ernten[b.id]||[]).forEach(e=>{
+      if(!e.datum) return;
+      const jahr=parseInt(e.datum.substring(0,4));
+      const pw=ernteToPfluckwert(e.datum);
+      if(pw){
+        const teile=pw.split(',');
+        werte.push({wert:pw, numerisch:parseInt(teile[0])+parseInt(teile[1])/10, jahr:jahr, baumId:b.id, datum:e.datum});
+      }
+    });
+  });
+  if(!werte.length){ _mittelCache[sorteName]=null; return null; }
+  const avg=werte.reduce((s,v)=>s+v.numerisch,0)/werte.length;
+  const avgMonat=Math.floor(avg);
+  const avgPos=Math.round((avg-avgMonat)*10);
+  const mittelwert=avgMonat+','+Math.min(9,Math.max(1,avgPos));
+  const uniqueJahre=[...new Set(werte.map(v=>v.jahr))].sort();
+  const result={wert:mittelwert, numerisch:avg, anzahl:werte.length, jahre:uniqueJahre, eintraege:werte};
+  _mittelCache[sorteName]=result;
+  return result;
+}
+
+// ─── PHÄNOLOGIE: TRACKER & VORHERSAGE ───────────────────────────────────────
+const PHAENO_STANDARDS={
+  holunder_bluete:110,
+  holunder_vollbluete:125,
+  knaeulgras_rispenschieben:115
+};
+
+function getPhaeno(jahr){
+  if(!state.phaenologie) state.phaenologie={};
+  if(!state.phaenologie[jahr]) state.phaenologie[jahr]={};
+  return state.phaenologie[jahr];
+}
+
+function setPhaenoEreignis(jahr,key,datum){
+  const phaeno=getPhaeno(jahr);
+  phaeno[key]=datum||null;
+  saveState();
+}
+
+function predictErnte(sorteName){
+  const jahr=new Date().getFullYear();
+  const phaeno=state.phaenologie&&state.phaenologie[jahr]?state.phaenologie[jahr]:null;
+  if(!phaeno||!phaeno.holunder_bluete) return null;
+  const aktTag=tagDesJahres(phaeno.holunder_bluete);
+  const stdTag=PHAENO_STANDARDS.holunder_bluete;
+  if(!aktTag || !stdTag) return null;
+  const abweichung=aktTag-stdTag;
+  const mittel=calcPfluckMittel(sorteName);
+  if(!mittel) return null;
+  const stdPfluckTag=pfluckWertToTag(mittel.wert,jahr);
+  if(!stdPfluckTag) return null;
+  const vorhergesagtTag=stdPfluckTag+abweichung;
+  const vorhergesagt=tagToPfluckWert(vorhergesagtTag,jahr);
+  if(!vorhergesagt) return null;
+  return {wert:vorhergesagt, abweichungTage:abweichung, quelle:'phaenologie', mittelwert:mittel.wert, phaenoDaten:phaeno};
+}
+
+function getSortenQuelleLabel(q){
+  const labels={alle:'Alle Quellen',arche:'Arche Noah',hof:'Hofsorten',import:'Importe'};
+  return labels[q]||q;
+}
+
 if(window.__dataReadyPromise){window.__dataReadyPromise.then(()=>{renderSbArten();renderVerwendung();renderResults();});}
 
 // ─── ARCHE NOAH ──────────────────────────────────────────────────────────────
