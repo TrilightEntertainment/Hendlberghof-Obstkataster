@@ -382,6 +382,7 @@
     .toolbar{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;align-items:stretch;}
     .toolbar .search-wrap{grid-column:1/-1;}
     .toolbar > *{width:100%;}
+    #tab-sortenberater .toolbar{display:flex;flex-direction:column;align-items:stretch;}
     input[type=text]{min-width:0;}
     .map-toolbar{flex-direction:column;align-items:stretch;}
     .map-toolbar > *{width:100%;}
@@ -701,8 +702,8 @@
     </select>
     <select id="sb-filter-quelle" onchange="onFilterChange()" style="flex:1;min-width:120px;">
       <option value="">Quelle</option>
-      <option value="arche">Arche Noah</option>
       <option value="hof">Hofsorten</option>
+      <option value="arche">Arche Noah</option>
     </select>
   </div>
   <div id="sb-accordion" class="sb-accordion">
