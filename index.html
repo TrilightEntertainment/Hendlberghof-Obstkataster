@@ -1117,7 +1117,7 @@ function toggleVerifiziert(sorteName, context){
     state.verifiziert[sorteName] = new Date().toISOString().slice(0,10);
   }
   saveState();
-  renderSortenUebersicht();
+  renderResults();
   if(context && context.baumId) openBaumModal(context.baumId);
   else openSortenModal(sorteName);
 }
@@ -1184,7 +1184,7 @@ function applyRemoteState(remote){
   localStorage.setItem(LS_KEY, JSON.stringify(state));
   refreshFilterOptions();
   renderBaumTable();
-  renderSortenUebersicht();
+  renderResults();
   renderUnplacedSelect();
   if(document.getElementById('tab-lageplan').style.display!=='none') renderPins();
 }
@@ -1286,7 +1286,7 @@ function toggleSortenSichtbar(key, visible){
   state.sortenSichtbar[key]=visible;
   saveState();
   renderSortenlistenSichtbar();
-  renderSortenUebersicht();
+  renderResults();
   renderSbArten();
 }
 
@@ -1814,7 +1814,7 @@ function exportLageplanPDF(){
   doc.save(`Lageplan_${new Date().toISOString().slice(0,10)}.pdf`);
 }
 
-/* Legacy removed - renderSortenUebersicht() is the canonical function */
+/* Legacy removed - renderResults() is the canonical function */
 
 /* ---------- Modal: Baum-Detail ---------- */
 function fieldRow(label, val){
@@ -3129,7 +3129,7 @@ function startApp(){
   refreshFilterOptions();
   applyEditModeUI();
   renderBaumTable();
-  renderSortenUebersicht();
+  renderResults();
   renderUnplacedSelect();
   renderImportTemplates();
   renderSortenlistenSichtbar();
@@ -4339,7 +4339,7 @@ function showImportResult(result){
   
   if(result.imported>0||result.updated>0){
     renderBaumTable();
-    renderSortenUebersicht();
+    renderResults();
     renderImportLog();
   }
 }
@@ -4560,7 +4560,7 @@ function undoImport(importId){
   saveState();
   renderImportLog();
   renderBaumTable();
-  renderSortenUebersicht();
+  renderResults();
   alert('Import rückgängig gemacht!');
 }
 
@@ -4595,7 +4595,7 @@ function deleteImport(importId){
   saveState();
   renderImportLog();
   renderBaumTable();
-  renderSortenUebersicht();
+  renderResults();
   alert('Import gelöscht!');
 }
 
