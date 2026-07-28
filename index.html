@@ -3417,6 +3417,42 @@ const AN_SORTEN=[
 // ─── STATUS ───────────────────────────────────────────────────────────────────
 let _sortenCache=null;
 
+function getAllSorten(){
+  if(_sortenCache) return _sortenCache;
+  const result=[];
+  AN_SORTEN.forEach(s=>{
+    const verwendung=[];
+    const desc=(s.beschreibung||'').toLowerCase();
+    const tags=s.tags.map(t=>t.toLowerCase());
+    if(tags.includes('tafelobst')||desc.includes('tafelobst')||desc.includes('frischobst')) verwendung.push('Tafelobst');
+    if(tags.includes('most')||desc.includes('most')||desc.includes('wirtschafts')||desc.includes('wirtschaftsapfel')) verwendung.push('Wirtschaftsobst');
+    if(tags.some(t=>t.includes('most')||t.includes('saft'))||desc.includes('saft')||desc.includes('most')) verwendung.push('Saft/Most');
+    if(verwendung.length===0) verwendung.push('Sonstiges');
+    const full=getSorte(s.name);
+    result.push({name:s.name,frucht:'Apfel',quelle:'arche',quelleName:'Arche Noah',verwendung,beschreibung:s.beschreibung,erntem:s.erntem||[],lagerm:s.lagerm||[],genuss:s.genuss,tags:s.tags,pdf:s.pdf,baum_ids:full?full.baum_ids||[]:[],pflueckzeitpunkt:full?(full.pflueckzeitpunkt||full.pflueck_reifezeit||''):''});
+  });
+  if(window.__dataReady && typeof state!=='undefined' && state){
+    const baumSorten=getAllTrees();
+    const sortenMap=new Map();
+    baumSorten.forEach(t=>{
+      if(t.sorte && !sortenMap.has(t.sorte)){
+        const sorte=getSorte(t.sorte);
+        sortenMap.set(t.sorte,{name:t.sorte,frucht:t.frucht||sorte?.frucht||'',quelle:'hof',quelleName:'Hofsorten',verwendung:getVerwendung(t),beschreibung:sorte?.beschreibung||sorte?.geschmack||sorte?.eigenschaften||'',geschmack:sorte?.geschmack,eigenschaften:sorte?.eigenschaften,erntem:sorte?.erntem||[],lagerm:sorte?.lagerm||[],genuss:sorte?.genuss||'',tags:sorte?.tags||[],pdf:sorte?.pdf||'',baum_ids:sorte?.baum_ids||[],pflueckzeitpunkt:sorte?(sorte.pflueckzeitpunkt||sorte.pflueck_reifezeit||''):''});
+      }
+    });
+    sortenMap.forEach(s=>result.push(s));
+  }
+  const seen=new Map();
+  result.forEach(s=>{const key=s.name.toLowerCase();if(!seen.has(key)) seen.set(key,s);else{const existing=seen.get(key);if(s.quelle==='hof') seen.set(key,s);}});
+  const deduped=[...seen.values()];
+  if(state.sortenSichtbar && Object.keys(state.sortenSichtbar).length>0){
+    _sortenCache=deduped.filter(s=>{const key=s.quelle==='arche'?'arche':s.quelle==='hof'?'hof':s.quelle;return state.sortenSichtbar[key]!==false;});
+    return _sortenCache;
+  }
+  _sortenCache=deduped;
+  return deduped;
+}
+
 // ─── SORTENBERATER (unified) ─────────────────────────────────────────────────
 // ─── SORTENBERATER (unified) ─────────────────────────────────────────────────
 let _accordionOpen=false;
