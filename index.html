@@ -1371,7 +1371,7 @@ function getFilteredSortenExportRows(){
   const fruchtVal=(document.getElementById('sb-filter-frucht')?.value||'').toLowerCase();
   if(qVal) pool = pool.filter(s=>s.quelle===qVal);
   if(fruchtVal) pool = pool.filter(s=>(s.frucht||'').toLowerCase()===fruchtVal);
-  if(verwVal) pool = pool.filter(s=>(s.verwendung||[]).includes(verwVal));
+  if(verwVal){const vk={tafel:['tafel','tafelobst'],most:['most','wirtschaft','saft'],lager:['lager'],frueh:['früh','frueh'],robust:['robust'],wild:['wild']};const kw=vk[verwVal]||[verwVal];pool=pool.filter(s=>(s.verwendung||[]).some(v=>{const vl=v.toLowerCase();return kw.some(k=>vl.includes(k));}));}
   const q = (document.getElementById('sl-search')?.value||'').toLowerCase();
   if(q) pool = pool.filter(s=>s.name.toLowerCase().includes(q)||(s.beschreibung||'').toLowerCase().includes(q)||(s.tags||[]).some(t=>t.toLowerCase().includes(q)));
   pool.sort((a,b)=>a.name.localeCompare(b.name,'de'));
@@ -3801,7 +3801,7 @@ function getFilteredSorten(){
   let pool=getAllSorten();
   if(qVal) pool=pool.filter(s=>s.quelle===qVal);
   if(fruchtFilter) pool=pool.filter(s=>(s.frucht||'').toLowerCase()===fruchtFilter);
-  if(verwVal) pool=pool.filter(s=>(s.verwendung||[]).includes(verwVal));
+  if(verwVal){const vk={tafel:['tafel','tafelobst'],most:['most','wirtschaft','saft'],lager:['lager'],frueh:['früh','frueh'],robust:['robust'],wild:['wild']};const kw=vk[verwVal]||[verwVal];pool=pool.filter(s=>(s.verwendung||[]).some(v=>{const vl=v.toLowerCase();return kw.some(k=>vl.includes(k));}));}
   if(suche) pool=pool.filter(s=>s.name.toLowerCase().includes(suche)||(s.beschreibung||'').toLowerCase().includes(suche)||(s.tags||[]).some(t=>t.toLowerCase().includes(suche)));
   pool.sort((a,b)=>a.name.localeCompare(b.name,'de'));
   return pool;
