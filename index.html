@@ -684,30 +684,6 @@
 
   <section id="tab-sortenberater" style="display:none;">
 
-<div class="toolbar">
-  <div class="search-wrap">
-    <svg class="search-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-      <circle cx="10" cy="10" r="7" fill="none" stroke="currentColor" stroke-width="2"/>
-      <line x1="15" y1="15" x2="21" y2="21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-    </svg>
-    <input type="text" id="sl-search" placeholder="Sorte suchen…" oninput="onFilterChange()">
-  </div>
-  <select id="sb-filter-frucht" onchange="onFilterChange()">
-    <option value="">Obstarten</option>
-  </select>
-  <select id="sb-filter-verwendung" onchange="onFilterChange()">
-    <option value="">Verwendung</option>
-  </select>
-  <select id="sb-filter-quelle" onchange="onFilterChange()">
-    <option value="">Quelle</option>
-    <option value="arche">Arche Noah</option>
-    <option value="hof">Hofsorten</option>
-  </select>
-  <button class="btn field" onclick="resetFilters()">✕ Zurücksetzen</button>
-  <button class="sbr-btn" onclick="openBestelllisteModal()">🛒 Bestellliste <span id="cart-badge" style="display:none;background:var(--dachziegel);color:#fff;border-radius:50%;padding:1px 6px;font-size:.7rem;margin-left:4px;">0</span></button>
-  <button class="btn field" onclick="exportSortenbeschreibungenPDF()" title="Sortenbeschreibungen der aktuellen Filterauswahl als PDF exportieren">⬇ PDF</button>
-</div>
-
 <div id="sb-accordion" class="sb-accordion">
   <div class="sb-accordion-header" onclick="toggleAccordion()">
     <span class="sb-accordion-icon" id="sb-accordion-icon">▸</span>
@@ -733,6 +709,30 @@
       </div>
     </div>
   </div>
+</div>
+
+<div class="toolbar">
+  <div class="search-wrap">
+    <svg class="search-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <circle cx="10" cy="10" r="7" fill="none" stroke="currentColor" stroke-width="2"/>
+      <line x1="15" y1="15" x2="21" y2="21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+    </svg>
+    <input type="text" id="sl-search" placeholder="Sorte suchen…" oninput="onFilterChange()">
+  </div>
+  <select id="sb-filter-frucht" onchange="onFilterChange()">
+    <option value="">Obstarten</option>
+  </select>
+  <select id="sb-filter-verwendung" onchange="onFilterChange()">
+    <option value="">Verwendung</option>
+  </select>
+  <select id="sb-filter-quelle" onchange="onFilterChange()">
+    <option value="">Quelle</option>
+    <option value="arche">Arche Noah</option>
+    <option value="hof">Hofsorten</option>
+  </select>
+  <button class="btn field" onclick="resetFilters()">✕ Zurücksetzen</button>
+  <button class="btn field" onclick="exportSortenbeschreibungenPDF()" title="Sortenbeschreibungen der aktuellen Filterauswahl als PDF exportieren">⬇ PDF</button>
+  <button class="sbr-btn" style="margin-left:auto" onclick="openBestelllisteModal()">🛒 Bestellliste <span id="cart-badge" style="display:none;background:var(--dachziegel);color:#fff;border-radius:50%;padding:1px 6px;font-size:.7rem;margin-left:4px;">0</span></button>
 </div>
 
 <div id="sb-count" style="font-family:'DM Sans',sans-serif;font-size:12px;color:var(--text-leicht);margin-bottom:12px"></div>
