@@ -3441,7 +3441,9 @@ function getAllSorten(){
     baumSorten.forEach(t=>{
       if(t.sorte && !sortenMap.has(t.sorte)){
         const sorte=getSorte(t.sorte);
-        sortenMap.set(t.sorte,{name:t.sorte,frucht:t.frucht||sorte?.frucht||'',quelle:'hof',quelleName:'Hofsorten',verwendung:getVerwendung(t),beschreibung:sorte?.beschreibung||sorte?.geschmack||sorte?.eigenschaften||'',geschmack:sorte?.geschmack,eigenschaften:sorte?.eigenschaften,erntem:sorte?.erntem||[],lagerm:sorte?.lagerm||[],genuss:sorte?.genuss||'',tags:sorte?.tags||[],pdf:sorte?.pdf||'',baum_ids:sorte?.baum_ids||[],pflueckzeitpunkt:sorte?(sorte.pflueckzeitpunkt||sorte.pflueck_reifezeit||''):''});
+        const anSorte=AN_SORTEN.find(a=>a.name===t.sorte);
+        const anTags=anSorte?anSorte.tags:[];
+        sortenMap.set(t.sorte,{name:t.sorte,frucht:t.frucht||sorte?.frucht||'',quelle:'hof',quelleName:'Hofsorten',verwendung:getVerwendung(t),beschreibung:sorte?.beschreibung||sorte?.geschmack||sorte?.eigenschaften||'',geschmack:sorte?.geschmack,eigenschaften:sorte?.eigenschaften,erntem:sorte?.erntem||[],lagerm:sorte?.lagerm||[],genuss:sorte?.genuss||'',tags:[...new Set([...(sorte?.tags||[]),...anTags])],pdf:sorte?.pdf||'',baum_ids:sorte?.baum_ids||[],pflueckzeitpunkt:sorte?(sorte.pflueckzeitpunkt||sorte.pflueck_reifezeit||''):''});
       }
     });
     sortenMap.forEach(s=>result.push(s));
@@ -3512,6 +3514,10 @@ function hofTags(s){
   if(s.arche_pdf) t.push('Arche Noah');
   if(state.verifiziert && state.verifiziert[s.sorte]) t.push('verifiziert');
   else if(s.recherchiert) t.push('recherchiert');
+  const pz=s.pflueckzeitpunkt||s.pflueck_reifezeit||'';
+  if(pz){const m=parseFloat(String(pz).replace(',','.'));if(!isNaN(m)){const f=s.frucht||'';t.push(m<=8?'Sommer'+f:m<=10?'Herbst'+f:'Winter'+f);}}
+  const full=getSorte(s.name||s.sorte);
+  if(full){const txt=[full.eigenschaften||'',full.beschreibung||'',full.eignung||'',full.standort_anspruch||''].join(' ').toLowerCase();if(txt.includes('historisch')) t.push('historisch');if(txt.includes('streuobst')) t.push('Streuobst');if(txt.includes('rarität')||txt.includes('raritaet')) t.push('Rarität');if(txt.includes('winterhart')) t.push('winterhart');}
   return t;
 }
 
@@ -3832,7 +3838,7 @@ function renderSortenListe(){
     return;
   }
   const html=page.map(s=>{
-    const tags=(s.tags||[]).map(t=>'<span class="sb-tag '+tagCls(t)+'">'+t+'</span>').join('');
+    const tags=[...new Set([...(s.tags||[]),...hofTags(s)])].map(t=>'<span class="sb-tag '+tagCls(t)+'">'+t+'</span>').join('');
     const quelleBadge=s.quelle==='arche'?'<span class="an-badge">Arche Noah</span>':'<span class="an-badge hof-badge">Hofsorten</span>';
     const pflText=s.pflueckzeitpunkt||'';
     const mittel=s.baum_ids&&s.baum_ids.length?calcPfluckMittel(s.name):null;
@@ -3885,7 +3891,7 @@ function renderBeraterBatch(count){
   for(let i=start;i<end;i++){
     const e=scored[i];
     const s=e.s;
-    const tags=hofTags(s).map(t=>'<span class="sb-tag '+tagCls(t)+'">'+t+'</span>').join('');
+    const tags=[...new Set([...(s.tags||[]),...hofTags(s)])].map(t=>'<span class="sb-tag '+tagCls(t)+'">'+t+'</span>').join('');
     const reife=s.pflueckzeitpunkt||s.pflueck_reifezeit||'–';
     const sn=s.sorte||s.name||'';
     const n=anzahl[sn]||0;
