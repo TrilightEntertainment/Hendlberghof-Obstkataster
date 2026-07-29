@@ -1398,7 +1398,7 @@ const EXPORT_SPALTEN = {
     {key:'Veredelt', get:t=> t.veredelt||''},
     {key:'Unterlage', get:t=> t.unterlage||''},
     {key:'Erstmals tragend', def:false, get:t=> t.erstmals_tragend||''},
-    {key:'Genussreife', def:false, get:t=>{const m=baumMerged(t); return m.genuss_von&&m.genuss_bis? m.genuss_von+'–'+m.genuss_bis+' Monate' : (m.genussreife||'');}},
+    {key:'Genussreife', def:false, get:t=>{const m=baumMerged(t); return formatGenuss(m.genuss_von,m.genuss_bis,m.genussreife,m.genuss);}},
     {key:'Lagerfähigkeit', def:false, get:t=> baumMerged(t).lagerfaehig||''},
     {key:'Befruchtungspartner', def:false, get:t=> baumMerged(t).befruchtungspartner||''},
     {key:'Geschmack', def:false, get:t=> baumMerged(t).geschmack||''},
@@ -1411,7 +1411,7 @@ const EXPORT_SPALTEN = {
     {key:'Verwendung', get:s=> ((getSorte(s.sorte)||s).verwendung||[]).join(', ')},
     {key:'Anzahl Bäume', get:s=> (s.baum_ids||[]).length},
     {key:'Pflückzeit', get:s=> s.pflueckzeitpunkt||s.pflueck_reifezeit||''},
-    {key:'Genussreife', get:s=> s.genuss_von&&s.genuss_bis? s.genuss_von+'–'+s.genuss_bis+' Monate' : (s.genussreife||'')},
+    {key:'Genussreife', get:s=> formatGenuss(s.genuss_von,s.genuss_bis,s.genussreife,s.genuss)},
     {key:'Lagerfähigkeit', get:s=> s.lagerfaehig||''},
     {key:'Ertrag', get:s=> s.ertrag||''},
     {key:'Herkunft', get:s=> s.herkunft_jahr||s.herkunft||''},
@@ -1641,7 +1641,7 @@ function exportBaumKartePDF(id){
   const pflBeschreibung = merged.pflueckzeitpunkt||merged.pflueck_reifezeit||'';
 
   feldDrei('Obstart', t.frucht, 'Pflückreife lt. Beschreibung', pflBeschreibung, 'Pflückreife ermittelt', mittelText||'–');
-  feldPaar('Verwendung', (merged.verwendung||[]).join(', ')||'–', 'Genussreife', merged.genuss_von&&merged.genuss_bis? merged.genuss_von+' – '+merged.genuss_bis+' Monate ab Ernte' : merged.genussreife);
+  feldPaar('Verwendung', (merged.verwendung||[]).join(', ')||'–', 'Genussreife', formatGenuss(merged.genuss_von,merged.genuss_bis,merged.genussreife,merged.genuss));
   feldDrei('Gepflanzt', t.ausgepflanzt, 'Veredelt', t.veredelt, 'Unterlage', t.unterlage);
   feldPaar('Ertrag', merged.ertrag, 'Befruchtungspartner', merged.befruchtungspartner);
   feldPaar('Erstmals tragend', t.erstmals_tragend, 'Lagerfähigkeit', merged.lagerfaehig);
@@ -1698,7 +1698,7 @@ function exportSortenKartePDF(sorteName){
 
   feldPaar('Obstart', s.frucht, 'Pflückreife', s.pflueckzeitpunkt||s.pflueck_reifezeit);
   if(mittelText){ feldPaar('Pflückreife ermittelt', mittel.wert+' ('+mittel.anzahl+' Ernten, '+mittel.jahre.join(', ')+')', '', ''); }
-  feldPaar('Verwendung', (s.verwendung||[]).join(', '), 'Genussreife', s.genuss_von&&s.genuss_bis? s.genuss_von+' – '+s.genuss_bis+' Monate ab Ernte' : s.genussreife);
+  feldPaar('Verwendung', (s.verwendung||[]).join(', '), 'Genussreife', formatGenuss(s.genuss_von,s.genuss_bis,s.genussreife,s.genuss));
   feldPaar('Pflanzjahr', s.ausgepflanzt, 'Ertrag', s.ertrag);
   feldPaar('Veredelungsjahr', s.veredelt, 'Unterlage', s.unterlage);
   feldPaar('Erstmals tragend', s.erstmals_tragend, 'Lagerfähigkeit', s.lagerfaehig);
@@ -1972,7 +1972,7 @@ function openBaumModal(id){
     </div>
     ${fieldGrid([
       ['Verwendung', (merged.verwendung||[]).join(', ')],
-      ['Genussreife', merged.genuss_von&&merged.genuss_bis ? merged.genuss_von+' – '+merged.genuss_bis+' Monate ab Ernte' : merged.genussreife]
+      ['Genussreife', formatGenuss(merged.genuss_von,merged.genuss_bis,merged.genussreife,merged.genuss)]
     ])}
     ${fieldGrid([
       ['Gepflanzt', t.ausgepflanzt],
@@ -2260,7 +2260,7 @@ function openSortenModal(sorteName){
     </div>
     ${fieldGrid([
       ['Verwendung', (s.verwendung||[]).join(', ')],
-      ['Genussreife', s.genuss_von&&s.genuss_bis? s.genuss_von+' – '+s.genuss_bis+' Monate ab Ernte' : s.genussreife]
+      ['Genussreife', formatGenuss(s.genuss_von,s.genuss_bis,s.genussreife,s.genuss)]
     ])}
     ${fieldGrid([
       ['Pflanzjahr', s.ausgepflanzt],
@@ -3799,6 +3799,12 @@ function renderVerwendung(){
 }
 function tagCls(t){const tl=t.toLowerCase();if(['sommerapfel','sommerbirne','herbstapfel','herbstbirne','winterapfel','winterbirne','frühsorte','lager'].some(k=>tl===k))return 'tr';if(['pilzresistent','robust','winterhart','resistent','feuerbrand','scharka','bio','schorfresistent'].some(k=>tl.includes(k)))return 'tg';if(['most','cider','einkochen','schnaps','destillat','saft','tafelobst'].some(k=>tl.includes(k)))return 'ta';if(['bestäuber','wildtier','streuobst','historisch','österreichisch','rarität'].some(k=>tl.includes(k)))return 'tp';return 'tb';}
 function tagSortKey(t){const c=tagCls(t);return c==='tr'?0:c==='ta'?1:2;}
+function formatGenuss(von,bis,reife,genuss){
+  if(von&&bis){const n=['','Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];return n[parseInt(von)]+' bis '+n[parseInt(bis)];}
+  const val=reife||genuss;
+  if(val){const ABV={Jan:'Januar',Feb:'Februar',Mär:'März',März:'März',Apr:'April',Mai:'Mai',Jun:'Juni',Jul:'Juli',Aug:'August',Sep:'September',Okt:'Oktober',Nov:'November',Dez:'Dezember'};const p=val.split(/[–\-]+/);if(p.length===2)return(ABV[p[0].trim()]||p[0].trim())+' bis '+(ABV[p[1].trim()]||p[1].trim());return val;}
+  return '';
+}
 
 // ─── UNIFIED RENDER ──────────────────────────────────────────────────────────
 function getFilteredSorten(){
