@@ -3856,11 +3856,25 @@ function renderSortenListe(){
     const idsText=(s.baum_ids&&s.baum_ids.length)?' '+s.baum_ids.map(id=>'<span class="idbadge">ID '+id+'</span>').join(' '):'';
     const verwendungText=(s.verwendung&&s.verwendung.length)?s.verwendung.join(', '):'';
     const lageplanBtn=(s.quelle==='hof'&&state.positions)?(()=>{const pi=(s.baum_ids||[]).find(id=>state.positions[id]);return pi?'<button class="btn secondary" style="font-size:.78rem;padding:2px 8px;margin-top:4px;" onclick="event.stopPropagation();showOnLageplan(\''+escAttr(pi)+'\')">Im Lageplan anzeigen</button>':'';})():'';
+    const safeSn=escAttr(s.name);
+    const preise=getPreisFuerSorte(s.name);
+    let preisHtml='';
+    if(preise.length){
+      preisHtml='<div style="margin-top:6px;padding-top:6px;border-top:1px solid var(--border);">';
+      preise.forEach(p=>{
+        preisHtml+='<div style="display:flex;align-items:center;gap:6px;font-size:.82rem;margin:2px 0;"><span style="color:var(--gruen);font-weight:600;">'+p.preis.toFixed(2)+' EUR</span> <span style="color:var(--muted);">('+p.quelle+(p.unterlage?' '+p.unterlage:'')+(p.alter?' '+p.alter:'')+')</span>';
+        preisHtml+=' <button class="btn secondary" style="font-size:.72rem;padding:1px 6px;" onclick="event.stopPropagation();addToBestellliste(\''+safeSn+'\','+JSON.stringify(p).replace(/"/g,'&quot;')+')">Zur Bestellung hinzufügen</button>';
+        if(p.vorbestellbar) preisHtml+=' <span style="font-size:.7rem;color:var(--muted);">(vorbestellbar)</span>';
+        preisHtml+='</div>';
+      });
+      preisHtml+='</div>';
+    }
     return '<div class="sl-card" onclick="openSortenModal(\''+escAttr(s.name)+'\')">'+quelleBadge+
       '<div class="sl-card-name">'+s.name+'<span class="sl-card-ids">'+idsText+'</span></div>'+
       '<div class="sl-card-reife">'+s.frucht+(pflText?' · Pflückzeit: '+pflText+mittelText:(mittelText?' · Mittelwert:'+mittelText:''))+(verwendungText?' · '+verwendungText:'')+'</div>'+
       '<div class="sb-tags">'+tags+'</div>'+
       (lageplanBtn?'<div style="margin-top:4px;">'+lageplanBtn+'</div>':'')+
+      preisHtml+
       '<div class="sl-card-desc">'+(s.beschreibung||'').slice(0,120)+((s.beschreibung||'').length>120?'…':'')+'</div>'+
     '</div>';
   }).join('');
