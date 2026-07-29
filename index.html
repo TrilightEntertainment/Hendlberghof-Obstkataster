@@ -2251,7 +2251,7 @@ function openSortenModal(sorteName){
       <button class="btn-verify" onclick="toggleVerifiziert('${escAttr(s.sorte)}')">✓ Als verifiziert markieren</button>`
       : (state.verifiziert[s.sorte]? `<div class="badge-verifiziert">✓ Verifiziert am ${state.verifiziert[s.sorte]}</div>
       <button class="btn-verify done" onclick="toggleVerifiziert('${escAttr(s.sorte)}')">Verifizierung zurücknehmen</button>` : '')}
-    <h2>${s.sorte}${s.baum_ids&&s.baum_ids.length?' <span class="idbadge" style="font-size:.78rem;">'+s.baum_ids.join(', ')+'</span>':''}</h2>
+    <h2>${s.sorte}${s.baum_ids&&s.baum_ids.length?' <span class="idbadge" style="font-size:.78rem;">'+s.baum_ids.map(id=>'ID '+id).join(', ')+'</span>':''}</h2>
     ${archeNoahLink(s)}
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:0;border:1px solid var(--rand);border-radius:10px;overflow:hidden;margin-bottom:8px;">
       <div class="field"><b>Obstart</b>${escHtml(s.frucht||'')}</div>
