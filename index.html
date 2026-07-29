@@ -2382,12 +2382,14 @@ document.getElementById('unplaced-select').addEventListener('change', e=>{
   if(selectedForPlacement){
     movePinMode = false;
     placeMode = true;
+    if(satMap) satMap.dragging.disable();
     document.getElementById('place-mode-label').textContent = 'Baum setzen';
     document.getElementById('place-status').textContent = 'Auf Karte klicken, um den Baum zu positionieren.';
   } else {
     movePinMode = true;
     placeMode = false;
     selectedPinId = null;
+    if(satMap) satMap.dragging.enable();
     document.getElementById('place-mode-label').textContent = 'Baum verschieben';
     document.getElementById('place-status').textContent = '';
   }
@@ -2397,6 +2399,7 @@ document.getElementById('btn-place-mode').addEventListener('click', ()=>{
   movePinMode = false;
   selectedForPlacement = null;
   selectedPinId = null;
+  if(satMap) satMap.dragging.enable();
   document.getElementById('place-mode-label').textContent = 'Baum verschieben';
   document.getElementById('place-status').textContent = '';
   renderSatMarkers();
@@ -2429,6 +2432,7 @@ function setMapLayer(layer){
     initSatMap();
   } else {
     movePinMode = true; placeMode = false; selectedPinId = null;
+    if(satMap) satMap.dragging.enable();
     lageScale = 1; lageTx = 0; lageTy = 0; _lageApplyTransform();
   }
   applyEditModeUI();
@@ -2452,6 +2456,7 @@ function initSatMap(){
         movePinMode = true;
         placeMode = false;
         selectedForPlacement = null;
+        if(satMap) satMap.dragging.enable();
         document.getElementById('place-mode-label').textContent = 'Baum verschieben';
         document.getElementById('place-status').textContent = 'Position im Satellit gesetzt!';
         document.getElementById('unplaced-select').value = '';
@@ -2526,6 +2531,7 @@ document.getElementById('btn-gps-place').addEventListener('click', ()=>{
     renderSatMarkers(); renderUnplacedSelect();
     movePinMode = true;
     placeMode = false;
+    if(satMap) satMap.dragging.enable();
     selectedForPlacement = '';
     document.getElementById('unplaced-select').value='';
     document.getElementById('place-mode-label').textContent = 'Baum verschieben';
@@ -2795,6 +2801,7 @@ function applyEditModeUI(){
   if(!on){
     placeMode = false;
     movePinMode = false; selectedPinId = null;
+    if(satMap) satMap.dragging.enable();
     const placeLabel = document.getElementById('place-mode-label');
     if(placeLabel) placeLabel.textContent = 'Baum verschieben';
     const st = document.getElementById('place-status');
