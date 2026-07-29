@@ -2383,6 +2383,7 @@ function renderUnplacedSelect(){
   if(selectedForPlacement){
     movePinMode = false;
     placeMode = true;
+    if(satMap) satMap.dragging.disable();
     document.getElementById('place-mode-label').textContent = 'Baum setzen';
     document.getElementById('place-status').textContent = 'Auf Karte klicken, um den Baum zu positionieren.';
   } else {
@@ -2472,41 +2473,10 @@ function initSatMap(){
         showToast((t?t.sorte:selectedPinId)+' verschoben','success');
         movePinMode = true;
         selectedPinId = null;
+        if(satMap) satMap.dragging.enable();
         document.getElementById('place-mode-label').textContent = 'Baum verschieben';
         document.getElementById('place-status').textContent = '';
         renderSatMarkers();
-      }
-    });
-    satMap.on('touchstart', function(e){
-      if(placeMode && selectedForPlacement && e.touches&&e.touches[0]){
-        satMap._touchStartPos = {x:e.touches[0].clientX, y:e.touches[0].clientY};
-      }
-    });
-    satMap.on('touchend', function(e){
-      if(placeMode && selectedForPlacement && satMap._touchStartPos){
-        const t = e.changedTouches&&e.changedTouches[0];
-        if(t){
-          const dx = t.clientX - satMap._touchStartPos.x;
-          const dy = t.clientY - satMap._touchStartPos.y;
-          if(Math.abs(dx)<10 && Math.abs(dy)<10){
-            const rect = satMap.getContainer().getBoundingClientRect();
-            const cx = t.clientX - rect.left;
-            const cy = t.clientY - rect.top;
-            const p = satMap.containerPointToLatLng([cx, cy]);
-            if(!state.satPositions) state.satPositions = {};
-            state.satPositions[selectedForPlacement] = {lat:p.lat, lng:p.lng};
-            saveState();
-            renderSatMarkers();
-            movePinMode = true;
-            placeMode = false;
-            selectedForPlacement = null;
-            document.getElementById('place-mode-label').textContent = 'Baum verschieben';
-            document.getElementById('place-status').textContent = 'Position im Satellit gesetzt!';
-            document.getElementById('unplaced-select').value = '';
-            renderUnplacedSelect();
-          }
-        }
-        satMap._touchStartPos = null;
       }
     });
   }
@@ -2534,6 +2504,7 @@ function renderSatMarkers(){
     m.on('click', function(){
       if(movePinMode){
         selectedPinId = id;
+        if(satMap) satMap.dragging.disable();
         document.getElementById('place-status').textContent = `Pin "${id} — ${t?t.sorte:''}" ausgewählt. Jetzt auf neue Position klicken.`;
         renderSatMarkers();
         return;
