@@ -444,6 +444,7 @@
 #tab-sortenberater .tb{background:var(--blau-hell);color:var(--blau)}
 #tab-sortenberater .tp{background:var(--lila-hell);color:var(--lila)}
 #tab-sortenberater .tr{background:var(--rot-hell);color:var(--rot)}
+#tab-sortenberater .idbadge{display:inline-block;background:transparent;color:var(--ackerde);font-weight:700;padding:2px 8px;border-radius:6px;font-size:.78rem;vertical-align:middle;border:1px solid var(--stroh)}
 #tab-sortenberater .sb-gilde{font-size:.92rem;color:var(--text-mid);line-height:1.65;margin-top:4px}
 #tab-sortenberater .sb-gilde strong{font-family:'DM Sans',sans-serif;font-size:11px;color:var(--text-leicht);font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-right:5px}
 #tab-sortenberater .sl-toolbar{display:flex;gap:10px;margin-bottom:1.25rem;flex-wrap:wrap;align-items:center}
@@ -3847,7 +3848,7 @@ function renderSortenListe(){
     const pflText=s.pflueckzeitpunkt||'';
     const mittel=s.baum_ids&&s.baum_ids.length?calcPfluckMittel(s.name):null;
     const mittelText=mittel?' <span style="color:var(--gruen);font-weight:600;">→ '+mittel.wert+'</span>':'';
-    const idsText=(s.baum_ids&&s.baum_ids.length)?' · '+s.baum_ids.join(', '):'';
+    const idsText=(s.baum_ids&&s.baum_ids.length)?' '+s.baum_ids.map(id=>'<span class="idbadge">ID '+id+'</span>').join(' '):'';
     const verwendungText=(s.verwendung&&s.verwendung.length)?s.verwendung.join(', '):'';
     const lageplanBtn=(s.quelle==='hof'&&state.positions)?(()=>{const pi=(s.baum_ids||[]).find(id=>state.positions[id]);return pi?'<button class="btn secondary" style="font-size:.78rem;padding:2px 8px;margin-top:4px;" onclick="event.stopPropagation();showOnLageplan(\''+escAttr(pi)+'\')">Im Lageplan anzeigen</button>':'';})():'';
     return '<div class="sl-card" onclick="openSortenModal(\''+escAttr(s.name)+'\')">'+quelleBadge+
@@ -3901,7 +3902,7 @@ function renderBeraterBatch(count){
     const n=anzahl[sn]||0;
     const nTxt=n?' · '+n+' Baum/Bäume am Hof':'';
     const quelleLabel=s.quelle==='arche'?'Arche Noah':'Hofsorte';
-    const idText=s.id?'<span class="idbadge" style="font-size:.72rem;margin-left:6px;">ID '+s.id+'</span>':'';
+    const idText=(s.baum_ids&&s.baum_ids.length)?' '+s.baum_ids.map(id=>'<span class="idbadge">ID '+id+'</span>').join(' '):'';
     const posBaumId=state.positions? Object.keys(state.positions).find(k=>{const t=getTree(k);return t&&t.sorte===sn;}) : null;
     const preise=getPreisFuerSorte(sn);
     const safeSn=escAttr(sn);
