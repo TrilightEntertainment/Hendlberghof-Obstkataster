@@ -2780,7 +2780,7 @@ function applyEditModeUI(){
   const movePinBtn = document.getElementById('btn-move-pin');
   if(movePinBtn) movePinBtn.style.display = admin && mapLayer==='sat' ? '' : 'none';
   const gpsPlaceBtn = document.getElementById('btn-gps-place');
-  if(gpsPlaceBtn) gpsPlaceBtn.style.display = zeigeEdit ? '' : 'none';
+  if(gpsPlaceBtn) gpsPlaceBtn.style.display = zeigeEdit && mapLayer==='sat' ? '' : 'none';
   const fotoSel = document.getElementById('foto-select');
   if(fotoSel) fotoSel.style.display = mapLayer==='sat' ? 'none' : '';
   const hint = document.getElementById('lageplan-hint');
