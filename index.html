@@ -3873,8 +3873,8 @@ function renderSortenListe(){
       '<div class="sl-card-name">'+s.name+'<span class="sl-card-ids">'+idsText+'</span></div>'+
       '<div class="sl-card-reife">'+s.frucht+(pflText?' · Pflückzeit: '+pflText+mittelText:(mittelText?' · Mittelwert:'+mittelText:''))+(verwendungText?' · '+verwendungText:'')+'</div>'+
       '<div class="sb-tags">'+tags+'</div>'+
-      (lageplanBtn?'<div style="margin-top:4px;">'+lageplanBtn+'</div>':'')+
       '<div class="sl-card-desc">'+(s.beschreibung||'').slice(0,120)+((s.beschreibung||'').length>120?'…':'')+'</div>'+
+      (lageplanBtn?'<div style="margin-top:4px;">'+lageplanBtn+'</div>':'')+
       preisHtml+
     '</div>';
   }).join('');
