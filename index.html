@@ -2422,13 +2422,8 @@ function setMapLayer(layer){
   document.getElementById('btn-layer-sat').textContent = layer==='sat'? 'Fotoansicht' : 'Satellit';
   const fotoSel = document.getElementById('foto-select');
   if(fotoSel) fotoSel.style.display = layer==='sat'? 'none' : '';
-  if(layer==='sat'){
-    initSatMap();
-  } else {
-    movePinMode = false; selectedPinId = null;
-    lageScale = 1; lageTx = 0; lageTy = 0; _lageApplyTransform();
-  }
   applyEditModeUI();
+  renderUnplacedSelect();
 }
 
 function initSatMap(){
