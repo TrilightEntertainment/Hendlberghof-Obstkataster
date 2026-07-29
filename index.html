@@ -3874,8 +3874,8 @@ function renderSortenListe(){
       '<div class="sl-card-reife">'+s.frucht+(pflText?' · Pflückzeit: '+pflText+mittelText:(mittelText?' · Mittelwert:'+mittelText:''))+(verwendungText?' · '+verwendungText:'')+'</div>'+
       '<div class="sb-tags">'+tags+'</div>'+
       (lageplanBtn?'<div style="margin-top:4px;">'+lageplanBtn+'</div>':'')+
-      preisHtml+
       '<div class="sl-card-desc">'+(s.beschreibung||'').slice(0,120)+((s.beschreibung||'').length>120?'…':'')+'</div>'+
+      preisHtml+
     '</div>';
   }).join('');
   document.getElementById('res').innerHTML=paginationHtml+'<div class="sl-grid">'+html+'</div>';
@@ -3940,7 +3940,7 @@ function renderBeraterBatch(count){
       preisHtml+='</div>';
     }
     const archeHtml=archeNoahLink(s);
-    html+='<div class="sb-sorte" style="cursor:pointer" onclick="openSortenModal(\''+safeSn+'\')"><div class="sb-sorte-name">'+sn+idText+'<span class="sb-reife">Pflueckzeit: '+reife+nTxt+' &middot; bis '+s.standort.hmax+'m</span></div><div class="sb-tags">'+tags+'</div><div class="sb-gilde"><strong>'+quelleLabel+'</strong> '+s.standort.basis+'</div>'+preisHtml+(archeHtml?'<div style="margin-top:6px;">'+archeHtml+'</div>':'')+btnRow+'</div>';
+    html+='<div class="sb-sorte" style="cursor:pointer" onclick="openSortenModal(\''+safeSn+'\')"><div class="sb-sorte-name">'+sn+idText+'<span class="sb-reife">Pflueckzeit: '+reife+nTxt+' &middot; bis '+s.standort.hmax+'m</span></div><div class="sb-tags">'+tags+'</div><div class="sb-gilde"><strong>'+quelleLabel+'</strong> '+s.standort.basis+'</div>'+(archeHtml?'<div style="margin-top:6px;">'+archeHtml+'</div>':'')+btnRow+preisHtml+'</div>';
   }
   container.insertAdjacentHTML('beforeend', html);
   window._beraterShown=end;
