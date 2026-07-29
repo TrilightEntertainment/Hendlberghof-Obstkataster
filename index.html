@@ -3849,7 +3849,7 @@ function renderSortenListe(){
   }
   const html=page.map(s=>{
     const tags=[...new Set([...(s.tags||[]),...hofTags(s)])].sort((a,b)=>tagSortKey(a)-tagSortKey(b)).map(t=>'<span class="sb-tag '+tagCls(t)+'">'+t+'</span>').join('');
-    const quelleBadge=s.quelle==='arche'?'<span class="an-badge">Arche Noah</span>':'<span class="an-badge hof-badge">Hofsorten</span>';
+    const quelleBadge=s.quelle==='arche'?'<span class="an-badge">Arche Noah</span>':'<span class="an-badge hof-badge">Hofsorte</span>';
     const pflText=s.pflueckzeitpunkt||'';
     const mittel=s.baum_ids&&s.baum_ids.length?calcPfluckMittel(s.name):null;
     const mittelText=mittel?' <span style="color:var(--gruen);font-weight:600;">→ '+mittel.wert+'</span>':'';
