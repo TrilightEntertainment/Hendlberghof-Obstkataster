@@ -37,6 +37,8 @@
     --braun-hell:#fef3c7;
     --lila:#7c3aed;
     --lila-hell:#ede9fe;
+    --rot:#b91c1c;
+    --rot-hell:#fef2f2;
     --font-heading:Georgia,serif;
     --dark:#2A231D;
   }
@@ -397,7 +399,7 @@
 .toast.error{background:var(--dachziegel);}
 .toast.info{background:var(--ackerde);}
 /* ===== Sortenberater (integriert, an App-Design angepasst) ===== */
-#tab-sortenberater{max-width:1300px;margin:0 auto;--gruen:#2E3F2A;--gruen-hell:#eaf3de;--gruen-mid:#6E8A4E;--braun:#854F0B;--braun-hell:#FAEEDA;--rand:#E2DACB;--blau:#185FA5;--blau-hell:#E6F1FB;--lila:#993556;--lila-hell:#FBEAF0;--text:#2A231D;--text-mid:#5F5E5A;--text-leicht:#7A7168;--weiss:#ffffff;--stroh:#D9B458;--radius:10px}
+#tab-sortenberater{max-width:1300px;margin:0 auto;--gruen:#2E3F2A;--gruen-hell:#eaf3de;--gruen-mid:#6E8A4E;--braun:#854F0B;--braun-hell:#FAEEDA;--rand:#E2DACB;--blau:#185FA5;--blau-hell:#E6F1FB;--lila:#993556;--lila-hell:#FBEAF0;--rot:#b91c1c;--rot-hell:#fef2f2;--text:#2A231D;--text-mid:#5F5E5A;--text-leicht:#7A7168;--weiss:#ffffff;--stroh:#D9B458;--radius:10px}
 #tab-sortenberater .sb-accordion{margin-bottom:1rem}
 #tab-sortenberater .sb-accordion-header{display:flex;align-items:center;gap:8px;padding:12px 14px;background:var(--weiss);border:1px solid var(--rand);border-radius:var(--radius);cursor:pointer;transition:all .15s;user-select:none}
 #tab-sortenberater .sb-accordion-header:hover{border-color:var(--gruen-mid);background:#faf7ef}
@@ -441,6 +443,7 @@
 #tab-sortenberater .ta{background:var(--braun-hell);color:var(--braun)}
 #tab-sortenberater .tb{background:var(--blau-hell);color:var(--blau)}
 #tab-sortenberater .tp{background:var(--lila-hell);color:var(--lila)}
+#tab-sortenberater .tr{background:var(--rot-hell);color:var(--rot)}
 #tab-sortenberater .sb-gilde{font-size:.92rem;color:var(--text-mid);line-height:1.65;margin-top:4px}
 #tab-sortenberater .sb-gilde strong{font-family:'DM Sans',sans-serif;font-size:11px;color:var(--text-leicht);font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-right:5px}
 #tab-sortenberater .sl-toolbar{display:flex;gap:10px;margin-bottom:1.25rem;flex-wrap:wrap;align-items:center}
@@ -3794,7 +3797,8 @@ function renderVerwendung(){
   el.innerHTML='<option value="">Verwendung</option>'+zdef.map(z=>'<option value="'+escAttr(z.id)+'">'+z.label+'</option>').join('');
   if(prev && zdef.some(z=>z.id===prev)) el.value=prev;
 }
-function tagCls(t){const tl=t.toLowerCase();if(['pilzresistent','robust','winterhart','resistent','feuerbrand','scharka','bio','schorfresistent'].some(k=>tl.includes(k)))return 'tg';if(['most','cider','einkochen','schnaps','destillat','saft'].some(k=>tl.includes(k)))return 'ta';if(['bestäuber','wildtier','streuobst','historisch','österreichisch','rarität'].some(k=>tl.includes(k)))return 'tp';return 'tb';}
+function tagCls(t){const tl=t.toLowerCase();if(['sommerapfel','sommerbirne','herbstapfel','herbstbirne','winterapfel','winterbirne','frühsorte','lager'].some(k=>tl===k))return 'tr';if(['pilzresistent','robust','winterhart','resistent','feuerbrand','scharka','bio','schorfresistent'].some(k=>tl.includes(k)))return 'tg';if(['most','cider','einkochen','schnaps','destillat','saft','tafelobst'].some(k=>tl.includes(k)))return 'ta';if(['bestäuber','wildtier','streuobst','historisch','österreichisch','rarität'].some(k=>tl.includes(k)))return 'tp';return 'tb';}
+function tagSortKey(t){const c=tagCls(t);return c==='tr'?0:c==='ta'?1:2;}
 
 // ─── UNIFIED RENDER ──────────────────────────────────────────────────────────
 function getFilteredSorten(){
@@ -3838,7 +3842,7 @@ function renderSortenListe(){
     return;
   }
   const html=page.map(s=>{
-    const tags=[...new Set([...(s.tags||[]),...hofTags(s)])].map(t=>'<span class="sb-tag '+tagCls(t)+'">'+t+'</span>').join('');
+    const tags=[...new Set([...(s.tags||[]),...hofTags(s)])].sort((a,b)=>tagSortKey(a)-tagSortKey(b)).map(t=>'<span class="sb-tag '+tagCls(t)+'">'+t+'</span>').join('');
     const quelleBadge=s.quelle==='arche'?'<span class="an-badge">Arche Noah</span>':'<span class="an-badge hof-badge">Hofsorten</span>';
     const pflText=s.pflueckzeitpunkt||'';
     const mittel=s.baum_ids&&s.baum_ids.length?calcPfluckMittel(s.name):null;
@@ -3891,7 +3895,7 @@ function renderBeraterBatch(count){
   for(let i=start;i<end;i++){
     const e=scored[i];
     const s=e.s;
-    const tags=[...new Set([...(s.tags||[]),...hofTags(s)])].map(t=>'<span class="sb-tag '+tagCls(t)+'">'+t+'</span>').join('');
+    const tags=[...new Set([...(s.tags||[]),...hofTags(s)])].sort((a,b)=>tagSortKey(a)-tagSortKey(b)).map(t=>'<span class="sb-tag '+tagCls(t)+'">'+t+'</span>').join('');
     const reife=s.pflueckzeitpunkt||s.pflueck_reifezeit||'–';
     const sn=s.sorte||s.name||'';
     const n=anzahl[sn]||0;
