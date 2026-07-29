@@ -3839,10 +3839,12 @@ function renderSortenListe(){
     const mittelText=mittel?' <span style="color:var(--gruen);font-weight:600;">→ '+mittel.wert+'</span>':'';
     const idsText=(s.baum_ids&&s.baum_ids.length)?' · '+s.baum_ids.join(', '):'';
     const verwendungText=(s.verwendung&&s.verwendung.length)?s.verwendung.join(', '):'';
+    const lageplanBtn=(s.quelle==='hof'&&state.positions)?(()=>{const pi=(s.baum_ids||[]).find(id=>state.positions[id]);return pi?'<button class="btn secondary" style="font-size:.78rem;padding:2px 8px;margin-top:4px;" onclick="event.stopPropagation();showOnLageplan(\''+escAttr(pi)+'\')">Im Lageplan anzeigen</button>':'';})():'';
     return '<div class="sl-card" onclick="openSortenModal(\''+escAttr(s.name)+'\')">'+quelleBadge+
       '<div class="sl-card-name">'+s.name+'<span class="sl-card-ids">'+idsText+'</span></div>'+
       '<div class="sl-card-reife">'+s.frucht+(pflText?' · Pflückzeit: '+pflText+mittelText:(mittelText?' · Mittelwert:'+mittelText:''))+(verwendungText?' · '+verwendungText:'')+'</div>'+
       '<div class="sb-tags">'+tags+'</div>'+
+      (lageplanBtn?'<div style="margin-top:4px;">'+lageplanBtn+'</div>':'')+
       '<div class="sl-card-desc">'+(s.beschreibung||'').slice(0,120)+((s.beschreibung||'').length>120?'…':'')+'</div>'+
     '</div>';
   }).join('');
