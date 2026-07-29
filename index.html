@@ -3734,9 +3734,6 @@ function beraterPool(){
   return all.map(s=>{
     const full=getSorte(s.name);
     let standort=full?.standort||null;
-    if(!standort && s.quelle==='arche'){
-      standort={hmax:1000,expo:['sued','nord','ost','west','suedost','suedwest','nordost','nordwest','mulde'],frost:'mittel',ns:['trocken','mittel','feucht'],ziele:['tafel','most'],basis:'Keine detaillierten Standortdaten vorhanden.'};
-    }
     return Object.assign({}, s, standort?{standort,sorte:full?.sorte||s.name}:null);
   }).filter(s=>s.standort);
 }
