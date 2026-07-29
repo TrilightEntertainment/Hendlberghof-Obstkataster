@@ -2364,7 +2364,7 @@ function switchToImage(imgId) {
   img.style.opacity = '0.3';
   setTimeout(() => { img.src = src; img.onload = () => { img.style.opacity = '1'; renderPins(); }; }, 150);
   applyEditModeUI();
-  document.getElementById('foto-select').value = '';
+  renderUnplacedSelect();
 }
 
 function renderUnplacedSelect(){
@@ -2420,7 +2420,7 @@ function setMapLayer(layer){
   mapLayer = layer;
   document.getElementById('map-wrap').style.display = layer==='foto'? '' : 'none';
   document.getElementById('sat-map').style.display = layer==='sat'? 'block' : 'none';
-  document.getElementById('foto-select').value = '';
+  document.getElementById('foto-select').value = layer==='sat' ? 'sat' : ((currentImage||'lageplan'));
   if(layer==='sat'){
     initSatMap();
   } else {
