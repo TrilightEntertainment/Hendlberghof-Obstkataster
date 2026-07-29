@@ -610,9 +610,10 @@
     </div>
     <div class="map-toolbar">
       <select id="foto-select" onchange="switchToImage(this.value)" style="min-width:160px;">
+        <option value="">Ansicht wählen</option>
         <option value="lageplan">Foto: Gesamtansicht</option>
+        <option value="sat">Satellit</option>
       </select>
-      <button class="btn field layer-btn" id="btn-layer-sat" onclick="setMapLayer(mapLayer==='sat'?'foto':'sat')">Satellit</button>
       <button class="btn field" onclick="exportLageplanPDF()">PDF</button>
       <button class="btn" id="btn-place-mode"><span id="place-mode-label">Position setzen</span></button>
       <button class="btn" id="btn-move-pin" style="display:none;"><span id="move-pin-label">Pin verschieben</span></button>
@@ -2339,7 +2340,7 @@ function percentToGps(xPct, yPct) {
 function initFotoSelect() {
   const sel = document.getElementById('foto-select');
   if (!sel) return;
-  sel.innerHTML = '<option value="lageplan">Foto: Gesamtansicht</option>';
+  sel.innerHTML = '<option value="">Ansicht wählen</option><option value="lageplan">Foto: Gesamtansicht</option><option value="sat">Satellit</option>';
   SECTION_PHOTOS.forEach(s => {
     const o = document.createElement('option');
     o.value = s.id;
@@ -2349,12 +2350,12 @@ function initFotoSelect() {
 }
 
 function switchToImage(imgId) {
+  if (!imgId) return;
   if (imgId === 'sat') { setMapLayer('sat'); return; }
   currentImage = imgId;
   if (mapLayer === 'sat') {
     document.getElementById('map-wrap').style.display = '';
     document.getElementById('sat-map').style.display = 'none';
-    document.getElementById('btn-layer-sat').classList.remove('active');
   }
   mapLayer = 'foto';
   const img = document.getElementById('map-img');
@@ -2418,10 +2419,7 @@ function setMapLayer(layer){
   mapLayer = layer;
   document.getElementById('map-wrap').style.display = layer==='foto'? '' : 'none';
   document.getElementById('sat-map').style.display = layer==='sat'? 'block' : 'none';
-  document.getElementById('btn-layer-sat').classList.toggle('active', layer==='sat');
-  document.getElementById('btn-layer-sat').textContent = layer==='sat'? 'Fotoansicht' : 'Satellit';
-  const fotoSel = document.getElementById('foto-select');
-  if(fotoSel) fotoSel.style.display = layer==='sat'? 'none' : '';
+  document.getElementById('foto-select').value = layer==='sat' ? 'sat' : ((currentImage||'lageplan'));
   if(layer==='sat'){
     initSatMap();
   } else {
@@ -2781,8 +2779,6 @@ function applyEditModeUI(){
   if(movePinBtn) movePinBtn.style.display = admin && mapLayer==='sat' ? '' : 'none';
   const gpsPlaceBtn = document.getElementById('btn-gps-place');
   if(gpsPlaceBtn) gpsPlaceBtn.style.display = zeigeEdit && mapLayer==='sat' ? '' : 'none';
-  const fotoSel = document.getElementById('foto-select');
-  if(fotoSel) fotoSel.style.display = mapLayer==='sat' ? 'none' : '';
   const hint = document.getElementById('lageplan-hint');
   if(hint) hint.style.display = on ? '' : 'none';
   if(!on){
