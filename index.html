@@ -3518,7 +3518,7 @@ function hofTags(s){
   if(state.verifiziert && state.verifiziert[s.sorte]) t.push('verifiziert');
   else if(s.recherchiert) t.push('recherchiert');
   const pz=s.pflueckzeitpunkt||s.pflueck_reifezeit||'';
-  if(pz){const m=parseFloat(String(pz).replace(',','.'));if(!isNaN(m)){const f=s.frucht||'';t.push(m<=8?'Sommer'+f:m<=10?'Herbst'+f:'Winter'+f);}}
+  if(pz){const m=parseFloat(String(pz).replace(',','.'));if(!isNaN(m)){const f=(s.frucht||'').toLowerCase();t.push(m<=8?'Sommer'+f:m<=10?'Herbst'+f:'Winter'+f);}}
   const full=getSorte(s.name||s.sorte);
   if(full){const txt=[full.eigenschaften||'',full.beschreibung||'',full.eignung||'',full.standort_anspruch||''].join(' ').toLowerCase();if(txt.includes('historisch')) t.push('historisch');if(txt.includes('streuobst')) t.push('Streuobst');if(txt.includes('rarität')||txt.includes('raritaet')) t.push('Rarität');if(txt.includes('winterhart')) t.push('winterhart');}
   return t;
