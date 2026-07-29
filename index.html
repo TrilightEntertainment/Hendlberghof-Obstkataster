@@ -2397,7 +2397,7 @@ function renderUnplacedSelect(){
 });
 document.getElementById('btn-place-mode').addEventListener('click', ()=>{
   placeMode = false;
-  movePinMode = false;
+  movePinMode = true;
   selectedForPlacement = null;
   selectedPinId = null;
   if(satMap) satMap.dragging.enable();
@@ -2500,14 +2500,40 @@ function renderSatMarkers(){
     const ringHtml = isSelected ? '<div style="position:absolute;top:-5px;left:-5px;width:22px;height:22px;border-radius:50%;border:3px solid #D9B458;pointer-events:none;"></div>' : '';
     const icon = L.divIcon({className:'',html:ringHtml+'<div style="width:11px;height:11px;border-radius:50%;border:2px solid #fff;background:'+farbe+';box-shadow:0 0 4px rgba(0,0,0,.4);position:relative;z-index:1;"></div>',iconSize:[22,22],iconAnchor:[11,11]});
     const m = L.marker([pos.lat, pos.lng], {icon:icon});
-    if(t) m.bindTooltip(`${id} — ${t.sorte}${movePinMode?' (antippen zum Verschieben)':''}`);
+    if(t) m.bindTooltip(`${id} — ${t.sorte} (Klick: Sorte, lang drücken: verschieben)`);
+    let longPressTimer = null;
+    m.on('add', function(){
+      const el = m.getElement();
+      if(!el) return;
+      const startLong = (e)=>{
+        e.preventDefault();
+        longPressTimer = setTimeout(()=>{
+          m.unbindTooltip();
+          selectedPinId = id;
+          if(satMap) satMap.dragging.disable();
+          document.getElementById('place-status').textContent = `Pin "${id} — ${t?t.sorte:''}" ausgewählt. Jetzt auf neue Position klicken.`;
+          renderSatMarkers();
+          longPressTimer = null;
+        }, 600);
+      };
+      const cancelLong = (e)=>{
+        e.preventDefault();
+        if(longPressTimer){ clearTimeout(longPressTimer); longPressTimer = null; }
+      };
+      if(window.PointerEvent){
+        el.addEventListener('pointerdown', startLong);
+        el.addEventListener('pointerup pointercancel pointerleave', cancelLong);
+      } else {
+        el.addEventListener('mousedown', startLong);
+        el.addEventListener('mouseup mouseleave', cancelLong);
+        el.addEventListener('touchstart', startLong, {passive:false});
+        el.addEventListener('touchend touchcancel', cancelLong);
+      }
+    });
     m.on('click', function(){
-      if(movePinMode){
-        selectedPinId = id;
-        if(satMap) satMap.dragging.disable();
-        document.getElementById('place-status').textContent = `Pin "${id} — ${t?t.sorte:''}" ausgewählt. Jetzt auf neue Position klicken.`;
-        renderSatMarkers();
-        return;
+      if(longPressTimer){
+        clearTimeout(longPressTimer);
+        longPressTimer = null;
       }
       openBaumModal(id);
     });
@@ -2803,7 +2829,7 @@ function applyEditModeUI(){
   if(hint) hint.style.display = on ? '' : 'none';
   if(!on){
     placeMode = false;
-    movePinMode = false; selectedPinId = null;
+    movePinMode = true; selectedPinId = null;
     if(satMap) satMap.dragging.enable();
     const placeLabel = document.getElementById('place-mode-label');
     if(placeLabel) placeLabel.textContent = 'Baum verschieben';
