@@ -2550,8 +2550,9 @@ document.getElementById('map-wrap').addEventListener('click', (e)=>{
     x = (x - 50) / lageScale + 50 - (lageTx / rect.width * 100);
     y = (y - 50) / lageScale + 50 - (lageTy / rect.height * 100);
   }
-  x = Math.max(0, Math.min(100, parseFloat(x.toFixed(2))));
-  y = Math.max(0, Math.min(100, parseFloat(y.toFixed(2))));
+  const imgPct = _toImgPct(x, y);
+  x = Math.max(0, Math.min(100, parseFloat(imgPct.x.toFixed(2))));
+  y = Math.max(0, Math.min(100, parseFloat(imgPct.y.toFixed(2))));
   state.positions[selectedForPlacement] = {x, y};
   saveState();
   renderPins(); renderUnplacedSelect();
@@ -2628,10 +2629,31 @@ function lageZoomReset(){ lageScale=1; lageTx=0; lageTy=0; _lageApplyTransform()
 })();
 
 /* ---------- Pins ---------- */
+/* object-fit:contain  letterboxing → positionierungen laufen immer über
+   das Bild-Koordinatensystem (0‑100 % der Bildfläche), nicht über den Container. */
+function _getImageMetrics(){
+  const img = document.getElementById('map-img');
+  const wrap = document.getElementById('lage-inner') || document.getElementById('map-wrap');
+  const r = wrap.getBoundingClientRect();
+  const cw = r.width, ch = r.height;
+  const iw = img && img.naturalWidth ? img.naturalWidth : cw;
+  const ih = img && img.naturalHeight ? img.naturalHeight : ch;
+  const s  = Math.min(cw/iw, ch/ih);
+  return { cw, ch, dw: iw*s, dh: ih*s, ox: (cw-iw*s)/2, oy: (ch-ih*s)/2 };
+}
+function _toImgPct(cx, cy, m){
+  if(!m) m = _getImageMetrics();
+  return { x: (cx/100*m.cw - m.ox) / m.dw * 100, y: (cy/100*m.ch - m.oy) / m.dh * 100 };
+}
+function _toCtrPct(ix, iy, m){
+  if(!m) m = _getImageMetrics();
+  return { x: (m.ox + m.dw*ix/100) / m.cw * 100, y: (m.oy + m.dh*iy/100) / m.ch * 100 };
+}
 function renderPins(){
   document.querySelectorAll('.pin').forEach(p=>p.remove());
   const wrap = document.getElementById('lage-inner') || document.getElementById('map-wrap');
   const editing = isAdmin();
+  const m = _getImageMetrics();
   Object.entries(state.positions).forEach(([id,pos])=>{
     const t = getTree(id);
     if(!t) return;
@@ -2639,10 +2661,11 @@ function renderPins(){
       const photo = SECTION_PHOTOS.find(s => s.id === currentImage);
       if(photo && t.standort_zeile && t.standort_zeile !== photo.row) return;
     }
+    const c = _toCtrPct(pos.x, pos.y, m);
     const pin = document.createElement('div');
     pin.className = 'pin ' + (t? (t.frucht||'').toLowerCase():'') + (editing? '' : ' locked');
-    pin.style.left = pos.x+'%';
-    pin.style.top = pos.y+'%';
+    pin.style.left = c.x+'%';
+    pin.style.top = c.y+'%';
     pin.dataset.id = id;
     pin.title = t
       ? (editing ? `${id} — ${t.sorte} (ziehen zum Verschieben)` : `${id} — ${t.sorte} (zum Verschieben bitte einloggen)`)
@@ -2693,9 +2716,10 @@ function makePinDraggable(pin, id, editing){
     dragging = false;
     pin.classList.remove('dragging');
     if(moved){
-      const x = parseFloat(pin.dataset.x), y = parseFloat(pin.dataset.y);
+      const cx = parseFloat(pin.dataset.x), cy = parseFloat(pin.dataset.y);
+      const ip = _toImgPct(cx, cy);
       const existing = state.positions[id] || {};
-      state.positions[id] = Object.assign({}, existing, {x: Math.round(x*100)/100, y: Math.round(y*100)/100});
+      state.positions[id] = Object.assign({}, existing, {x: Math.round(ip.x*100)/100, y: Math.round(ip.y*100)/100});
       saveState();
       document.getElementById('place-status').textContent = 'Position verschoben';
     } else if(!placeMode){
