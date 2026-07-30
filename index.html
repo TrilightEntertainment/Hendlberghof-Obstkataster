@@ -2475,25 +2475,29 @@ function initSatMap(){
     });
   }
   renderSatMarkers();
-  setTimeout(()=>{ satMap.invalidateSize(); }, 50);
+  setTimeout(()=>{ satMap.invalidateSize(); satMap.invalidateSize(); }, 100);
+  setTimeout(()=>{ satMap.invalidateSize(); }, 500);
 }
 
 function renderSatMarkers(){
   if(!satMap) return;
+  satMap.invalidateSize();
   console.log('[sat] renderSatMarkers, satPositions:', Object.keys(state.satPositions||{}));
-  if(satMap._container && satMap._container.offsetHeight===0) satMap.invalidateSize();
-  satMarkers.forEach(m=>{const e=m.getElement();if(e)e.classList.remove('sat-pin-selected');m.remove()});
+  satMarkers.forEach(m=>{ m.remove() });
   satMarkers = [];
   const farben = {apfel:'#dc2626', birne:'#22c55e', walnuss:'#b98e1a', zwetschke:'#6b21a8', kirsch:'#be185d', marille:'#f59e0b', quitte:'#84cc16', pflaume:'#7c3aed', sonne:'#f97316'};
   const bounds = [];
-  const editing = isAdmin();
   const satPos = state.satPositions || {};
   Object.entries(satPos).forEach(([id,pos])=>{
     if(!pos.lat || !pos.lng) return;
     const t = getTree(id);
     const farbe = t? (farben[(t.frucht||'').toLowerCase()]||'#B2543A') : '#B2543A';
-    const icon = L.divIcon({className:'',html:'<div style="width:11px;height:11px;border-radius:50%;border:2px solid #fff;background:'+farbe+';box-shadow:0 0 4px rgba(0,0,0,.4);position:relative;z-index:1;"></div>',iconSize:[22,22],iconAnchor:[11,11]});
-    const m = L.marker([pos.lat, pos.lng], {icon:icon, draggable: isAdmin()});
+    const icon = L.divIcon({
+      className: 'sat-marker',
+      html: '<div style="width:14px;height:14px;border-radius:50%;border:3px solid #fff;background:'+farbe+';"></div>',
+      iconSize: [20,20], iconAnchor: [10,10]
+    });
+    const m = L.marker([pos.lat, pos.lng], {icon, draggable: isAdmin()});
     if(t) m.bindTooltip(`${id} — ${t.sorte} (ziehen zum Verschieben)`);
     let dragActive = false;
     m.on('dragstart', function(){
@@ -2501,7 +2505,7 @@ function renderSatMarkers(){
       dragActive = true;
       if(satMap) satMap.dragging.disable();
       const el = m.getElement();
-      if(el) el.classList.add('sat-pin-selected');
+      if(el) el.style.zIndex = '1000';
     });
     m.on('dragend', function(){
       dragActive = false;
@@ -2509,8 +2513,6 @@ function renderSatMarkers(){
       if(!state.satPositions) state.satPositions = {};
       state.satPositions[id] = {lat:ll.lat, lng:ll.lng};
       saveState();
-      const el = m.getElement();
-      if(el) el.classList.remove('sat-pin-selected');
       if(satMap) satMap.dragging.enable();
       showToast((t?t.sorte:id)+' verschoben','success');
       document.getElementById('place-status').textContent = 'Position verschoben';
