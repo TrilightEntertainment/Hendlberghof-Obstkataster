@@ -1136,6 +1136,7 @@ function isEditMode(){ return !!window.__firebaseUser; }
 function getCurrentState(){ return state; }
 function applyRemoteState(remote){
   if(!remote) return;
+  console.log('[sync] applyRemoteState satPositions:', remote.satPositions ? Object.keys(remote.satPositions) : 'none');
   /* Stale customTrees/Edits/Positions DES REMOTE bereinigen BEVOR merge */
   const baumIds = new Set(BAUM_DATA.map(b=>b.id));
   const isAlive = (id)=> !BLACKLIST.has(id) && (baumIds.has(id) || id.startsWith('NEU-'));
@@ -1197,6 +1198,7 @@ function applyRemoteState(remote){
   renderResults();
   renderUnplacedSelect();
   if(document.getElementById('tab-lageplan').style.display!=='none') renderPins();
+  if(satMap) renderSatMarkers();
 }
 
 function getAllTrees(){
@@ -2474,6 +2476,7 @@ function initSatMap(){
 
 function renderSatMarkers(){
   if(!satMap) return;
+  console.log('[sat] renderSatMarkers, satPositions:', Object.keys(state.satPositions||{}));
   if(satMap._container && satMap._container.offsetHeight===0) satMap.invalidateSize();
   satMarkers.forEach(m=>{const e=m.getElement();if(e)e.classList.remove('sat-pin-selected');m.remove()});
   satMarkers = [];
