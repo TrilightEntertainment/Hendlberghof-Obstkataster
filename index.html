@@ -632,6 +632,7 @@
       </div>
     </div>
     <div id="sat-map"></div>
+    <div id="sat-debug" style="font-size:.75rem;color:var(--muted);margin-top:6px;text-align:center;">—</div>
   </section>
 
   <!-- DATEN & SICHERUNG -->
@@ -1136,7 +1137,10 @@ function isEditMode(){ return !!window.__firebaseUser; }
 function getCurrentState(){ return state; }
 function applyRemoteState(remote){
   if(!remote) return;
-  console.log('[sync] applyRemoteState satPositions:', remote.satPositions ? Object.keys(remote.satPositions) : 'none');
+  const satKeys = remote.satPositions ? Object.keys(remote.satPositions) : [];
+  const dbg = document.getElementById('sat-debug');
+  if(dbg) dbg.textContent = 'Remote Sat-Pins: '+satKeys.length+' | Lokal: '+(state.satPositions?Object.keys(state.satPositions).length:0);
+  console.log('[sync] remote satPositions:', satKeys);
   /* Stale customTrees/Edits/Positions DES REMOTE bereinigen BEVOR merge */
   const baumIds = new Set(BAUM_DATA.map(b=>b.id));
   const isAlive = (id)=> !BLACKLIST.has(id) && (baumIds.has(id) || id.startsWith('NEU-'));
@@ -2523,6 +2527,8 @@ function renderSatMarkers(){
     satMap.fitBounds(bounds, {padding:[30,30]});
     satFitted = true;
   }
+  const debug = document.getElementById('sat-debug');
+  if(debug) debug.textContent = 'Sat-Pins: '+(satPositions ? Object.keys(satPositions).length : 0)+' | Marker: '+satMarkers.length;
 }
 
 /* ---------- GPS Place Button ---------- */
