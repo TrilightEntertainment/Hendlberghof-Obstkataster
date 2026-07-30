@@ -3663,7 +3663,10 @@ function showUnterlageInfo(sorteName) {
   const info = getRootstockInfo(frucht);
   const aktuelleUnterlage = s.unterlage || '';
 
-  let html = '<div style="max-width:520px;"><button class="close" onclick="closeModal()">&times;</button>';
+  const mc = document.getElementById('modal-content');
+  mc.dataset.prevHtml = mc.innerHTML;
+
+  let html = '<div style="max-width:520px;"><button class="close" onclick="hideUnterlageInfo()">&times;</button>';
   html += '<h3 style="font-family:var(--font-heading);color:var(--dark);margin:0 0 12px;">Unterlagen (Rootstock)</h3>';
 
   if(info) {
@@ -3696,8 +3699,14 @@ function showUnterlageInfo(sorteName) {
   html += '<p style="font-size:.78rem;color:var(--muted);line-height:1.4;margin-top:14px;"><em>Quelle: Obstbaumschule Kriechbaumhof, Permakultur-Praxiserfahrung</em></p>';
   html += '</div>';
 
-  document.getElementById('modal-content').innerHTML = html;
+  mc.innerHTML = html;
   document.getElementById('overlay').classList.add('open');
+}
+function hideUnterlageInfo(){
+  const mc = document.getElementById('modal-content');
+  const prev = mc.dataset.prevHtml;
+  if(prev){ mc.innerHTML = prev; delete mc.dataset.prevHtml; }
+  else closeModal();
 }
 
 function showGuildQuellen() {
