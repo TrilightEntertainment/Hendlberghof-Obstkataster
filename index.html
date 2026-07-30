@@ -2482,31 +2482,29 @@ function initSatMap(){
 function renderSatMarkers(){
   if(!satMap) return;
   satMap.invalidateSize();
-  console.log('[sat] renderSatMarkers, satPositions:', Object.keys(state.satPositions||{}));
   satMarkers.forEach(m=>{ m.remove() });
   satMarkers = [];
-  const farben = {apfel:'#dc2626', birne:'#22c55e', walnuss:'#b98e1a', zwetschke:'#6b21a8', kirsch:'#be185d', marille:'#f59e0b', quitte:'#84cc16', pflaume:'#7c3aed', sonne:'#f97316'};
   const bounds = [];
   const satPos = state.satPositions || {};
+  let pinInfo = '';
   Object.entries(satPos).forEach(([id,pos])=>{
     if(!pos.lat || !pos.lng) return;
     const t = getTree(id);
-    const farbe = t? (farben[(t.frucht||'').toLowerCase()]||'#B2543A') : '#B2543A';
-    const m = L.circleMarker([pos.lat, pos.lng], {
-      radius: 8, color: '#fff', weight: 3, fillColor: farbe, fillOpacity: 1
-    });
-    if(t) m.bindTooltip(`${id} — ${t.sorte} (zum Verschieben einloggen)`);
+    const m = L.marker([pos.lat, pos.lng]).bindTooltip(t ? `${id} — ${t.sorte}` : id);
     m.on('click', function(){ openBaumModal(id); });
     m.addTo(satMap);
     satMarkers.push(m);
     bounds.push([pos.lat, pos.lng]);
+    pinInfo += id+' ';
   });
   if(bounds.length && !satFitted){
     satMap.fitBounds(bounds, {padding:[30,30]});
     satFitted = true;
+  } else if(bounds.length){
+    satMap.fitBounds(bounds, {padding:[30,30]});
   }
   const debug = document.getElementById('sat-debug');
-  if(debug) debug.textContent = 'Sat-Pins: '+(satPositions ? Object.keys(satPositions).length : 0)+' | Marker: '+satMarkers.length;
+  if(debug) debug.textContent = 'Pins: '+Object.keys(satPos).length+' Marker: '+satMarkers.length+' IDs: '+pinInfo;
 }
 
 /* ---------- GPS Place Button ---------- */
