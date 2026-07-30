@@ -2859,14 +2859,15 @@ function loginAsRole(role){
       <div style="margin-bottom:16px;">
         <label style="display:block;font-size:.82rem;color:var(--muted);margin-bottom:4px;">Passwort</label>
         <div style="position:relative;">
-          <input type="text" id="login-pw" placeholder="Passwort eingeben"
+          <input type="password" id="login-pw" placeholder="Passwort eingeben"
             style="width:100%;padding:10px 12px;padding-right:40px;border:1px solid var(--border);border-radius:8px;font-size:1rem;font-family:inherit;"
             onkeydown="if(event.key==='Enter')submitLogin()">
-          <button type="button" onclick="var p=document.getElementById('login-pw');p.type=p.type==='text'?'password':'text';this.textContent=p.type==='text'?'🙈':'👁️'"
+          <button type="button" onclick="var p=document.getElementById('login-pw');p.type=p.type==='password'?'text':'password';this.textContent=p.type==='password'?'👁️':'🙈'"
             style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;font-size:1.1rem;cursor:pointer;padding:4px;">👁️</button>
         </div>
       </div>
-      <div id="login-error" style="color:var(--dachziegel);font-size:.82rem;margin-bottom:12px;display:none;"></div>
+      <button type="button" onclick="submitLogin()" style="width:100%;padding:10px;background:var(--dachziegel);color:#fff;border:none;border-radius:8px;font-size:1rem;font-weight:600;cursor:pointer;">Anmelden</button>
+      <div id="login-error" style="color:var(--dachziegel);font-size:.82rem;margin-top:12px;display:none;"></div>
     </div>`;
   document.getElementById('modal-content').innerHTML = html;
   document.getElementById('overlay').classList.add('open');
