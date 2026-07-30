@@ -632,7 +632,8 @@
       </div>
     </div>
     <div id="sat-map"></div>
-    <div id="sat-debug" style="font-size:.75rem;color:var(--muted);margin-top:6px;text-align:center;">—</div>
+    <div id="sat-sync-debug" style="font-size:.7rem;color:var(--accent);margin-top:2px;text-align:center;">—</div>
+    <div id="sat-debug" style="font-size:.75rem;color:var(--muted);margin-top:2px;text-align:center;">—</div>
   </section>
 
   <!-- DATEN & SICHERUNG -->
@@ -1137,10 +1138,13 @@ function isEditMode(){ return !!window.__firebaseUser; }
 function getCurrentState(){ return state; }
 function applyRemoteState(remote){
   if(!remote) return;
-  const satKeys = remote.satPositions ? Object.keys(remote.satPositions) : [];
+  const localKeys = Object.keys(state.satPositions||{});
+  const remoteKeys = remote.satPositions ? Object.keys(remote.satPositions) : [];
   const dbg = document.getElementById('sat-debug');
-  if(dbg) dbg.textContent = 'Remote Sat-Pins: '+satKeys.length+' | Lokal: '+(state.satPositions?Object.keys(state.satPositions).length:0);
-  console.log('[sync] remote satPositions:', satKeys);
+  if(dbg) dbg.innerHTML = '<b>Sync:</b> lokal='+localKeys.join(',')+' vs remote='+remoteKeys.join(',');
+  const satDbg = document.getElementById('sat-sync-debug');
+  if(satDbg) satDbg.textContent = 'Sync: lokal='+localKeys.join(',')+' remote='+remoteKeys.join(',');
+  console.log('[sync] local satPositions:', localKeys, 'remote:', remoteKeys);
   /* Stale customTrees/Edits/Positions DES REMOTE bereinigen BEVOR merge */
   const baumIds = new Set(BAUM_DATA.map(b=>b.id));
   const isAlive = (id)=> !BLACKLIST.has(id) && (baumIds.has(id) || id.startsWith('NEU-'));
