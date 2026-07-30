@@ -3663,7 +3663,7 @@ function showUnterlageInfo(sorteName) {
   const info = getRootstockInfo(frucht);
   const aktuelleUnterlage = s.unterlage || '';
 
-  let html = '<div style="max-width:520px;"><button class="close" onclick="closeModal()">&times;</button>';
+  let html = '<div style="max-width:520px;"><button class="close" onclick="closeModal();activateTab(\'lageplan\')">&times;</button>';
   html += '<h3 style="font-family:var(--font-heading);color:var(--dark);margin:0 0 12px;">Unterlagen (Rootstock)</h3>';
 
   if(info) {
