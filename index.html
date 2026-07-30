@@ -2493,13 +2493,17 @@ function renderSatMarkers(){
   satMap.invalidateSize();
   satMarkers.forEach(m=>{ m.remove() });
   satMarkers = [];
+  const farben = {apfel:'#dc2626', birne:'#22c55e', walnuss:'#b98e1a', zwetschke:'#6b21a8', kirsch:'#be185d', marille:'#f59e0b', quitte:'#84cc16', pflaume:'#7c3aed', sonstige:'#888'};
   const bounds = [];
   const satPos = state.satPositions || {};
   const dbgParts = [];
   Object.entries(satPos).forEach(([id,pos])=>{
     if(!pos.lat || !pos.lng) return;
     const t = getTree(id);
-    const m = L.marker([pos.lat, pos.lng]).bindTooltip(t ? `${id} — ${t.sorte}` : id);
+    const farbe = t? (farben[(t.frucht||'').toLowerCase()]||'#B2543A') : '#B2543A';
+    const icon = L.divIcon({className:'',html:'<div style="width:13px;height:13px;border-radius:50%;border:2px solid #fff;background:'+farbe+';box-shadow:0 1px 4px rgba(0,0,0,.4);"></div>',iconSize:[17,17],iconAnchor:[8.5,8.5]});
+    const m = L.marker([pos.lat, pos.lng], {icon});
+    if(t) m.bindTooltip(`${id} — ${t.sorte}`);
     m.on('click', function(){ openBaumModal(id); });
     m.addTo(satMap);
     satMarkers.push(m);
