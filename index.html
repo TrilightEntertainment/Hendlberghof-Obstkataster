@@ -1177,7 +1177,13 @@ function applyRemoteState(remote){
   state.ernten = _mergeObj(state.ernten, remote.ernten);
   state.deletedSatPositions = _mergeObj(state.deletedSatPositions, remote.deletedSatPositions);
   state.satPositions = _mergeObj(state.satPositions, remote.satPositions);
-  if(state.deletedSatPositions) Object.keys(state.deletedSatPositions).forEach(id=>{ delete state.satPositions[id]; });
+  if(state.deletedSatPositions){
+    const remSat = remote.satPositions||{};
+    Object.keys(state.deletedSatPositions).forEach(id=>{
+      if(id in remSat){ delete state.deletedSatPositions[id]; }
+      else { delete state.satPositions[id]; }
+    });
+  }
   state.bestellungen = _mergeArr(state.bestellungen, remote.bestellungen);
   state.importLog = _mergeArr(state.importLog, remote.importLog);
   state.importSnapshots = _mergeArr(state.importSnapshots, remote.importSnapshots, 'importId');
