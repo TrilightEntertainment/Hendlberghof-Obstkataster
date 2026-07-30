@@ -2486,7 +2486,7 @@ function renderSatMarkers(){
   satMarkers = [];
   const bounds = [];
   const satPos = state.satPositions || {};
-  let pinInfo = '';
+  const dbgParts = [];
   Object.entries(satPos).forEach(([id,pos])=>{
     if(!pos.lat || !pos.lng) return;
     const t = getTree(id);
@@ -2495,16 +2495,14 @@ function renderSatMarkers(){
     m.addTo(satMap);
     satMarkers.push(m);
     bounds.push([pos.lat, pos.lng]);
-    pinInfo += id+' ';
+    const el = m.getElement();
+    dbgParts.push(id+' lat='+pos.lat.toFixed(4)+' lng='+pos.lng.toFixed(4)+' el='+(el?'Y':'N')+' parent='+(el&&el.parentNode?'Y':'N'));
   });
-  if(bounds.length && !satFitted){
-    satMap.fitBounds(bounds, {padding:[30,30]});
-    satFitted = true;
-  } else if(bounds.length){
+  if(bounds.length){
     satMap.fitBounds(bounds, {padding:[30,30]});
   }
   const debug = document.getElementById('sat-debug');
-  if(debug) debug.textContent = 'Pins: '+Object.keys(satPos).length+' Marker: '+satMarkers.length+' IDs: '+pinInfo;
+  if(debug) debug.innerHTML = dbgParts.join(' | ');
 }
 
 /* ---------- GPS Place Button ---------- */
