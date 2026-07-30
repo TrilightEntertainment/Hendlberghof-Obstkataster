@@ -2444,9 +2444,9 @@ function setMapLayer(layer){
 function initSatMap(){
   if(!satMap){
     satMap = L.map('sat-map').setView([48.0696, 15.844], 17);
-    L.tileLayer('https://maps{s}.wien.gv.at/basemap/bmaphd/normal/google3857/{z}/{y}/{x}.jpeg', {
+    L.tileLayer('https://{s}.basemap.at/bmaphd/{z}/{y}/{x}.jpeg', {
       maxZoom: 20,
-      subdomains: ['1','2','3','4'],
+      subdomains: ['a','b','c','d'],
       attribution: 'Basemap.at'
     }).addTo(satMap);
     satMap.on('click', function(e){
