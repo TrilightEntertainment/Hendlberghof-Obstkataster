@@ -2492,35 +2492,11 @@ function renderSatMarkers(){
     if(!pos.lat || !pos.lng) return;
     const t = getTree(id);
     const farbe = t? (farben[(t.frucht||'').toLowerCase()]||'#B2543A') : '#B2543A';
-    const icon = L.divIcon({
-      className: 'sat-marker',
-      html: '<div style="width:14px;height:14px;border-radius:50%;border:3px solid #fff;background:'+farbe+';"></div>',
-      iconSize: [20,20], iconAnchor: [10,10]
+    const m = L.circleMarker([pos.lat, pos.lng], {
+      radius: 8, color: '#fff', weight: 3, fillColor: farbe, fillOpacity: 1
     });
-    const m = L.marker([pos.lat, pos.lng], {icon, draggable: isAdmin()});
-    if(t) m.bindTooltip(`${id} — ${t.sorte} (ziehen zum Verschieben)`);
-    let dragActive = false;
-    m.on('dragstart', function(){
-      m.unbindTooltip();
-      dragActive = true;
-      if(satMap) satMap.dragging.disable();
-      const el = m.getElement();
-      if(el) el.style.zIndex = '1000';
-    });
-    m.on('dragend', function(){
-      dragActive = false;
-      const ll = m.getLatLng();
-      if(!state.satPositions) state.satPositions = {};
-      state.satPositions[id] = {lat:ll.lat, lng:ll.lng};
-      saveState();
-      if(satMap) satMap.dragging.enable();
-      showToast((t?t.sorte:id)+' verschoben','success');
-      document.getElementById('place-status').textContent = 'Position verschoben';
-    });
-    m.on('click', function(){
-      if(dragActive) return;
-      openBaumModal(id);
-    });
+    if(t) m.bindTooltip(`${id} — ${t.sorte} (zum Verschieben einloggen)`);
+    m.on('click', function(){ openBaumModal(id); });
     m.addTo(satMap);
     satMarkers.push(m);
     bounds.push([pos.lat, pos.lng]);
