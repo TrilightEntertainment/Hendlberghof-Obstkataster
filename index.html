@@ -632,8 +632,6 @@
       </div>
     </div>
     <div id="sat-map"></div>
-    <div id="sat-sync-debug" style="font-size:.7rem;color:var(--accent);margin-top:2px;text-align:center;">—</div>
-    <div id="sat-debug" style="font-size:.75rem;color:var(--muted);margin-top:2px;text-align:center;">—</div>
   </section>
 
   <!-- DATEN & SICHERUNG -->
@@ -1141,10 +1139,6 @@ function applyRemoteState(remote){
   if(!remote) return;
   const localKeys = Object.keys(state.satPositions||{});
   const remoteKeys = remote.satPositions ? Object.keys(remote.satPositions) : [];
-  const dbg = document.getElementById('sat-debug');
-  if(dbg) dbg.innerHTML = '<b>Sync:</b> lokal='+localKeys.join(',')+' vs remote='+remoteKeys.join(',');
-  const satDbg = document.getElementById('sat-sync-debug');
-  if(satDbg) satDbg.textContent = 'Sync: lokal='+localKeys.join(',')+' remote='+remoteKeys.join(',');
   console.log('[sync] local satPositions:', localKeys, 'remote:', remoteKeys);
   /* Stale customTrees/Edits/Positions DES REMOTE bereinigen BEVOR merge */
   const baumIds = new Set(BAUM_DATA.map(b=>b.id));
@@ -2486,7 +2480,6 @@ function renderSatMarkers(){
   const farben = {apfel:'#dc2626', birne:'#22c55e', walnuss:'#b98e1a', zwetschke:'#6b21a8', kirsch:'#be185d', marille:'#f59e0b', quitte:'#84cc16', pflaume:'#7c3aed', sonstige:'#888'};
   const bounds = [];
   const satPos = state.satPositions || {};
-  const dbgParts = [];
   let _dragMoved = false;
   Object.entries(satPos).forEach(([id,pos])=>{
     if(!pos.lat || !pos.lng) return;
@@ -2509,14 +2502,10 @@ function renderSatMarkers(){
     m.addTo(satMap);
     satMarkers.push(m);
     bounds.push([pos.lat, pos.lng]);
-    const el = m.getElement();
-    dbgParts.push(id+' lat='+pos.lat.toFixed(4)+' lng='+pos.lng.toFixed(4)+' el='+(el?'Y':'N')+' parent='+(el&&el.parentNode?'Y':'N'));
   });
   if(bounds.length){
     satMap.fitBounds(bounds, {padding:[30,30]});
   }
-  const debug = document.getElementById('sat-debug');
-  if(debug) debug.innerHTML = dbgParts.join(' | ');
 }
 
 /* ---------- GPS Place Button ---------- */
