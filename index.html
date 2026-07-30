@@ -1170,6 +1170,7 @@ function applyRemoteState(remote){
   state.baumEdits = _mergeObj(state.baumEdits, remote.baumEdits);
   state.sortenEdits = _mergeObj(state.sortenEdits, remote.sortenEdits);
   state.positions = _mergeObj(state.positions, remote.positions);
+  state._pinFmt = remote._pinFmt || state._pinFmt;
   state.phaenologie = _mergeObj(state.phaenologie, remote.phaenologie);
   state.sortenSichtbar = _mergeObj(state.sortenSichtbar, remote.sortenSichtbar);
   state.preislisten = _mergeObj(state.preislisten, remote.preislisten);
@@ -2604,14 +2605,28 @@ function lageZoomReset(){ lageScale=1; lageTx=0; lageTy=0; _lageApplyTransform()
     if(panning){ panning = false; wrap.style.cursor = ''; }
   });
 
-  let lastDist = 0;
+  let lastDist = 0, touchPan = null;
   wrap.addEventListener('touchstart', function(e){
+    if(e.touches.length===1 && lageScale>1){
+      const t=e.touches[0];
+      touchPan={id:t.identifier, sx:t.clientX-lageTx, sy:t.clientY-lageTy};
+    }
     if(e.touches.length===2){
       const dx=e.touches[0].clientX-e.touches[1].clientX, dy=e.touches[0].clientY-e.touches[1].clientY;
       lastDist=Math.sqrt(dx*dx+dy*dy);
+      touchPan=null;
     }
   }, {passive:true});
   wrap.addEventListener('touchmove', function(e){
+    if(e.touches.length===1 && touchPan){
+      e.preventDefault();
+      const t=e.touches[0];
+      if(t.identifier===touchPan.id){
+        lageTx=t.clientX-touchPan.sx; lageTy=t.clientY-touchPan.sy;
+        _lageApplyTransform();
+      }
+      return;
+    }
     if(e.touches.length===2){
       e.preventDefault();
       const dx=e.touches[0].clientX-e.touches[1].clientX, dy=e.touches[0].clientY-e.touches[1].clientY;
@@ -2625,7 +2640,8 @@ function lageZoomReset(){ lageScale=1; lageTx=0; lageTy=0; _lageApplyTransform()
       lastDist=dist;
     }
   }, {passive:false});
-  wrap.addEventListener('touchend', function(){ lastDist=0; });
+  wrap.addEventListener('touchend', function(){ lastDist=0; touchPan=null; });
+  wrap.addEventListener('touchcancel', function(){ touchPan=null; });
 })();
 
 /* ---------- Pins ---------- */
@@ -2648,7 +2664,7 @@ function _toCtr(ix, iy, m){
   return { x: (m.ox + m.dw*ix/100) / m.cw * 100, y: (m.oy + m.dh*iy/100) / m.ch * 100 };
 }
 function _migratePins(){
-  if(state._pinVer === 2) return;
+  if(state._pinFmt === 'img') return;
   const img = document.getElementById('map-img');
   if(!img || !img.complete || !img.naturalWidth) return;
   const wrap = document.getElementById('map-wrap');
@@ -2662,7 +2678,7 @@ function _migratePins(){
     const ny = Math.max(0, Math.min(100, Math.round(pos.y * ch / imageH * 100) / 100));
     if(ny !== pos.y){ state.positions[id] = {x: pos.x, y: ny}; changed = true; }
   });
-  state._pinVer = 2;
+  state._pinFmt = 'img';
   if(changed) saveState();
 }
 function renderPins(){
