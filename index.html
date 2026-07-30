@@ -1089,7 +1089,7 @@ function loadState(){
       return parsed;
     }
   }catch(e){ console.error('State corrupted, resetting:', e); setTimeout(()=>showToast('Gespeicherte Daten beschädigt — Zurückgesetzt.','error',5000),500); }
-  return { positions: Object.assign({}, SEED_POSITIONS), sukzession:{}, ernten:{}, verifiziert:{}, customTrees:[], baumEdits:{}, sortenEdits:{}, importLog:[], importSnapshots:[], phaenologie:{}, sortenSichtbar:{}, preislisten:{}, bestellungen:[] };
+  return { positions: Object.assign({}, SEED_POSITIONS), sukzession:{}, ernten:{}, verifiziert:{}, customTrees:[], baumEdits:{}, sortenEdits:{}, importLog:[], importSnapshots:[], phaenologie:{}, sortenSichtbar:{}, preislisten:{}, bestellungen:[], satPositions:{} };
 }
 let _saveTimer = null;
 function saveState(){
@@ -1171,6 +1171,7 @@ function applyRemoteState(remote){
   state.preislisten = _mergeObj(state.preislisten, remote.preislisten);
   state.sukzession = _mergeObj(state.sukzession, remote.sukzession);
   state.ernten = _mergeObj(state.ernten, remote.ernten);
+  state.satPositions = _mergeObj(state.satPositions, remote.satPositions);
   state.bestellungen = _mergeArr(state.bestellungen, remote.bestellungen);
   state.importLog = _mergeArr(state.importLog, remote.importLog);
   state.importSnapshots = _mergeArr(state.importSnapshots, remote.importSnapshots, 'importId');
@@ -2473,6 +2474,7 @@ function initSatMap(){
 
 function renderSatMarkers(){
   if(!satMap) return;
+  if(satMap._container && satMap._container.offsetHeight===0) satMap.invalidateSize();
   satMarkers.forEach(m=>{const e=m.getElement();if(e)e.classList.remove('sat-pin-selected');m.remove()});
   satMarkers = [];
   const farben = {apfel:'#dc2626', birne:'#22c55e', walnuss:'#b98e1a', zwetschke:'#6b21a8', kirsch:'#be185d', marille:'#f59e0b', quitte:'#84cc16', pflaume:'#7c3aed', sonne:'#f97316'};
