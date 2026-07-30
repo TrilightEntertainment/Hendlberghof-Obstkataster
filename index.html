@@ -617,6 +617,7 @@
       </select>
       <button class="btn field" onclick="exportLageplanPDF()">PDF</button>
       <button class="btn" id="btn-place-mode"><span id="place-mode-label">Baum verschieben</span></button>
+      <button class="btn" id="btn-move-pin" style="display:none;"><span id="move-pin-label">Pin verschieben</span></button>
       <select id="unplaced-select"><option value="">– Baum wählen –</option></select>
       <button class="btn secondary" id="btn-gps-place" title="Aktuelle GPS-Position für den gewählten Baum übernehmen">Per GPS setzen</button>
       <span id="place-status" style="font-size:.85rem;color:var(--muted);"></span>
@@ -2403,27 +2404,33 @@ function renderUnplacedSelect(){
     document.getElementById('place-mode-label').textContent = 'Baum setzen';
     document.getElementById('place-status').textContent = 'Auf Karte klicken, um den Baum zu positionieren.';
   } else {
-    movePinMode = true;
+    movePinMode = false;
     placeMode = false;
     selectedPinId = null;
     if(satMap) satMap.dragging.enable();
-    document.getElementById('place-mode-label').textContent = 'Baum verschieben';
+    document.getElementById('place-mode-label').textContent = 'Position setzen';
     document.getElementById('place-status').textContent = '';
   }
 });
 document.getElementById('btn-place-mode').addEventListener('click', ()=>{
-  placeMode = false;
-  movePinMode = true;
-  selectedForPlacement = null;
-  selectedPinId = null;
+  placeMode = !placeMode;
+  movePinMode = false; selectedPinId = null;
   if(satMap) satMap.dragging.enable();
-  document.getElementById('place-mode-label').textContent = 'Baum verschieben';
-  document.getElementById('place-status').textContent = '';
+  document.getElementById('place-mode-label').textContent = placeMode? 'Modus aktiv – Klick auf Karte' : 'Position setzen';
+  document.getElementById('place-status').textContent = placeMode? 'Baum auswählen, dann auf die Karte klicken.' : '';
+  if(placeMode) renderUnplacedSelect();
   renderSatMarkers();
-  renderPins();
+});
+document.getElementById('btn-move-pin').addEventListener('click', ()=>{
+  movePinMode = !movePinMode;
+  placeMode = false; selectedPinId = null;
+  document.getElementById('place-mode-label').textContent = 'Position setzen';
+  document.getElementById('move-pin-label').textContent = movePinMode? 'Modus aktiv – Pin wählen' : 'Pin verschieben';
+  document.getElementById('place-status').textContent = movePinMode? 'Einen Pin antippen, dann auf die neue Position klicken.' : '';
+  renderSatMarkers();
 });
 
-let movePinMode = true;
+let movePinMode = false;
 let selectedPinId = null;
 
 function mapAspect(){
@@ -2448,7 +2455,7 @@ function setMapLayer(layer){
   if(layer==='sat'){
     initSatMap();
   } else {
-    movePinMode = true; placeMode = false; selectedPinId = null;
+    movePinMode = false; placeMode = false; selectedPinId = null;
     if(satMap) satMap.dragging.enable();
     lageScale = 1; lageTx = 0; lageTy = 0; _lageApplyTransform();
   }
@@ -2471,15 +2478,27 @@ function initSatMap(){
         delete state.deletedSatPositions[selectedForPlacement];
         saveState();
         renderSatMarkers();
-        movePinMode = true;
         placeMode = false;
         selectedForPlacement = null;
         if(satMap) satMap.dragging.enable();
-        document.getElementById('place-mode-label').textContent = 'Baum verschieben';
+        document.getElementById('place-mode-label').textContent = 'Position setzen';
         document.getElementById('place-status').textContent = 'Position im Satellit gesetzt!';
         document.getElementById('unplaced-select').value = '';
         renderUnplacedSelect();
         return;
+      }
+      if(movePinMode && selectedPinId){
+        const {lat, lng} = e.latlng;
+        if(!state.satPositions) state.satPositions = {};
+        state.satPositions[selectedPinId] = {lat, lng};
+        saveState();
+        const t = getTree(selectedPinId);
+        showToast((t?t.sorte:selectedPinId)+' verschoben','success');
+        movePinMode = false;
+        selectedPinId = null;
+        document.getElementById('move-pin-label').textContent = 'Pin verschieben';
+        document.getElementById('place-status').textContent = '';
+        renderSatMarkers();
       }
     });
   }
@@ -2501,10 +2520,20 @@ function renderSatMarkers(){
     if(!pos.lat || !pos.lng) return;
     const t = getTree(id);
     const farbe = t? (farben[(t.frucht||'').toLowerCase()]||'#B2543A') : '#B2543A';
-    const icon = L.divIcon({className:'',html:'<div style="width:13px;height:13px;border-radius:50%;border:2px solid #fff;background:'+farbe+';box-shadow:0 1px 4px rgba(0,0,0,.4);"></div>',iconSize:[17,17],iconAnchor:[8.5,8.5]});
+    const isSelected = movePinMode && selectedPinId===id;
+    const ringHtml = isSelected ? '<div style="position:absolute;top:-5px;left:-5px;width:22px;height:22px;border-radius:50%;border:3px solid #D9B458;pointer-events:none;"></div>' : '';
+    const icon = L.divIcon({className:'',html:ringHtml+'<div style="width:13px;height:13px;border-radius:50%;border:2px solid #fff;background:'+farbe+';box-shadow:0 1px 4px rgba(0,0,0,.4);"></div>',iconSize:[22,22],iconAnchor:[11,11]});
     const m = L.marker([pos.lat, pos.lng], {icon});
-    if(t) m.bindTooltip(`${id} — ${t.sorte}`);
-    m.on('click', function(){ openBaumModal(id); });
+    if(t) m.bindTooltip(`${id} — ${t.sorte}${movePinMode?' (antippen zum Verschieben)':''}`);
+    m.on('click', function(){
+      if(movePinMode){
+        selectedPinId = id;
+        document.getElementById('place-status').textContent = `Pin "${id} — ${t?t.sorte:''}" ausgewählt. Jetzt auf neue Position klicken.`;
+        renderSatMarkers();
+        return;
+      }
+      openBaumModal(id);
+    });
     m.addTo(satMap);
     satMarkers.push(m);
     bounds.push([pos.lat, pos.lng]);
@@ -2530,12 +2559,12 @@ document.getElementById('btn-gps-place').addEventListener('click', ()=>{
     delete state.deletedSatPositions[selectedForPlacement];
     saveState();
     renderSatMarkers(); renderUnplacedSelect();
-    movePinMode = true;
+    movePinMode = false;
     placeMode = false;
     if(satMap) satMap.dragging.enable();
     selectedForPlacement = '';
     document.getElementById('unplaced-select').value='';
-    document.getElementById('place-mode-label').textContent = 'Baum verschieben';
+    document.getElementById('place-mode-label').textContent = 'Position setzen';
     document.getElementById('place-status').textContent = `GPS-Position im Satellit gesetzt (±${Math.round(accuracy)} m)`;
   }, err=>{
     alert('GPS-Standort konnte nicht ermittelt werden: '+err.message);
@@ -2797,14 +2826,18 @@ function applyEditModeUI(){
   if(unplacedSel) unplacedSel.style.display = zeigeEdit ? '' : 'none';
   const gpsPlaceBtn = document.getElementById('btn-gps-place');
   if(gpsPlaceBtn) gpsPlaceBtn.style.display = zeigeEdit && mapLayer==='sat' ? '' : 'none';
+  const movePinBtn = document.getElementById('btn-move-pin');
+  if(movePinBtn) movePinBtn.style.display = admin && mapLayer==='sat' ? '' : 'none';
   const hint = document.getElementById('lageplan-hint');
   if(hint) hint.style.display = on ? '' : 'none';
   if(!on){
     placeMode = false;
-    movePinMode = true; selectedPinId = null;
+    movePinMode = false; selectedPinId = null;
     if(satMap) satMap.dragging.enable();
     const placeLabel = document.getElementById('place-mode-label');
-    if(placeLabel) placeLabel.textContent = 'Baum verschieben';
+    if(placeLabel) placeLabel.textContent = 'Position setzen';
+    const moveLabel = document.getElementById('move-pin-label');
+    if(moveLabel) moveLabel.textContent = 'Pin verschieben';
     const st = document.getElementById('place-status');
     if(st) st.textContent = '';
     closeModal();
