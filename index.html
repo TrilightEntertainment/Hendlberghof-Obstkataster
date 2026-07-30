@@ -322,6 +322,9 @@
     transition:transform .3s ease, box-shadow .3s ease;
   }
   .pin.dragging{cursor:grabbing;box-shadow:0 0 0 4px rgba(217,180,88,.5);z-index:5;}
+  @media(max-width:640px){
+    .pin{width:10px;height:10px;}
+  }
   .sat-pin-selected{box-shadow:0 0 0 4px rgba(217,180,88,.8);border-radius:50%;z-index:5;}
   .pin.apfel{background:#dc2626;}
   .pin.birne{background:#22c55e;}
@@ -2607,7 +2610,7 @@ function lageZoomReset(){ lageScale=1; lageTx=0; lageTy=0; _lageApplyTransform()
 
   let lastDist = 0, touchPan = null;
   wrap.addEventListener('touchstart', function(e){
-    if(e.touches.length===1 && lageScale>1){
+    if(e.touches.length===1 && lageScale>1 && !e.target.closest('.pin')){
       const t=e.touches[0];
       touchPan={id:t.identifier, sx:t.clientX-lageTx, sy:t.clientY-lageTy};
     }
