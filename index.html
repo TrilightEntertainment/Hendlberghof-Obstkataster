@@ -2896,11 +2896,11 @@ function editBaumWithLogin(id){
 }
 function editSorteWithLogin(sorteName){
   if(isAdmin()){
-    openSortenModal(sorteName);
+    openSortenEditForm(sorteName);
     return;
   }
   if(isEditMode()){
-    openSortenModal(sorteName);
+    openSortenEditForm(sorteName);
     return;
   }
   showLoginDialog();
@@ -2926,10 +2926,13 @@ const FELDER = [
   {key:'synonyme',   label:'Synonyme',            full:false},
 ];
 
-function buildEditForm(t, isNew){
+function buildEditForm(t, isNew, isSort){
+  const felder = isSort
+    ? FELDER.filter(f => SORTEN_EDIT_KEYS.includes(f.key))
+    : FELDER;
   return `
     <div class="edit-form">
-      ${FELDER.map(f=>{
+      ${felder.map(f=>{
         const val = (t && t[f.key]) ? t[f.key] : '';
         const cls = f.full ? ' full' : '';
         if(f.type==='textarea'){
@@ -2950,9 +2953,12 @@ function buildEditForm(t, isNew){
     </div>`;
 }
 
-function formValues(formEl){
+function formValues(formEl, isSort){
+  const felder = isSort
+    ? FELDER.filter(f => SORTEN_EDIT_KEYS.includes(f.key))
+    : FELDER;
   const out = {};
-  FELDER.forEach(f=>{
+  felder.forEach(f=>{
     if(f.type==='checkboxgroup'){
       const boxes = formEl.querySelectorAll(`[name="${f.key}"]:checked`);
       out[f.key] = Array.from(boxes).map(b=>b.value);
@@ -2995,6 +3001,34 @@ function openBaumAddForm(){
   document.getElementById('modal-content').innerHTML = html;
   document.getElementById('overlay').classList.add('open');
   initSorteAutocomplete();
+}
+
+const SORTEN_EDIT_KEYS = ['frucht','verwendung','pflueckzeitpunkt','genussreife','lagerfaehig','ertrag','befruchtungspartner','geschmack','eigenschaften','herkunft_jahr','synonyme','frucht_beschreibung','standort_anspruch','unterlage','veredelt','ausgepflanzt'];
+function openSortenEditForm(sorteName){
+  const s = getSorte(sorteName);
+  if(!s) return;
+  const editData = Object.assign({}, s, state.sortenEdits[sorteName]||{});
+  const html = `
+    <button class="close" onclick="closeModal()">&times;</button>
+    <h2>✏️ Sorte bearbeiten <span style="font-size:.82rem;color:var(--muted);font-weight:400;">${escHtml(sorteName)}</span></h2>
+    <p style="font-size:.82rem;color:var(--muted);">Änderungen werden lokal gespeichert — Original-Importdaten bleiben erhalten.</p>
+    <form id="sorten-edit-form">${buildEditForm(editData, false, true)}</form>
+    <div class="edit-actions">
+      <button class="btn" onclick="saveSortenEdit('${escAttr(sorteName)}')">💾 Speichern</button>
+      <button class="btn secondary" onclick="closeModal()">Abbrechen</button>
+    </div>`;
+  document.getElementById('modal-content').innerHTML = html;
+  document.getElementById('overlay').classList.add('open');
+}
+function saveSortenEdit(sorteName){
+  const form = document.getElementById('sorten-edit-form');
+  if(!form) return;
+  const vals = formValues(form, true);
+  if(!state.sortenEdits) state.sortenEdits = {};
+  state.sortenEdits[sorteName] = Object.assign({}, state.sortenEdits[sorteName]||{}, vals);
+  saveState();
+  closeModal();
+  openSortenModal(sorteName);
 }
 
 const BAUM_INDIVIDUAL_KEYS = ['id','sorte','unterlage','veredelt','ausgepflanzt','standort_zeile'];
