@@ -86,7 +86,13 @@ for f in "$REPO/../"*.md "$REPO/../files/"*PROJEKTSTATUS*.md; do
   [ -f "$f" ] || continue
   cp "$f" "$DOK/" && anz=$((anz+1))
 done
-echo "-- Unterlagen: $anz Dokumente nach $DOK" | tee -a "$LOG"
+# Zusaetzlich eine lesbare HTML-Fassung: In der Dateien-App am iPhone wird
+# Markdown nur als Rohtext angezeigt, HTML dagegen gesetzt dargestellt.
+for f in "$DOK"/*.md; do
+  [ -f "$f" ] || continue
+  python3 "$REPO/tools/md2html.py" "$f" "${f%.md}.html" >/dev/null 2>&1
+done
+echo "-- Unterlagen: $anz Dokumente nach $DOK (je auch als HTML)" | tee -a "$LOG"
 
 # --- 4. Alte lokale Backups aufraeumen: letzte 24 Monate behalten ------------
 # Im Repo wird nichts geloescht - dort ist die Historie ja der Sinn der Sache.
