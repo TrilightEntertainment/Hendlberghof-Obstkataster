@@ -1095,7 +1095,7 @@ function loadState(){
       return parsed;
     }
   }catch(e){ console.error('State corrupted, resetting:', e); setTimeout(()=>showToast('Gespeicherte Daten beschädigt — Zurückgesetzt.','error',5000),500); }
-  return { positions: Object.assign({}, SEED_POSITIONS), sukzession:{}, ernten:{}, verifiziert:{}, customTrees:[], baumEdits:{}, sortenEdits:{}, importLog:[], importSnapshots:[], phaenologie:{}, sortenSichtbar:{}, preislisten:{}, bestellungen:[], satPositions:{}, deletedSatPositions:{}, obstarten:{} };
+  return { positions: Object.assign({}, SEED_POSITIONS), sukzession:{}, ernten:{}, verifiziert:{}, customTrees:[], baumEdits:{}, sortenEdits:{}, importLog:[], importSnapshots:[], phaenologie:{}, sortenSichtbar:{}, preislisten:{}, bestellungen:[], satPositions:{}, deletedSatPositions:{}, obstarten:{}, merklisten:{} };
 }
 let _saveTimer = null;
 function saveState(){
@@ -1126,6 +1126,7 @@ function initState(){
   if(!state.satPositions) state.satPositions = {};
   if(!state.deletedSatPositions) state.deletedSatPositions = {};
   if(!state.obstarten) state.obstarten = {};   /* Abwandlungen zu OBSTARTEN_STANDARD */
+  if(!state.merklisten) state.merklisten = {};
   invalidateTreeCache();
 }
 
@@ -1183,6 +1184,7 @@ function applyRemoteState(remote){
   state.phaenologie = _mergeObj(state.phaenologie, remote.phaenologie);
   state.sortenSichtbar = _mergeObj(state.sortenSichtbar, remote.sortenSichtbar);
   state.obstarten = _mergeObj(state.obstarten, remote.obstarten);
+  state.merklisten = _mergeObj(state.merklisten, remote.merklisten);
   state.preislisten = _mergeObj(state.preislisten, remote.preislisten);
   state.sukzession = _mergeObj(state.sukzession, remote.sukzession);
   state.ernten = _mergeObj(state.ernten, remote.ernten);
@@ -1217,7 +1219,11 @@ function applyRemoteState(remote){
   if(!state.satPositions) state.satPositions = {};
   if(!state.deletedSatPositions) state.deletedSatPositions = {};
   if(!state.obstarten) state.obstarten = {};
+  if(!state.merklisten) state.merklisten = {};
   localStorage.setItem(LS_KEY, JSON.stringify(state));
+  /* Arbeitskopie der Merklisten nachziehen, sonst zeigt dieses Gerät weiter den
+     Stand von vor der Synchronisierung. */
+  if(typeof ladeMerklisten === 'function') ladeMerklisten();
   refreshFilterOptions();
   renderBaumTable();
   renderResults();
@@ -2158,6 +2164,111 @@ function getSorte(sorteName){
   if(!s) return null;
   const edit = (state.sortenEdits && state.sortenEdits[sorteName]) || {};
   return Object.assign({}, s, edit);
+}
+
+/* ---------- Merklisten ----------
+   Ersetzt den früheren Warenkorb, der als flache Liste im localStorage lag
+   ('hendlberghof_cart') und deshalb nur auf einem Gerät existierte.
+
+   Zwei Formen unter einem Dach:
+     merklisten.eigen     { konfigurationen: [Baumkonfiguration], geaendert }
+     merklisten[<qid>]    { positionen: [{sorte, unterlage, alter, preis, …}], geaendert }
+
+   Getrennt nach Lieferant, weil jede Bestellung an einen anderen Empfänger geht —
+   eine gemeinsame Liste müsste vor dem Absenden ohnehin wieder aufgeteilt werden.
+   Die Eigenproduktion führt konfigurierte Bäume statt Positionen; der Konfigurator
+   füllt `konfigurationen` später (S3), das Fach steht schon bereit.
+
+   Liegt in `state` und wandert damit über Firestore auf alle Geräte: am Handy im
+   Garten merken, am Rechner bestellen. Genau das konnte der alte Warenkorb nicht. */
+
+const MERKLISTE_EIGEN = 'eigen';
+
+function getMerkliste(qid){
+  if(!state.merklisten) state.merklisten = {};
+  if(!state.merklisten[qid]){
+    state.merklisten[qid] = (qid === MERKLISTE_EIGEN)
+      ? { konfigurationen: [], geaendert: '' }
+      : { positionen: [], geaendert: '' };
+  }
+  return state.merklisten[qid];
+}
+
+/* Flache Sicht über alle Lieferantenlisten — die Form, in der die vorhandene
+   Bestelloberfläche arbeitet. `qid` wird je Eintrag mitgeführt. */
+function merkPositionenFlach(){
+  const raus = [];
+  const m = (typeof state !== 'undefined' && state && state.merklisten) || {};
+  Object.keys(m).forEach(qid=>{
+    if(qid === MERKLISTE_EIGEN) return;
+    ((m[qid] || {}).positionen || []).forEach(p => raus.push(Object.assign({}, p, {qid})));
+  });
+  return raus;
+}
+
+/* Gegenstück: schreibt die flache Liste zurück in die Fächer je Lieferant.
+   Lieferantenlisten werden dabei neu aufgebaut, `eigen` bleibt unberührt. */
+function schreibeMerklistenZurueck(positionen){
+  if(!state.merklisten) state.merklisten = {};
+  Object.keys(state.merklisten).forEach(qid=>{
+    if(qid !== MERKLISTE_EIGEN) delete state.merklisten[qid];
+  });
+  const jetzt = new Date().toISOString();
+  (positionen || []).forEach(p=>{
+    const qid = p.qid || 'unbekannt';
+    const liste = getMerkliste(qid);
+    const kopie = Object.assign({}, p);
+    delete kopie.qid;                    /* steckt schon im Schlüssel */
+    liste.positionen.push(kopie);
+    liste.geaendert = jetzt;
+  });
+}
+
+function merkAnzahl(){
+  const eigen = ((state.merklisten || {})[MERKLISTE_EIGEN] || {}).konfigurationen || [];
+  return merkPositionenFlach().length + eigen.length;
+}
+
+/* Einmalige Übernahme des alten Warenkorbs. Mehrfach aufrufbar: Positionen mit
+   gleicher Sorte, Unterlage und Alter werden nicht doppelt angelegt — nötig, weil
+   jedes Gerät seinen eigenen alten Warenkorb mitbringt.
+   Der alte Schlüssel wird NICHT gelöscht, sondern umbenannt: Die neue Ablage geht
+   in die Cloud, und wenn dabei etwas schiefginge, wäre der alte Stand sonst
+   unwiederbringlich. Aufräumen kann man ihn später von Hand. */
+function migriereAltenWarenkorb(){
+  const ALT = 'hendlberghof_cart';
+  let roh = null;
+  try { roh = localStorage.getItem(ALT); } catch(e){ return 0; }
+  if(!roh) return 0;
+
+  let alt = null;
+  try { alt = JSON.parse(roh); } catch(e){ alt = null; }
+
+  let uebernommen = 0;
+  if(Array.isArray(alt)){
+    alt.forEach(e=>{
+      if(!e || !e.sorte) return;
+      const liste = getMerkliste(e.qid || 'unbekannt');
+      const schonDa = liste.positionen.some(p =>
+        p.sorte === e.sorte
+        && (p.unterlage || '') === (e.unterlage || '')
+        && (p.alter || '') === (e.alter || ''));
+      if(schonDa) return;
+      liste.positionen.push({
+        sorte: e.sorte, quelle: e.quelle || '', email: e.email || '',
+        unterlage: e.unterlage || '', alter: e.alter || '',
+        preis: e.preis, mwst_satz: e.mwst_satz || 13, menge: e.menge || 1
+      });
+      liste.geaendert = new Date().toISOString();
+      uebernommen++;
+    });
+  }
+  try {
+    localStorage.setItem(`${ALT}_migriert_${new Date().toISOString().slice(0,10)}`, roh);
+    localStorage.removeItem(ALT);
+  }catch(e){ /* Speicher voll oder gesperrt — die Übernahme selbst steht schon */ }
+  if(uebernommen) saveState();
+  return uebernommen;
 }
 
 /* ---------- Bestellbarkeit einer Sorte ----------
@@ -3626,6 +3737,10 @@ function startApp(){
     }
   }
   if(changed) saveState();
+  /* Alten, gerätelokalen Warenkorb übernehmen — läuft nur beim ersten Mal je Gerät
+     etwas, danach ist der Schlüssel weg. Vor dem Aufbau der Arbeitskopie. */
+  migriereAltenWarenkorb();
+  ladeMerklisten();
   refreshFilterOptions();
   applyEditModeUI();
   renderBaumTable();
@@ -5766,9 +5881,27 @@ function executePreisImport() {
 
 /* ─── BESTELLLISTE ──────────────────────────────────────────────────────────── */
 
-let bestellListe = JSON.parse(localStorage.getItem('hendlberghof_cart') || '[]');
+/* Arbeitskopie der Lieferanten-Merklisten in der flachen Form, mit der die
+   Bestelloberfläche seit jeher arbeitet. Die Wahrheit steht in state.merklisten;
+   diese Liste wird daraus aufgebaut und von saveCart() zurückgeschrieben.
 
-function saveCart(){ localStorage.setItem('hendlberghof_cart', JSON.stringify(bestellListe)); }
+   Damit hat der Warenkorb dieselbe Reichweite wie alles andere: Er liegt in state,
+   geht über Firestore auf alle Geräte und steckt im Monatsbackup. Vorher lag er
+   allein im localStorage dieses einen Browsers.
+
+   REGEL: Jede Änderung an bestellListe MUSS von saveCart() gefolgt werden — sonst
+   bleibt sie in der Arbeitskopie hängen und ist beim nächsten Laden weg. */
+let bestellListe = [];
+
+function ladeMerklisten(){
+  bestellListe = merkPositionenFlach();
+  updateCartBadge();
+}
+
+function saveCart(){
+  schreibeMerklistenZurueck(bestellListe);
+  saveState();
+}
 
 function updateCartBadge(){
   const badge=document.getElementById('cart-badge');
