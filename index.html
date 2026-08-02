@@ -404,17 +404,12 @@
 .toast.info{background:var(--ackerde);}
 /* ===== Sortenberater (integriert, an App-Design angepasst) ===== */
 #tab-sortenberater{max-width:1300px;margin:0 auto;--gruen:#2E3F2A;--gruen-hell:#eaf3de;--gruen-mid:#6E8A4E;--braun:#854F0B;--braun-hell:#FAEEDA;--rand:#E2DACB;--blau:#185FA5;--blau-hell:#E6F1FB;--lila:#993556;--lila-hell:#FBEAF0;--rot:#b91c1c;--rot-hell:#fef2f2;--text:#2A231D;--text-mid:#5F5E5A;--text-leicht:#7A7168;--weiss:#ffffff;--stroh:#D9B458;--radius:10px}
-#tab-sortenberater .sb-accordion{margin-bottom:1rem}
-#tab-sortenberater .sb-accordion-header{display:flex;align-items:center;gap:8px;padding:12px 14px;background:var(--weiss);border:1px solid var(--rand);border-radius:var(--radius);cursor:pointer;transition:all .15s;user-select:none}
-#tab-sortenberater .sb-accordion-header:hover{border-color:var(--gruen-mid);background:#faf7ef}
-#tab-sortenberater .sb-accordion.open .sb-accordion-header{border-color:var(--gruen);background:var(--gruen-hell)}
-#tab-sortenberater .sb-accordion-icon{font-size:14px;color:var(--gruen);font-weight:700;transition:transform .15s;flex-shrink:0}
-#tab-sortenberater .sb-accordion.open .sb-accordion-icon{transform:rotate(90deg)}
-#tab-sortenberater .sb-accordion-title{font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;color:var(--text)}
-#tab-sortenberater .sb-accordion-hint{font-family:'DM Sans',sans-serif;font-size:11px;color:var(--text-leicht);margin-left:auto}
-#tab-sortenberater .sb-accordion.open .sb-accordion-hint{display:none}
-#tab-sortenberater .sb-accordion-body{display:none;padding:14px 0 0}
-#tab-sortenberater .sb-accordion.open .sb-accordion-body{display:block}
+#tab-sortenberater .sbr-tabs{display:flex;background:var(--weiss);border:1px solid var(--rand);border-radius:var(--radius);overflow:hidden;margin-bottom:8px}
+#tab-sortenberater .sbr-tab{flex:1;padding:12px 10px;text-align:center;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:500;color:var(--text-mid);cursor:pointer;border-bottom:2px solid transparent;transition:all .15s;user-select:none}
+#tab-sortenberater .sbr-tab:hover{color:var(--gruen)}
+#tab-sortenberater .sbr-tab.active{color:var(--gruen);border-bottom-color:var(--stroh);background:var(--gruen-hell);font-weight:600}
+#tab-sortenberater .sbr-panel{display:none}
+#tab-sortenberater .sbr-panel.active{display:block}
 #tab-sortenberater .sb-sec{margin-bottom:1.75rem}
 #tab-sortenberater .sb-title{font-family:'DM Sans',sans-serif;font-size:11px;font-weight:600;color:var(--text-leicht);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;border-bottom:1px solid var(--rand);padding-bottom:6px}
 #tab-sortenberater .sb-arten{display:flex;gap:10px}
@@ -694,13 +689,19 @@
   <section id="tab-sortenberater" style="display:none;">
 
 <div class="toolbar" style="flex-direction:column;align-items:stretch;gap:8px;">
-  <div class="search-wrap" style="display:flex;gap:8px;align-items:center;">
-    <svg class="search-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-      <circle cx="10" cy="10" r="7" fill="none" stroke="currentColor" stroke-width="2"/>
-      <line x1="15" y1="15" x2="21" y2="21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-    </svg>
-    <input type="text" id="sl-search" placeholder="Sorte suchen…" oninput="onFilterChange()" style="flex:1;min-width:0;padding-left:34px;">
-    <button class="btn field" onclick="resetFilters()">✕</button>
+  <div class="sbr-tabs">
+    <div class="sbr-tab active" data-tab="sorten" onclick="sbrShowTab('sorten')">Sortenberater</div>
+    <div class="sbr-tab" data-tab="berater" onclick="sbrShowTab('berater')">Standort-Berater</div>
+  </div>
+  <div class="sbr-panel active" id="panel-sorten">
+    <div class="search-wrap" style="display:flex;gap:8px;align-items:center;">
+      <svg class="search-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <circle cx="10" cy="10" r="7" fill="none" stroke="currentColor" stroke-width="2"/>
+        <line x1="15" y1="15" x2="21" y2="21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+      <input type="text" id="sl-search" placeholder="Sorte suchen…" oninput="onFilterChange()" style="flex:1;min-width:0;padding-left:34px;">
+      <button class="btn field" onclick="resetFilters()">✕</button>
+    </div>
   </div>
   <div style="display:flex;gap:10px;flex-wrap:wrap;">
     <select id="sb-filter-frucht" onchange="onFilterChange()" style="flex:1;min-width:120px;">
@@ -715,29 +716,22 @@
       <option value="arche">Arche Noah</option>
     </select>
   </div>
-  <div id="sb-accordion" class="sb-accordion">
-    <div class="sb-accordion-header" onclick="toggleAccordion()">
-      <span class="sb-accordion-icon" id="sb-accordion-icon">▸</span>
-      <span class="sb-accordion-title">Standort-Berater</span>
-      <span class="sb-accordion-hint" id="sb-accordion-hint">Standort einstellen für Empfehlungen</span>
-    </div>
-    <div class="sb-accordion-body" id="sb-accordion-body">
-      <div class="sb-grid">
-        <div class="sb-field"><label>Höhenlage</label>
-          <div class="sb-slider-row">
-            <input type="range" min="200" max="1200" step="10" value="720" id="hoehe" oninput="document.getElementById('hv').textContent=this.value+'m';onFilterChange()">
-            <span class="sb-val" id="hv">720m</span>
-          </div>
+  <div class="sbr-panel" id="panel-berater">
+    <div class="sb-grid">
+      <div class="sb-field"><label>Höhenlage</label>
+        <div class="sb-slider-row">
+          <input type="range" min="200" max="1200" step="10" value="720" id="hoehe" oninput="document.getElementById('hv').textContent=this.value+'m';onFilterChange()">
+          <span class="sb-val" id="hv">720m</span>
         </div>
-        <div class="sb-field"><label>Exposition</label>
-          <select id="expo" onchange="onFilterChange()"><option value="sued">Südhang</option><option value="nord">Nordhang</option><option value="ost">Osthang</option><option value="west">Westhang</option><option value="mulde" selected>Ebene / Mulde</option></select>
-        </div>
-        <div class="sb-field"><label>Spätfrostrisiko</label>
-          <select id="frost" onchange="onFilterChange()"><option value="hoch">hoch (Mulde, Talboden)</option><option value="mittel" selected>mittel</option><option value="gering">gering (Hanglagen)</option></select>
-        </div>
-        <div class="sb-field"><label>Niederschlag</label>
-          <select id="ns" onchange="onFilterChange()"><option value="trocken">trocken (&lt;600mm)</option><option value="mittel" selected>mittel (600–900mm)</option><option value="feucht">feucht (&gt;900mm)</option></select>
-        </div>
+      </div>
+      <div class="sb-field"><label>Exposition</label>
+        <select id="expo" onchange="onFilterChange()"><option value="sued">Südhang</option><option value="nord">Nordhang</option><option value="ost">Osthang</option><option value="west">Westhang</option><option value="mulde" selected>Ebene / Mulde</option></select>
+      </div>
+      <div class="sb-field"><label>Spätfrostrisiko</label>
+        <select id="frost" onchange="onFilterChange()"><option value="hoch">hoch (Mulde, Talboden)</option><option value="mittel" selected>mittel</option><option value="gering">gering (Hanglagen)</option></select>
+      </div>
+      <div class="sb-field"><label>Niederschlag</label>
+        <select id="ns" onchange="onFilterChange()"><option value="trocken">trocken (&lt;600mm)</option><option value="mittel" selected>mittel (600–900mm)</option><option value="feucht">feucht (&gt;900mm)</option></select>
       </div>
     </div>
   </div>
@@ -3584,16 +3578,15 @@ function getAllSorten(){
 
 // ─── SORTENBERATER (unified) ─────────────────────────────────────────────────
 // ─── SORTENBERATER (unified) ─────────────────────────────────────────────────
-let _accordionOpen=false;
-function toggleAccordion(){
-  _accordionOpen=!_accordionOpen;
-  const el=document.getElementById('sb-accordion');
-  const icon=document.getElementById('sb-accordion-icon');
-  const hint=document.getElementById('sb-accordion-hint');
-  if(el) el.classList.toggle('open',_accordionOpen);
-  if(icon) icon.textContent=_accordionOpen?'▾':'▸';
-  if(hint) hint.style.display=_accordionOpen?'none':'';
-  onFilterChange();
+let _sbrMode='sorten';
+function sbrShowTab(t){
+  _sbrMode=t;
+  document.querySelectorAll('#tab-sortenberater .sbr-tab').forEach(el=>el.classList.toggle('active',el.dataset.tab===t));
+  const ps=document.getElementById('panel-sorten');
+  const pb=document.getElementById('panel-berater');
+  if(ps) ps.classList.toggle('active',t==='sorten');
+  if(pb) pb.classList.toggle('active',t==='berater');
+  renderResults();
 }
 function onFilterChange(){
   _sortenCache=null;
@@ -3889,7 +3882,7 @@ function sbFullPool(){
   return pool;
 }
 function updateSbCount(){
-  if(_accordionOpen){
+  if(_sbrMode==='berater'){
     const pool=sbFullPool();
     const stats={};
     pool.forEach(s=>{const f=s.frucht||'Sonstiges';stats[f]=(stats[f]||0)+1;});
@@ -3952,7 +3945,7 @@ function renderResults(){
   renderSbArten();
   renderVerwendung();
   updateSbCount();
-  if(_accordionOpen){ beraten(); } else { renderSortenListe(); }
+  if(_sbrMode==='berater'){ beraten(); } else { renderSortenListe(); }
 }
 let _sortenSeite=1;
 const ITEMS_PER_PAGE=20;
