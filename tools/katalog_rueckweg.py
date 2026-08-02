@@ -64,30 +64,47 @@ def main():
     s_index = {s["sorte"]: s for s in sorten}
 
     aktionen = []
+    edits = state.get("baumEdits") or {}
+
+    # Alle Aenderungen werden immer im Speicher ausgefuehrt, geschrieben wird nur
+    # mit --anwenden. Nur so zeigt die Vorschau wirklich das Ergebnis: frueher kam
+    # ein neuer Baum erst im Schreibmodus in b_index, weshalb die Vorschau seine
+    # baumEdits stillschweigend uebersprang.
 
     # --- 1. In der App angelegte Baeume (customTrees) --------------------------
+    # Ein baumEdit kann die ID aendern (z.B. NEU-1 -> W20). Massgeblich ist die
+    # ID, unter der die App den Baum fuehrt - sonst legt ein zweiter Lauf ihn
+    # erneut an, weil die urspruengliche ID nie im Katalog auftaucht.
     for c in (state.get("customTrees") or []):
         cid = c.get("id", "")
-        if not cid or cid in b_index:
+        if not cid:
             continue
-        aktionen.append(("neuer Baum", cid, c.get("sorte", ""), ""))
-        if a.anwenden:
-            neu = {k: v for k, v in c.items() if k not in ("sukzession", "ernten")}
-            neu.setdefault("position", None)
-            baeume.append(neu)
-            b_index[cid] = neu
+        wirk_id = (edits.get(cid) or {}).get("id") or cid
+        if cid in b_index or wirk_id in b_index:
+            continue
+        hinweis = "" if wirk_id == cid else f"(heisst in der App {wirk_id})"
+        aktionen.append(("neuer Baum", cid, c.get("sorte", ""), hinweis))
+        neu = {k: v for k, v in c.items() if k not in ("sukzession", "ernten")}
+        neu.setdefault("position", None)
+        baeume.append(neu)
+        b_index[cid] = neu
 
     # --- 2. Feldaenderungen an Katalog-Baeumen (baumEdits) ---------------------
-    for bid, edit in (state.get("baumEdits") or {}).items():
+    for bid, edit in edits.items():
         ziel = b_index.get(bid)
         if not ziel:
+            # Baum wurde bereits unter seiner geaenderten ID uebernommen
+            wirk_id = (edit or {}).get("id")
+            ziel = b_index.get(wirk_id) if wirk_id else None
+        if not ziel:
+            aktionen.append(("Baum fehlt im Katalog", bid, "", "uebersprungen"))
             continue
         for feld, wert in (edit or {}).items():
             alt = ziel.get(feld, "")
             if str(alt) != str(wert):
-                aktionen.append(("Baumfeld", bid, f"{feld}: {alt or '(leer)'} -> {wert}", ""))
-                if a.anwenden:
-                    ziel[feld] = wert
+                warn = "  <-- ID-Aenderung!" if feld == "id" else ""
+                aktionen.append(("Baumfeld", bid, f"{feld}: {alt or '(leer)'} -> {wert}", warn))
+                ziel[feld] = wert
 
     # --- 3. Sortenaenderungen (sortenEdits) -----------------------------------
     for name, edit in (state.get("sortenEdits") or {}).items():
@@ -101,8 +118,7 @@ def main():
                json.dumps(wert, ensure_ascii=False, sort_keys=True):
                 kurz = json.dumps(wert, ensure_ascii=False)[:50]
                 aktionen.append(("Sortenfeld", name, f"{feld} -> {kurz}", ""))
-                if a.anwenden:
-                    ziel[feld] = wert
+                ziel[feld] = wert
 
     # --- Ausgabe --------------------------------------------------------------
     if not aktionen:
