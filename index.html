@@ -531,6 +531,28 @@
   .shop-block.eng{margin-top:5px;padding-top:5px;}
   .shop-block.eng .shop-zeile{font-size:.78rem;margin:2px 0;}
   .shop-block.eng .shop-btn{font-size:.7rem;padding:1px 6px;}
+
+  /* ---------- Konfigurator (S3) ---------- */
+  .kf-unter{font-size:.82rem;color:var(--muted);margin:0 0 10px;}
+  .kf-feld{font-size:.85rem;padding:5px 8px;border:1px solid var(--border);border-radius:4px;
+           background:#fff;width:100%;max-width:100%;}
+  .kf-erklaerung{font-size:.78rem;color:var(--muted);margin:4px 0 2px;}
+  .kf-sorte{display:flex;align-items:center;gap:8px;font-size:.85rem;padding:5px 8px;margin:3px 0;
+            border:1px solid var(--border);border-radius:4px;background:#fff;}
+  .kf-sorte-name{flex:1;font-weight:600;}
+  .kf-reife{font-size:.76rem;color:var(--muted);}
+  .kf-basis{font-size:.72rem;color:var(--muted);border:1px solid var(--border);
+            border-radius:3px;padding:1px 5px;}
+  .kf-weg{background:none;border:none;color:var(--dachziegel);cursor:pointer;font-size:.9rem;}
+  .kf-hinweise{margin:10px 0;}
+  /* Vorteil und Vorbehalt sind verschiedene Aussagen und sehen verschieden aus —
+     sonst liest der Kunde beides als Kleingedrucktes. */
+  .kf-gut{font-size:.8rem;color:var(--gruen);background:var(--gruen-hell);
+          border-left:3px solid var(--gruen);padding:6px 9px;margin:4px 0;border-radius:0 4px 4px 0;}
+  .kf-warn{font-size:.8rem;color:#7A5700;background:#FFF4E0;
+           border-left:3px solid #D9B458;padding:6px 9px;margin:4px 0;border-radius:0 4px 4px 0;}
+  .kf-preis{margin-top:12px;padding-top:8px;border-top:2px solid var(--dark);
+            text-align:right;font-size:.95rem;font-weight:700;}
 </style>
 </head>
 <body>
@@ -992,10 +1014,10 @@
 
 <!-- Aus einem einzelnen Script-Block herausgeloest (F6). Reihenfolge ist
      bindend: Ueber Dateigrenzen hinweg gibt es kein Hoisting mehr. -->
-<script src="js/kern.js?v=98"></script>
-<script src="js/kataster.js?v=98"></script>
-<script src="js/lageplan.js?v=98"></script>
-<script src="js/start.js?v=98"></script>
+<script src="js/kern.js?v=99"></script>
+<script src="js/kataster.js?v=99"></script>
+<script src="js/lageplan.js?v=99"></script>
+<script src="js/start.js?v=99"></script>
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
@@ -1078,7 +1100,8 @@
     });
   }
 </script>
-<script src="js/berater.js?v=98"></script>
-<script src="js/shop.js?v=98"></script>
+<script src="js/berater.js?v=99"></script>
+<script src="js/shop.js?v=99"></script>
+<script src="js/konfigurator.js?v=99"></script>
 </body>
 </html>

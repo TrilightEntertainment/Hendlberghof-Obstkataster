@@ -130,10 +130,23 @@ function renderBestellModalContent() {
       <div style="font-weight:600;font-size:.85rem;margin-bottom:4px;">Eigenproduktion Hendlberghof</div>`;
     eigen.forEach(k=>{
       const beschriftung = k.konfiguriert
-        ? `${escHtml(k.unterlage || 'Unterlage offen')} mit ${(k.sorten || []).length} Sorte(n)`
+        ? `<b>${escHtml((k.sorten || []).map(x => x.sorte).join(' · '))}</b>`
+          + `<br><span style="color:var(--muted);font-size:.76rem;">`
+          + `${escHtml(k.stammform || '')}${k.stammform && k.unterlage ? ' auf ' : ''}${escHtml(k.unterlage || '')}`
+          + `${k.lieferjahr ? ` · Lieferung Herbst ${k.lieferjahr}` : ''}`
+          + `${k.notiz ? ` · ${escHtml(k.notiz)}` : ''}</span>`
         : `${escHtml(k.sorte || '')}${k.frucht ? ` · ${escHtml(k.frucht)}` : ''}`;
+      /* Unfertige Wuensche bekommen den Weg in den Konfigurator angeboten,
+         fertige einen zum Aendern — beides fuehrt in dieselbe Maske, die den
+         Eintrag ersetzt statt ihn zu verdoppeln. */
+      const konfigKnopf = typeof konfiguratorOeffnen === 'function' && k.sorte
+        ? `<button class="btn secondary" style="font-size:.7rem;padding:1px 6px;"
+                   onclick="konfiguratorOeffnen('${escAttr(k.sorte)}', '${escAttr(k.id)}')"
+           >${k.konfiguriert ? 'Ändern' : 'Zusammenstellen'}</button>`
+        : '';
       html += `<div style="display:flex;align-items:center;gap:6px;font-size:.82rem;margin:3px 0;">
         <span style="flex:1;">${beschriftung}${k.konfiguriert ? '' : ' <span style="color:var(--muted);">— noch nicht zusammengestellt</span>'}</span>
+        ${konfigKnopf}
         <input type="number" min="1" value="${k.menge || 1}"
                style="width:45px;font-size:.8rem;text-align:center;padding:2px;border:1px solid var(--border);border-radius:3px;"
                onchange="merkEigenMenge('${escAttr(k.id)}', this.value)">

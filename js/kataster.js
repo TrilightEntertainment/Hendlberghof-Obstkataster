@@ -890,12 +890,23 @@ function renderShopBlock(sorteName, kontext){
   /* Eigenveredelung. Bis der Konfigurator steht (S3), wandert die Sorte als
      einfacher Wunsch in die Merkliste; S3 ersetzt das durch die Konfiguration. */
   if(b.eigenproduktion){
+    /* Zwei Wege mit Absicht: „Zur Liste hinzufügen" ist der schnelle Griff für
+       den Besucher, der am Baum steht und sich etwas merken will. Wer den Baum
+       gleich zusammenstellen möchte, kommt über den zweiten Knopf in den
+       Konfigurator. Ein erzwungener Konfigurator am Wegesrand wäre Reibung an
+       genau der Stelle, an der das Interesse entsteht. */
+    const kannKonfigurieren = typeof konfiguratorOeffnen === 'function'
+      && istMehrsortenfaehig(b.frucht);
     teile.push(
       `<div class="shop-zeile">
          <span class="shop-preis">Vorbestellung</span>
          <span class="shop-quelle">wird auf Wunsch veredelt</span>
          <button class="btn secondary shop-btn"
                  onclick="event.stopPropagation();merkEigenHinzu('${sn}')">Zur Liste hinzufügen</button>
+         ${kannKonfigurieren
+           ? `<button class="btn secondary shop-btn"
+                      onclick="event.stopPropagation();konfiguratorOeffnen('${sn}')">Baum zusammenstellen</button>`
+           : ''}
        </div>`);
   }
 
