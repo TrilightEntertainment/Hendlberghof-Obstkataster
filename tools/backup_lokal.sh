@@ -73,7 +73,22 @@ else
   echo "-- kein Git-Repo unter $REPO - GitHub-Ablage uebersprungen" | tee -a "$LOG"
 fi
 
-# --- 3. Alte lokale Backups aufraeumen: letzte 24 Monate behalten ------------
+# --- 3. Planungsunterlagen mitsichern (nur lokal!) ---------------------------
+# Plan, Agentenkontext und Projektstaende liegen bewusst NICHT im Repo: Sie
+# enthalten Betriebsinterna, die nicht zur Veroeffentlichung bestimmt sind.
+# Das Repo ist oeffentlich, und einmal Gepushtes bliebe auch nach dem Loeschen
+# in der Historie stehen. Deshalb wandern sie ausschliesslich in die private
+# Ablage.
+DOK="$ZIEL/dokumente"
+mkdir -p "$DOK"
+anz=0
+for f in "$REPO/../"*.md "$REPO/../files/"*PROJEKTSTATUS*.md; do
+  [ -f "$f" ] || continue
+  cp "$f" "$DOK/" && anz=$((anz+1))
+done
+echo "-- Unterlagen: $anz Dokumente nach $DOK" | tee -a "$LOG"
+
+# --- 4. Alte lokale Backups aufraeumen: letzte 24 Monate behalten ------------
 # Im Repo wird nichts geloescht - dort ist die Historie ja der Sinn der Sache.
 ls -1t "$ZIEL"/*_state.json    2>/dev/null | tail -n +25 | xargs -r rm -f
 ls -1t "$ZIEL"/*_kataster.xlsx 2>/dev/null | tail -n +25 | xargs -r rm -f
