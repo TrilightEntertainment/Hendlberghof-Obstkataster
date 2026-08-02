@@ -17,8 +17,8 @@ ENTFERNT, damit Backups gefahrlos in einem oeffentlichen Repo liegen koennen.
 Mit --mit-bestellungen werden sie behalten (nur fuer private Ablage verwenden!).
 """
 
-import argparse, json, os, sys, urllib.request
-from datetime import date
+import argparse, json, os, re, sys, urllib.request, zipfile
+from datetime import date, datetime
 
 PROJEKT = "hendlberghof"
 FIRESTORE_URL = (f"https://firestore.googleapis.com/v1/projects/{PROJEKT}"
@@ -55,6 +55,33 @@ def state_aus_firestore(doc):
 
 
 # ---------------------------------------------------------------- Excel
+
+def xlsx_normalisieren(pfad):
+    """Macht die xlsx byte-identisch, solange sich der Inhalt nicht aendert.
+
+    Eine xlsx ist ein ZIP-Archiv, und openpyxl schreibt die aktuelle Uhrzeit an
+    zwei Stellen hinein: in jeden ZIP-Eintrag und als <dcterms:modified> in
+    docProps/core.xml (letzteres beim Speichern, weshalb es sich nicht vorher
+    setzen laesst). Zwei Laeufe mit denselben Daten ergaeben dadurch
+    verschiedene Dateien - jeder Monat brauechte einen Commit, auch wenn sich
+    nichts geaendert hat, und die Historie sagte nichts mehr darueber aus, wann
+    wirklich etwas passiert ist. Hier werden beide Stellen festgenagelt.
+    """
+    FEST = "2020-01-01T00:00:00Z"
+    tmp = pfad + ".tmp"
+    with zipfile.ZipFile(pfad) as alt, \
+         zipfile.ZipFile(tmp, "w", zipfile.ZIP_DEFLATED) as neu:
+        for info in sorted(alt.infolist(), key=lambda i: i.filename):
+            daten = alt.read(info.filename)
+            if info.filename == "docProps/core.xml":
+                daten = re.sub(rb"(<dcterms:modified[^>]*>)[^<]*(</dcterms:modified>)",
+                               rb"\g<1>" + FEST.encode() + rb"\g<2>", daten)
+            fest = zipfile.ZipInfo(info.filename, date_time=(2020, 1, 1, 0, 0, 0))
+            fest.compress_type = zipfile.ZIP_DEFLATED
+            fest.external_attr = info.external_attr
+            neu.writestr(fest, daten)
+    os.replace(tmp, pfad)
+
 
 def excel_schreiben(pfad, state, katalog):
     from openpyxl import Workbook
@@ -173,7 +200,9 @@ def excel_schreiben(pfad, state, katalog):
     blatt("Phaenologie", ["Baum-ID", "Sorte", "Jahr", "Werte"], zeilen)
 
     del wb["Sheet"]                     # leeres Standardblatt entfernen
+    wb.properties.created = wb.properties.modified = datetime(2020, 1, 1)
     wb.save(pfad)
+    xlsx_normalisieren(pfad)
     return nur_app                      # Baeume, die nur in der Cloud stehen
 
 
@@ -213,10 +242,13 @@ def main():
 
     json_pfad = os.path.join(a.ziel, f"{stempel}_state.json")
     with open(json_pfad, "w", encoding="utf-8") as f:
+        # sort_keys: Firestore liefert die Felder in wechselnder Reihenfolge.
+        # Ohne feste Sortierung saehe jeder Monat im Git-Diff nach einer
+        # Totalaenderung aus und echte Aenderungen gingen darin unter.
         json.dump({"stand": date.today().isoformat(),
                    "hinweis": "Live-Nutzerdaten aus Firestore. Katalog liegt versioniert in data/.",
                    "entfernte_felder": entfernt,
-                   "state": state}, f, ensure_ascii=False, indent=1)
+                   "state": state}, f, ensure_ascii=False, indent=1, sort_keys=True)
 
     xlsx_pfad = os.path.join(a.ziel, f"{stempel}_kataster.xlsx")
     nur_app = excel_schreiben(xlsx_pfad, state, katalog)
