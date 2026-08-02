@@ -668,6 +668,14 @@
       <p class="snippet">Vorsicht: überschreibt den aktuellen, mit allen Geräten synchronisierten Datenstand mit dem Inhalt der Datei. Nur zur Wiederherstellung aus einem Backup verwenden, nicht für den normalen Gebrauch.</p>
       <input type="file" id="file-import" accept="application/json">
     </div>
+    <div class="card" style="max-width:640px;margin-top:16px;" id="card-overlays">
+      <h3>Overlays aufräumen</h3>
+      <p class="snippet">Was du in der App änderst, wird als Overlay über dem Katalog gespeichert und gewinnt immer.
+      Sobald eine Änderung in den Katalog übernommen wurde, ist das Overlay überflüssig — und schädlich: Es verdeckt
+      jede spätere Korrektur am Katalog. Hier werden nur Overlays angezeigt, die nachweislich nichts Eigenes mehr
+      enthalten oder ins Leere zeigen. Alles mit eigenen Daten bleibt unberührt.</p>
+      <div id="overlay-pruefung"></div>
+    </div>
     <div class="card" style="max-width:640px;margin-top:16px;" id="card-sortenlisten-sichtbar">
       <h3>Sortenlisten-Sichtbarkeit</h3>
       <p class="snippet">Waehle welche Sortenlisten im Sortenberater und in der Sortenuebersicht angezeigt werden. Sortenblaetter (PDF) bleiben immer verfuegbar.</p>
@@ -972,7 +980,10 @@
 <script>
 let BAUM_DATA = [];
 let SORTEN_DATA = [];
-const BLACKLIST = new Set(['W20','W21','W22']);
+/* Nie existierende Platzhalter-IDs, die aus alten Importen stammen und
+   ausgeblendet bleiben. W20 wurde entfernt: Die ID ist seit August 2026 an
+   die Walnuss "Fernor" vergeben, die dadurch unsichtbar war. */
+const BLACKLIST = new Set(['W21','W22']);
 function escHtml(s){return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function escAttr(s){return (s||'').replace(/&/g,'&amp;').replace(/'/g,'&#39;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\(/g,'&#40;').replace(/\)/g,'&#41;');}
 
@@ -1211,12 +1222,19 @@ function applyRemoteState(remote){
 
 function getAllTrees(){
   const custom = state.customTrees || [];
-  return BAUM_DATA.concat(custom).filter(t=> !BLACKLIST.has(t.id)).map(t=>{
+  /* Nach wirksamer ID zusammenführen: Ein in der App angelegter Baum kann per
+     baumEdit die ID eines Katalogbaums erhalten (NEU-1 -> W20). Ohne diesen
+     Schritt stünde er doppelt in der Liste, sobald er auch im Katalog steht.
+     Das Overlay gewinnt, weil es den neueren Stand trägt. */
+  const nachId = new Map();
+  BAUM_DATA.concat(custom).forEach(t=>{
+    if(BLACKLIST.has(t.id)) return;
     const edit = (state.baumEdits && state.baumEdits[t.id]) || {};
     const merged = Object.assign({}, t, edit);
-    if(BLACKLIST.has(merged.id)) return null;
-    return merged;
-  }).filter(Boolean);
+    if(BLACKLIST.has(merged.id)) return;
+    nachId.set(merged.id, merged);
+  });
+  return Array.from(nachId.values());
 }
 function getTree(id){ return getAllTrees().find(t=>t.id===id); }
 
@@ -1236,6 +1254,7 @@ function activateTab(tabName){
   if(tabName==='daten'){
     renderPreislistenAdmin();
     renderBestellhistorie();
+    renderOverlayPruefung();
     renderSortenlistenSichtbar();
     renderImportLog();
   }
@@ -1270,6 +1289,152 @@ function fillSelect(sel, values){
     const o=document.createElement('option'); o.value=v; o.textContent=v; sel.appendChild(o);
   });
   if(values.includes(current)) sel.value = current;
+}
+
+/* ---------- Overlays aufräumen ----------
+   Änderungen aus der App liegen als Overlay (customTrees/baumEdits/sortenEdits)
+   über dem Katalog aus data/*.json und gewinnen zur Laufzeit immer. Sind sie
+   einmal in den Katalog übernommen, sind sie nicht nur überflüssig, sondern
+   schädlich: Sie verdecken jede spätere Korrektur am Katalog, die dann
+   wirkungslos bleibt. Die Analyse meldet ausschließlich beweisbar Entbehrliches
+   — Felder, die mit dem Katalog übereinstimmen, und Verwaistes ohne Bezug.
+   Alles, was noch eigene Daten trägt, bleibt unangetastet. */
+
+function overlayWertGleich(a, b){
+  const norm = v => (v === undefined || v === null) ? ''
+                  : (typeof v === 'object' ? JSON.stringify(v) : String(v));
+  return norm(a) === norm(b);
+}
+
+function analysiereOverlays(){
+  const katBaum = {};  BAUM_DATA.forEach(b=> katBaum[b.id] = b);
+  const katSorte = {}; SORTEN_DATA.forEach(s=> katSorte[s.sorte] = s);
+  const funde = [];
+  const erledigteBaumEdits = new Set();
+
+  /* 1. In der App angelegte Bäume, die inzwischen im Katalog stehen.
+        Die wirksame ID zählt: ein baumEdit kann sie geändert haben (NEU-1 -> W20). */
+  (state.customTrees || []).forEach(c=>{
+    const edit = (state.baumEdits || {})[c.id] || {};
+    const wirkId = edit.id || c.id;
+    if(!katBaum[wirkId]) return;
+    erledigteBaumEdits.add(c.id);
+    funde.push({
+      art: 'baum', id: c.id, wirkId,
+      titel: (c.sorte || c.id) + (wirkId !== c.id ? ' (' + c.id + ' → ' + wirkId + ')' : ''),
+      grund: 'steht jetzt im Katalog'
+    });
+  });
+
+  /* 2. Feldbearbeitungen an Katalogbäumen, die mit dem Katalog übereinstimmen */
+  Object.keys(state.baumEdits || {}).forEach(id=>{
+    if(erledigteBaumEdits.has(id)) return;
+    const kat = katBaum[id];
+    const edit = state.baumEdits[id] || {};
+    if(!kat){
+      /* weder Katalogbaum noch zugehöriger customTree — verwaist */
+      const gehoert = (state.customTrees || []).some(c=> c.id === id);
+      if(!gehoert) funde.push({ art:'baumEditWaise', id, titel:id, grund:'kein Baum mit dieser ID' });
+      return;
+    }
+    const gleiche = Object.keys(edit).filter(f=> overlayWertGleich(kat[f], edit[f]));
+    if(!gleiche.length) return;
+    const rest = Object.keys(edit).length - gleiche.length;
+    funde.push({
+      art: 'baumFelder', id, felder: gleiche,
+      titel: (kat.sorte || id) + ' (' + id + ')',
+      grund: gleiche.length + ' Feld' + (gleiche.length===1?'':'er') + ' wie im Katalog'
+             + (rest ? ' — ' + rest + ' abweichende bleiben' : '')
+    });
+  });
+
+  /* 3. Sortenbearbeitungen: verwaist oder deckungsgleich */
+  Object.keys(state.sortenEdits || {}).forEach(name=>{
+    const kat = katSorte[name];
+    const edit = state.sortenEdits[name] || {};
+    if(!kat){
+      funde.push({ art:'sorteWaise', name, titel:name, grund:'Sorte gibt es im Katalog nicht' });
+      return;
+    }
+    const gleiche = Object.keys(edit).filter(f=> overlayWertGleich(kat[f], edit[f]));
+    if(!gleiche.length) return;
+    const rest = Object.keys(edit).length - gleiche.length;
+    funde.push({
+      art: 'sorteFelder', name, felder: gleiche, titel: name,
+      grund: gleiche.length + ' Feld' + (gleiche.length===1?'':'er') + ' wie im Katalog'
+             + (rest ? ' — ' + rest + ' abweichende bleiben' : '')
+    });
+  });
+
+  return funde;
+}
+
+function renderOverlayPruefung(){
+  const karte = document.getElementById('card-overlays');
+  const el = document.getElementById('overlay-pruefung');
+  if(!karte || !el) return;
+  if(!isAdmin()){ karte.style.display = 'none'; return; }
+  karte.style.display = '';
+
+  const funde = analysiereOverlays();
+  if(!funde.length){
+    el.innerHTML = '<p class="snippet" style="margin:0;">Nichts aufzuräumen — jedes Overlay trägt eigene Daten.</p>';
+    return;
+  }
+  const zeilen = funde.map(f=>
+    '<li style="margin-bottom:6px;"><b>' + escHtml(f.titel) + '</b>'
+    + '<span style="color:var(--muted);"> — ' + escHtml(f.grund) + '</span></li>'
+  ).join('');
+  el.innerHTML =
+    '<p class="snippet" style="margin:0 0 8px;">' + funde.length + ' überflüssige oder verwaiste Overlays:</p>'
+    + '<ul style="margin:0 0 12px;padding-left:20px;font-size:.88rem;">' + zeilen + '</ul>'
+    + '<button class="btn" onclick="overlaysAufraeumen()">' + funde.length + ' Overlays entfernen</button>';
+}
+
+function overlaysAufraeumen(){
+  if(!isAdmin()) return;
+  const funde = analysiereOverlays();
+  if(!funde.length) return;
+  if(!confirm(funde.length + ' überflüssige Overlays entfernen?\n\n'
+    + 'Die Daten selbst bleiben erhalten — sie stehen im Katalog. Entfernt wird nur '
+    + 'die Überlagerung, die den Katalog bisher verdeckt hat.')) return;
+
+  funde.forEach(f=>{
+    if(f.art === 'baum'){
+      state.customTrees = (state.customTrees || []).filter(c=> c.id !== f.id);
+      if(state.baumEdits) delete state.baumEdits[f.id];
+      /* Positionen an die im Katalog gültige ID übergeben, sonst gingen sie verloren */
+      if(f.wirkId !== f.id){
+        ['positions','satPositions'].forEach(topf=>{
+          const m = state[topf];
+          if(m && m[f.id] !== undefined){
+            if(m[f.wirkId] === undefined) m[f.wirkId] = m[f.id];
+            delete m[f.id];
+          }
+        });
+      }
+    } else if(f.art === 'baumEditWaise'){
+      if(state.baumEdits) delete state.baumEdits[f.id];
+    } else if(f.art === 'baumFelder'){
+      const e = state.baumEdits[f.id];
+      f.felder.forEach(k=> delete e[k]);
+      if(!Object.keys(e).length) delete state.baumEdits[f.id];
+    } else if(f.art === 'sorteWaise'){
+      if(state.sortenEdits) delete state.sortenEdits[f.name];
+    } else if(f.art === 'sorteFelder'){
+      const e = state.sortenEdits[f.name];
+      f.felder.forEach(k=> delete e[k]);
+      if(!Object.keys(e).length) delete state.sortenEdits[f.name];
+    }
+  });
+
+  saveState();
+  refreshFilterOptions();
+  renderBaumTable();
+  renderResults();
+  renderUnplacedSelect();
+  renderOverlayPruefung();
+  showToast(funde.length + ' Overlays entfernt — Katalog und App sind jetzt deckungsgleich.', 'success', 4000);
 }
 
 function renderSortenlistenSichtbar(){
