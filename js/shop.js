@@ -156,7 +156,10 @@ function renderBestellModalContent() {
     });
     html += `<div style="font-size:.76rem;color:var(--muted);margin-top:4px;border-top:1px solid var(--border);padding-top:4px;">
       Preis steht erst nach der Zusammenstellung fest — nicht in der Summe unten enthalten.
-    </div></div>`;
+    </div>
+    <button class="btn secondary" style="font-size:.76rem;padding:3px 10px;margin-top:6px;"
+            onclick="anfrageSenden('${MERKLISTE_EIGEN}')">Anfrage an den Hof senden</button>
+    </div>`;
   }
 
 
@@ -179,6 +182,10 @@ function renderBestellModalContent() {
         html += '</div>';
       });
       html += '<div style="text-align:right;font-size:.82rem;font-weight:600;margin-top:4px;border-top:1px solid var(--border);padding-top:4px;">Gesamt '+g.quelle+': '+qSumme.toFixed(2)+' EUR</div>';
+      /* Je Lieferant ein eigener Sendeknopf — die Anfrage enthaelt nur dessen
+         Positionen. Ein gemeinsamer Knopf war der Grund fuer die Sammelmail. */
+      html += `<button class="btn secondary" style="font-size:.76rem;padding:3px 10px;margin-top:6px;"
+                       onclick="anfrageSenden('${qid}')">Anfrage an ${escHtml(g.quelle || qid)} senden</button>`;
       html += '</div>';
       gesamt += qSumme;
     });
@@ -192,8 +199,7 @@ function renderBestellModalContent() {
   html += '<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;">';
   html += '<button class="btn secondary" onclick="bestellungDrucken()">Drucken</button>';
   html += '<button class="btn secondary" onclick="bestellungPdf()">PDF erstellen</button>';
-  html += '<button class="btn secondary" onclick="bestellungEmail()">E-Mail senden</button>';
-  html += '<button class="btn secondary" onclick="bestellungSpeichern()">Bestellung speichern</button>';
+  html += '<button class="btn secondary" onclick="bestellungSpeichern()">Anfragen speichern</button>';
   html += '</div>';
   html += '</div>';
   document.getElementById('modal-content').innerHTML = html;
@@ -236,31 +242,104 @@ function bestellungDrucken() {
   window.print();
 }
 
-function bestellungEmail() {
-  if(!bestellListe.length) { showToast('Keine Sorten in der Bestellliste.','error'); return; }
-  if(!_validateBestellfelder()){ showToast('Bitte alle Pflichtfelder ausfüllen.','error'); return; }
-  const kf = _bestellFeldWerte();
-  const to = [...new Set(bestellListe.map(e=>e.email).filter(Boolean))].join(',');
-  const gesamt = bestellListe.reduce((s,e) => s + e.preis * e.menge, 0);
-  const lines = [
-    'Bestellung Hendlberghof',
+/* ---------- Anfragen je Empfänger (S4) ----------
+   Vorher ging EINE Sammelmail an alle Lieferanten gleichzeitig: `to` sammelte
+   sämtliche Adressen, der Text enthielt sämtliche Positionen. Jede Baumschule
+   hätte gesehen, was die Mitbewerber anbieten und zu welchem Preis — und wer
+   sonst noch angefragt wurde. Das ist nicht bloß unhöflich, es gibt
+   Geschäftsdaten Dritter preis.
+
+   Jetzt wird nach Empfänger zerlegt: je Anfrage eine Mail, ein PDF, ein
+   Eintrag in der Historie. Die Eigenproduktion ist dabei ein Empfänger wie
+   jeder andere — sie geht an den Hof selbst. */
+
+const HOF_EMAIL_STANDARD = 'mail@hendlberghof.at';
+
+function anfragenAufteilen(){
+  const raus = [];
+
+  const eigen = ((state.merklisten || {})[MERKLISTE_EIGEN] || {}).konfigurationen || [];
+  if(eigen.length){
+    raus.push({
+      typ: 'eigen', qid: MERKLISTE_EIGEN,
+      name: 'Eigenproduktion Hendlberghof',
+      email: (getProduktion().email || HOF_EMAIL_STANDARD),
+      konfigurationen: eigen, positionen: [], summe: null
+    });
+  }
+
+  const nachQuelle = {};
+  bestellListe.forEach(e=>{
+    if(!nachQuelle[e.qid]){
+      nachQuelle[e.qid] = { typ:'lieferant', qid:e.qid, name:e.quelle || e.qid,
+                            email:e.email || '', positionen:[], konfigurationen:[] };
+    }
+    nachQuelle[e.qid].positionen.push(e);
+  });
+  Object.keys(nachQuelle).forEach(qid=>{
+    const a = nachQuelle[qid];
+    a.summe = a.positionen.reduce((s, p) => s + (p.preis || 0) * (p.menge || 1), 0);
+    raus.push(a);
+  });
+  return raus;
+}
+
+/* Text einer einzelnen Anfrage. Enthaelt ausschliesslich, was diesen Empfaenger
+   angeht - keine Zeile ueber andere Lieferanten. */
+function anfrageText(a, kf){
+  const zeilen = [
+    a.typ === 'eigen' ? 'Anfrage Eigenproduktion Hendlberghof' : `Anfrage an ${a.name}`,
     '',
-    'Kontakt: ' + kf.vname + ' ' + kf.nname,
-    'Adresse: ' + kf.strasse + ', ' + kf.plz + ' ' + kf.ort,
-    'Email: ' + kf.email,
-    'Tel: ' + kf.telefon,
-    '',
-    'Sorten:',
-    ...bestellListe.map(e =>
-      '  ' + e.sorte + (e.unterlage ? ' (' + e.unterlage + ')' : '') +
-      (e.alter ? ' ' + e.alter : '') + ' x' + e.menge + ' = ' + (e.preis * e.menge).toFixed(2) + ' EUR (inkl. 13% MwSt)'
-    ),
-    '',
-    'Gesamt: ' + gesamt.toFixed(2) + ' EUR'
+    `Kontakt: ${kf.vname} ${kf.nname}`,
+    `Adresse: ${kf.strasse}, ${kf.plz} ${kf.ort}`,
+    `E-Mail: ${kf.email}`,
+    `Telefon: ${kf.telefon}`,
+    ''
   ];
-  const body = lines.join('\r\n');
-  const subject = 'Bestellung Hendlberghof ' + kf.vname + ' ' + kf.nname;
-  window.location.href = 'mailto:' + to + '?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body);
+
+  if(a.konfigurationen.length){
+    zeilen.push('Gewünschte Bäume:');
+    a.konfigurationen.forEach(k=>{
+      const sorten = k.konfiguriert
+        ? (k.sorten || []).map(x => x.sorte).join(', ')
+        : `${k.sorte} (noch nicht zusammengestellt)`;
+      const teile = [`  ${k.menge || 1} x ${sorten}`];
+      if(k.stammform || k.unterlage)
+        teile.push(`      ${k.stammform || ''}${k.stammform && k.unterlage ? ' auf ' : ''}${k.unterlage || ''}`);
+      if(k.lieferjahr) teile.push(`      Lieferung Herbst ${k.lieferjahr}`);
+      if(k.notiz) teile.push(`      Anmerkung: ${k.notiz}`);
+      zeilen.push(...teile);
+    });
+    zeilen.push('', 'Preis nach Angebot.');
+  }
+
+  if(a.positionen.length){
+    zeilen.push('Sorten:');
+    a.positionen.forEach(p=>{
+      const zusatz = [p.unterlage, p.alter].filter(Boolean).join(' ');
+      zeilen.push(`  ${p.sorte}${zusatz ? ` (${zusatz})` : ''} x${p.menge}`
+        + ` = ${((p.preis || 0) * (p.menge || 1)).toFixed(2)} EUR (inkl. ${p.mwst_satz || 13}% MwSt)`);
+    });
+    zeilen.push('', `Summe: ${a.summe.toFixed(2)} EUR`);
+  }
+  return zeilen.join('\r\n');
+}
+
+function anfrageSenden(qid){
+  if(!_validateBestellfelder()){ showToast('Bitte alle Pflichtfelder ausfüllen.','error'); return; }
+  const a = anfragenAufteilen().find(x => x.qid === qid);
+  if(!a){ showToast('Diese Liste ist leer.','error'); return; }
+  if(!a.email){
+    showToast(`Für „${a.name}" ist keine E-Mail-Adresse hinterlegt.`, 'error', 4500);
+    return;
+  }
+  const kf = _bestellFeldWerte();
+  const betreff = a.typ === 'eigen'
+    ? `Anfrage Baumbestellung — ${kf.vname} ${kf.nname}`
+    : `Anfrage Hendlberghof — ${kf.vname} ${kf.nname}`;
+  window.location.href = `mailto:${encodeURIComponent(a.email)}`
+    + `?subject=${encodeURIComponent(betreff)}`
+    + `&body=${encodeURIComponent(anfrageText(a, kf))}`;
 }
 
 function bestellungPdf(){
@@ -314,33 +393,47 @@ function bestellungPdf(){
 }
 
 function bestellungSpeichern() {
-  if(!bestellListe.length) { showToast('Keine Sorten in der Bestellliste.','error'); return; }
+  const anfragen = anfragenAufteilen();
+  if(!anfragen.length) { showToast('Beide Listen sind leer.','error'); return; }
   if(!_validateBestellfelder()){ showToast('Bitte alle Pflichtfelder ausfüllen.','error'); return; }
   const kf = _bestellFeldWerte();
   const kontakt = {
-    vorname: kf.vname,
-    nachname: kf.nname,
-    strasse: kf.strasse,
-    plz: kf.plz,
-    ort: kf.ort,
-    email: kf.email,
-    telefon: kf.telefon
+    vorname: kf.vname, nachname: kf.nname, strasse: kf.strasse,
+    plz: kf.plz, ort: kf.ort, email: kf.email, telefon: kf.telefon
   };
-  const gesamt = bestellListe.reduce((s,e) => s + e.preis * e.menge, 0);
-  const order = {
-    id: 'best_' + Date.now(),
-    datum: new Date().toISOString(),
-    status: 'offen',
-    kontakt,
-    items: JSON.parse(JSON.stringify(bestellListe)),
-    gesamt
-  };
-  state.bestellungen.push(order);
-  saveState();
+
+  /* Je Empfaenger ein eigener Eintrag in der Historie. Vorher lag alles in
+     einer Sammelbestellung - der Hof konnte den eigenen Auftrag nicht getrennt
+     verfolgen von dem, was bei einer Baumschule bestellt wurde, und ein
+     Storno haette immer beides betroffen. */
+  const stempel = Date.now();
+  anfragen.forEach((a, i)=>{
+    state.bestellungen.push({
+      id: `best_${stempel}_${i}`,
+      datum: new Date().toISOString(),
+      status: 'offen',
+      typ: a.typ,                       /* eigen | lieferant */
+      empfaenger: a.name,
+      empfaenger_email: a.email,
+      qid: a.qid,
+      kontakt,
+      items: JSON.parse(JSON.stringify(a.positionen)),
+      konfigurationen: JSON.parse(JSON.stringify(a.konfigurationen)),
+      gesamt: a.summe
+    });
+  });
+
+  /* Beide Merklisten leeren - was gespeichert ist, steht in der Historie. */
   bestellListe = [];
+  const eigenFach = getMerkliste(MERKLISTE_EIGEN);
+  eigenFach.konfigurationen = [];
+  eigenFach.geaendert = new Date().toISOString();
   saveCart();
   updateCartBadge();
-  showToast('Bestellung gespeichert!');
+
+  showToast(anfragen.length === 1
+    ? 'Anfrage gespeichert.'
+    : `${anfragen.length} Anfragen gespeichert — je Empfänger eine.`, 'success');
   closeModal();
   renderBestellhistorie();
 }
