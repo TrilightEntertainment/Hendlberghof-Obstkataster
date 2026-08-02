@@ -2160,6 +2160,149 @@ function getSorte(sorteName){
   return Object.assign({}, s, edit);
 }
 
+/* ---------- Bestellbarkeit einer Sorte ----------
+   Liefert genau einen Zustand, damit die Arche-Noah-Regel und die Sortenschutz-
+   Sperre an einer Stelle stehen statt verstreut in den Karten-Renderern.
+
+   Zustände (Abschnitt 4 des Plans):
+     nur_beratung      Arche-Noah-Sorte — grundsätzlich nicht käuflich
+     eigenproduktion   selbst veredelbar, Vorbestellung möglich
+     fremdlieferant    bei einer aktiven Preisquelle gelistet
+     gesperrt          Sortenschutz, und kein anderer Weg vorhanden
+     nicht_verfuegbar  sonst — mit Angabe des Grundes
+
+   Zwei Feinheiten, die man leicht falsch macht:
+
+   1. Der Sortenschutz sperrt NUR die Eigenveredelung. Eine Baumschule hat ihre
+      Lizenzen; ist die Sorte dort gelistet, gilt fremdlieferant, nicht gesperrt.
+      So steht es in Abschnitt 8, Maßnahme 3.
+   2. Beide Kaufwege können gleichzeitig gelten. Deshalb liefert die Funktion
+      neben `zustand` auch `eigenproduktion` und `lieferanten` — die Oberfläche
+      kann daraus eine Auswahl bauen. `zustand` nennt nur den vorrangigen Weg.
+
+   `vermehrung` gilt als 'unklar', solange nichts Belastbares hinterlegt ist, und
+   sperrt dann die Eigenveredelung. Bewusst so: lieber eine Sorte zu wenig
+   anbieten als eine zu viel. Geklärt wird das ausschließlich über CPVO Variety
+   Finder und AGES — die Triage in Abschnitt 8 ist Vorarbeit, keine Rechtsauskunft.
+
+   `als_reiser_verfuegbar` ist dagegen betrieblich, nicht rechtlich gemeint: Ist
+   der Musterbaum zu jung oder krank, wird das Feld auf false gesetzt. Fehlt es,
+   gilt es als erfüllt — die vorsichtige Sperre leistet bereits `vermehrung`, und
+   zwei Sperren mit demselben Standard würden nur verschleiern, welche greift. */
+
+const VERMEHRUNG_FREI = 'frei';
+const VERMEHRUNG_GESCHUETZT = 'geschuetzt';
+const VERMEHRUNG_UNKLAR = 'unklar';
+
+function getVermehrung(sorteName){
+  const s = getSorte(sorteName);
+  const wert = String((s && s.vermehrung) || '').trim().toLowerCase();
+  return (wert === VERMEHRUNG_FREI || wert === VERMEHRUNG_GESCHUETZT)
+    ? wert : VERMEHRUNG_UNKLAR;
+}
+
+/* Aktive Preisquellen, die diese Sorte führen. Fehlendes `aktiv` gilt als aktiv,
+   damit bestehende Quellen ohne das Feld weiter funktionieren. */
+function getFremdlieferanten(sorteName){
+  const gesucht = String(sorteName || '').trim().toLowerCase();
+  if(!gesucht) return [];
+  const listen = (typeof state !== 'undefined' && state && state.preislisten) || {};
+  const treffer = [];
+  Object.keys(listen).forEach(qid=>{
+    const q = listen[qid] || {};
+    if(q.aktiv === false) return;
+    (q.preise || []).forEach(p=>{
+      if(String(p.sorte || '').trim().toLowerCase() === gesucht){
+        treffer.push({ qid, name: q.name || qid, email: q.email || '', eintrag: p });
+      }
+    });
+  });
+  return treffer;
+}
+
+function getBestellbarkeit(sorteName, info){
+  const name = String(sorteName || '').trim();
+  const katalog = getSorte(name);
+  /* Ohne Angabe abgeleitet: Was im Katalog steht, wächst am Hof; sonst zählt, ob
+     die Sorte im Arche-Noah-Bestand geführt wird. Ein unbekannter Name darf NICHT
+     als Arche-Noah-Sorte durchgehen — „nicht gefunden" ist etwas anderes als
+     „nur zur Beratung", und die falsche Auskunft wäre die beruhigendere. */
+  const quelle = (info && info.quelle)
+    || (katalog ? 'hof'
+        : (typeof AN_SORTEN !== 'undefined' && AN_SORTEN.some(a=>a.name===name)) ? 'arche'
+        : 'unbekannt');
+  const frucht = (info && info.frucht) || (katalog && katalog.frucht) || '';
+  const vermehrung = getVermehrung(name);
+
+  const erg = {
+    sorte: name, quelle, frucht, vermehrung,
+    hinweis: (katalog && katalog.vermehrung_hinweis) || '',
+    sortenschutz: vermehrung === VERMEHRUNG_GESCHUETZT,
+    eigenproduktion: false,
+    lieferanten: [],
+    zustand: 'nicht_verfuegbar',
+    grund: ''
+  };
+
+  /* 0. Name führt nirgendwohin — eigener Zustand, damit ein Tippfehler in einer
+        Preisliste sichtbar wird, statt als harmlose Beratungssorte zu erscheinen. */
+  if(quelle === 'unbekannt'){
+    erg.zustand = 'nicht_verfuegbar';
+    erg.grund = name ? `Sorte „${name}" ist weder im Katalog noch bei Arche Noah hinterlegt.`
+                     : 'Keine Sorte angegeben.';
+    return erg;
+  }
+
+  /* 1. Arche Noah steht vor allem anderen — nie käuflich, reine Beratung. */
+  if(quelle === 'arche'){
+    erg.zustand = 'nur_beratung';
+    erg.grund = 'Arche-Noah-Sorte — nur zur Beratung, nicht im Verkauf.';
+    return erg;
+  }
+
+  erg.lieferanten = getFremdlieferanten(name);
+
+  const regel = getObstartRegel(frucht);
+  const reiserDa = katalog ? katalog.als_reiser_verfuegbar !== false : false;
+  erg.eigenproduktion = regel.veredelung && vermehrung === VERMEHRUNG_FREI && reiserDa;
+
+  /* 2. Eigenveredelung hat Vorrang — das ist das Kernprodukt. */
+  if(erg.eigenproduktion){
+    erg.zustand = 'eigenproduktion';
+    erg.grund = 'Vorbestellung — wird auf Wunsch veredelt.';
+    return erg;
+  }
+
+  /* 3. Sonst über eine Preisquelle. Gilt auch bei Sortenschutz: Die Baumschule
+        hat ihre Lizenzen, gesperrt ist nur die eigene Vermehrung. */
+  if(erg.lieferanten.length){
+    erg.zustand = 'fremdlieferant';
+    erg.grund = erg.lieferanten.length === 1
+      ? `Lieferbar über ${erg.lieferanten[0].name}.`
+      : `Lieferbar über ${erg.lieferanten.length} Quellen.`;
+    return erg;
+  }
+
+  /* 4. Sortenschutz ohne anderen Weg. */
+  if(erg.sortenschutz){
+    erg.zustand = 'gesperrt';
+    erg.grund = 'Sortenschutz — eigene Vermehrung nicht zulässig.';
+    return erg;
+  }
+
+  /* 5. Sonst: Grund benennen, statt nur „nicht verfügbar" zu zeigen. */
+  if(!frucht) erg.grund = 'Obstart nicht hinterlegt.';
+  else if(!regel.veredelung)
+    erg.grund = regel.bekannt
+      ? `Für ${frucht} wird derzeit keine Veredelung angeboten.`
+      : `Obstart ${frucht} ist nicht hinterlegt — bitte in den Obstart-Regeln ergänzen.`;
+  else if(vermehrung === VERMEHRUNG_UNKLAR)
+    erg.grund = 'Vermehrungsrecht noch nicht geklärt — bis dahin gesperrt.';
+  else if(!reiserDa) erg.grund = 'Derzeit kein Reiserholz verfügbar.';
+  else erg.grund = 'Derzeit nicht verfügbar.';
+  return erg;
+}
+
 function toggleVerwendung(sorteName, cat){
   const s = getSorte(sorteName);
   const current = ((s && s.verwendung) || []).slice();
