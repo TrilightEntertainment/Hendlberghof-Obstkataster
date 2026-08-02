@@ -518,6 +518,19 @@
 .import-log-info span{font-size:.82rem;color:var(--muted)}
 .import-log-actions{display:flex;gap:6px}
 .import-log-actions .btn{padding:5px 10px;font-size:.78rem}
+  /* ---------- Kaufblock (S1) — eine Gestaltung für alle vier Karten ---------- */
+  .shop-block{margin-top:6px;padding-top:6px;border-top:1px solid var(--border);}
+  .shop-zeile{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:.82rem;margin:3px 0;}
+  .shop-preis{color:var(--gruen);font-weight:600;}
+  .shop-quelle{color:var(--muted);}
+  .shop-btn{font-size:.72rem;padding:2px 8px;}
+  .shop-hinweis{font-size:.78rem;color:var(--muted);}
+  /* Sortenschutz ist kein Hinweis, sondern eine Sperre — darf nicht wie eine
+     beiläufige Fußnote aussehen. */
+  .shop-gesperrt{font-size:.78rem;color:#8a3a24;}
+  .shop-block.eng{margin-top:5px;padding-top:5px;}
+  .shop-block.eng .shop-zeile{font-size:.78rem;margin:2px 0;}
+  .shop-block.eng .shop-btn{font-size:.7rem;padding:1px 6px;}
 </style>
 </head>
 <body>
@@ -979,10 +992,10 @@
 
 <!-- Aus einem einzelnen Script-Block herausgeloest (F6). Reihenfolge ist
      bindend: Ueber Dateigrenzen hinweg gibt es kein Hoisting mehr. -->
-<script src="js/kern.js"></script>
-<script src="js/kataster.js"></script>
-<script src="js/lageplan.js"></script>
-<script src="js/start.js"></script>
+<script src="js/kern.js?v=97"></script>
+<script src="js/kataster.js?v=97"></script>
+<script src="js/lageplan.js?v=97"></script>
+<script src="js/start.js?v=97"></script>
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
@@ -1065,7 +1078,7 @@
     });
   }
 </script>
-<script src="js/berater.js"></script>
-<script src="js/shop.js"></script>
+<script src="js/berater.js?v=97"></script>
+<script src="js/shop.js?v=97"></script>
 </body>
 </html>

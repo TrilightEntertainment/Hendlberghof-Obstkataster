@@ -34,7 +34,16 @@ function saveCart(){
 function updateCartBadge(){
   const badge=document.getElementById('cart-badge');
   if(!badge) return;
-  const n=bestellListe.length;
+  /* Zaehlt beide Merklisten-Arten: Lieferantenpositionen und die Wuensche zur
+     Eigenproduktion. Vorher nur bestellListe.length — seit S1 koennen Eintraege
+     auch im Fach `eigen` landen und blieben sonst ungezaehlt.
+
+     Bewusst NICHT ueber merkAnzahl(): Das liest state.merklisten, und drei
+     Aufrufer aktualisieren das Abzeichen vor saveCart(). Dann zeigte es einen
+     Eintrag zu wenig. Hier zaehlt die Arbeitskopie, die immer aktuell ist —
+     damit ist die Reihenfolge der Aufrufe gleichgueltig. */
+  const eigen = ((state.merklisten || {})[MERKLISTE_EIGEN] || {}).konfigurationen || [];
+  const n = (Array.isArray(bestellListe) ? bestellListe.length : 0) + eigen.length;
   badge.textContent=n;
   badge.style.display=n>0?'inline':'none';
 }

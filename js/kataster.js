@@ -743,9 +743,19 @@ function getVermehrung(sorteName){
 }
 
 /* Aktive Preisquellen, die diese Sorte führen. Fehlendes `aktiv` gilt als aktiv,
-   damit bestehende Quellen ohne das Feld weiter funktionieren. */
+   damit bestehende Quellen ohne das Feld weiter funktionieren.
+
+   Der Abgleich ist bewusst unscharf. Preislisten kommen von Baumschulen und
+   führen Kurzformen: „Peasgood" gegen „Peasgoods Sondergleichen" im Katalog.
+   Ein exakter Vergleich fände solche Einträge nicht — genau das war beim ersten
+   Bau dieser Funktion der Fall und blieb unbemerkt, weil derselbe Eintrag über
+   den älteren, unscharfen Weg sehr wohl angezeigt wurde. */
+function _sortenSchluessel(s){
+  return String(s || '').toLowerCase().replace(/[^a-z0-9äöüß]/g, '');
+}
+
 function getFremdlieferanten(sorteName){
-  const gesucht = String(sorteName || '').trim().toLowerCase();
+  const gesucht = _sortenSchluessel(sorteName);
   if(!gesucht) return [];
   const listen = (typeof state !== 'undefined' && state && state.preislisten) || {};
   const treffer = [];
@@ -753,8 +763,17 @@ function getFremdlieferanten(sorteName){
     const q = listen[qid] || {};
     if(q.aktiv === false) return;
     (q.preise || []).forEach(p=>{
-      if(String(p.sorte || '').trim().toLowerCase() === gesucht){
-        treffer.push({ qid, name: q.name || qid, email: q.email || '', eintrag: p });
+      if(!p.sorte) return;
+      const ps = _sortenSchluessel(p.sorte);
+      const passt = ps === gesucht || ps.includes(gesucht) || gesucht.includes(ps)
+                    || (typeof levenshtein === 'function' && levenshtein(ps, gesucht) <= 2);
+      if(passt){
+        treffer.push({
+          qid, name: q.name || qid, email: q.email || '', eintrag: p,
+          preis: p.preis, unterlage: p.unterlage || '', alter: p.alter || '',
+          vorbestellbar: !!p.vorbestellbar, mwst_satz: p.mwst_satz || 13,
+          quelle: q.name || qid
+        });
       }
     });
   });
@@ -789,7 +808,7 @@ function getBestellbarkeit(sorteName, info){
         Preisliste sichtbar wird, statt als harmlose Beratungssorte zu erscheinen. */
   if(quelle === 'unbekannt'){
     erg.zustand = 'nicht_verfuegbar';
-    erg.grund = name ? `Sorte „${name}" ist weder im Katalog noch bei Arche Noah hinterlegt.`
+    erg.grund = name ? `Sorte „${name}“ ist weder im Katalog noch bei Arche Noah hinterlegt.`
                      : 'Keine Sorte angegeben.';
     return erg;
   }
@@ -842,6 +861,91 @@ function getBestellbarkeit(sorteName, info){
   else if(!reiserDa) erg.grund = 'Derzeit kein Reiserholz verfügbar.';
   else erg.grund = 'Derzeit nicht verfügbar.';
   return erg;
+}
+
+/* ---------- Kaufblock — eine Stelle für alle Karten ----------
+   Bisher lag der Preisblock zweimal wortgleich im Sortenberater, in Sorten- und
+   Baum-Modal fehlte er ganz. Jede Regeländerung hätte an mehreren Stellen
+   nachgezogen werden müssen — genau so entstehen Abweichungen wie die eben
+   behobene doppelte Preiszuordnung.
+
+   Verwendet in vier Karten: Sortenübersicht, Berater-Empfehlung, Sorten-Modal,
+   Baum-Modal. Der Einstieg in den Konfigurator (S3) wird später hier eingehängt,
+   dann an einer Stelle statt an vier.
+
+   kontext: { quelle, frucht, kompakt } — kompakt kürzt für die schmalen
+   Berater-Karten. */
+function renderShopBlock(sorteName, kontext){
+  const k = kontext || {};
+  const b = getBestellbarkeit(sorteName, k);
+  const eng = !!k.kompakt;
+  const sn = escAttr(sorteName);
+  const rahmen = inhalt => `<div class="shop-block${eng ? ' eng' : ''}">${inhalt}</div>`;
+
+  if(b.zustand === 'nur_beratung')
+    return rahmen(`<span class="shop-hinweis">Nur zur Beratung — Arche-Noah-Sorten sind nicht käuflich.</span>`);
+
+  const teile = [];
+
+  /* Eigenveredelung. Bis der Konfigurator steht (S3), wandert die Sorte als
+     einfacher Wunsch in die Merkliste; S3 ersetzt das durch die Konfiguration. */
+  if(b.eigenproduktion){
+    teile.push(
+      `<div class="shop-zeile">
+         <span class="shop-preis">Vorbestellung</span>
+         <span class="shop-quelle">wird auf Wunsch veredelt</span>
+         <button class="btn secondary shop-btn"
+                 onclick="event.stopPropagation();merkEigenHinzu('${sn}')">Zur Liste hinzufügen</button>
+       </div>`);
+  }
+
+  /* Fremdlieferanten — je Preiseintrag eine Zeile. */
+  b.lieferanten.forEach(l=>{
+    const zusatz = [l.unterlage, l.alter].filter(Boolean).join(' ');
+    const preis = (typeof l.preis === 'number') ? l.preis.toFixed(2) + ' EUR' : 'Preis auf Anfrage';
+    const daten = escAttr(JSON.stringify({
+      qid: l.qid, quelle: l.quelle, email: l.email, preis: l.preis,
+      unterlage: l.unterlage, alter: l.alter, mwst_satz: l.mwst_satz
+    }));
+    teile.push(
+      `<div class="shop-zeile">
+         <span class="shop-preis">${preis}</span>
+         <span class="shop-quelle">(${escHtml(l.name)}${zusatz ? ' ' + escHtml(zusatz) : ''})</span>
+         <button class="btn secondary shop-btn"
+                 onclick="event.stopPropagation();addToBestellliste('${sn}', JSON.parse(this.dataset.p))"
+                 data-p="${daten}">Zur Liste hinzufügen</button>
+         ${l.vorbestellbar ? '<span class="shop-hinweis">vorbestellbar</span>' : ''}
+       </div>`);
+  });
+
+  if(teile.length) return rahmen(teile.join(''));
+
+  /* Kein Kaufweg — Grund nennen statt nur auszugrauen. */
+  const klasse = b.zustand === 'gesperrt' ? 'shop-gesperrt' : 'shop-hinweis';
+  return rahmen(`<span class="${klasse}">${escHtml(b.grund)}</span>`);
+}
+
+/* Einfacher Merkeintrag für die Eigenproduktion. S3 ersetzt das durch eine
+   vollständige Baumkonfiguration; das Feld `konfiguriert` unterscheidet beide. */
+function merkEigenHinzu(sorteName){
+  const liste = getMerkliste(MERKLISTE_EIGEN);
+  if(liste.konfigurationen.some(k => k.sorte === sorteName && !k.konfiguriert)){
+    showToast(`„${sorteName}" steht bereits auf der Liste.`, 'info');
+    return;
+  }
+  const s = getSorte(sorteName);
+  liste.konfigurationen.push({
+    id: 'W' + Date.now().toString(36),
+    sorte: sorteName,
+    frucht: (s && s.frucht) || '',
+    menge: 1,
+    konfiguriert: false,          /* noch kein Baum zusammengestellt */
+    angelegt: new Date().toISOString()
+  });
+  liste.geaendert = new Date().toISOString();
+  saveState();
+  updateCartBadge();
+  showToast(`„${sorteName}" zur Liste hinzugefügt.`, 'success');
 }
 
 function toggleVerwendung(sorteName, cat){
@@ -984,7 +1088,13 @@ function openBaumModal(id){
     </div>` : ''}`
       : ''}
   `;
-  document.getElementById('modal-content').innerHTML = html;
+  /* Kaufblock: „nochmal so einen Baum" — der Besucher steht vor dem Muster
+     und will genau diese Sorte. Ohne Sorte am Baum gibt es nichts anzubieten. */
+  const shopHtml = t.sorte
+    ? `<div class="section-title">Diese Sorte bestellen</div>`
+      + renderShopBlock(t.sorte, {frucht: t.frucht})
+    : '';
+  document.getElementById('modal-content').innerHTML = html + shopHtml;
   document.getElementById('modal-content').dataset.modalType = 'baum';
   document.getElementById('modal-content').dataset.modalId = id;
   document.getElementById('overlay').classList.add('open');
@@ -1236,7 +1346,11 @@ function openSortenModal(sorteName){
     ${!s.geschmack && !s.eigenschaften && !s.frucht_beschreibung ? '<p class="empty">Für diese Sorte liegt noch keine ausführliche Beschreibung vor.</p>':''}
     ${s.recherchiert? `<div class="quelle-hinweis"><b>Quelle(n):</b> ${s.quelle}<br>Diese Angaben stammen aus einer Web-Recherche (nicht aus deiner Numbers-Tabelle) und sollten anhand der Bäume vor Ort verifiziert werden.</div>`:''}
   `;
-  document.getElementById('modal-content').innerHTML = html;
+  /* Kaufblock — dieselbe Funktion wie auf den Karten (S1). Im Modal ohne
+     `kompakt`, hier ist Platz. */
+  const shopHtml = `<div class="section-title">Bestellen</div>`
+    + renderShopBlock(s.sorte || sorteName, {quelle: s.quelle, frucht: s.frucht});
+  document.getElementById('modal-content').innerHTML = html + shopHtml;
   document.getElementById('modal-content').dataset.modalType = 'sorte';
   document.getElementById('modal-content').dataset.modalId = sorteName;
   document.getElementById('overlay').classList.add('open');

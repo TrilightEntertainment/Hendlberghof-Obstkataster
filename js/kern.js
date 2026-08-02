@@ -13,6 +13,20 @@ let SORTEN_DATA = [];
    ausgeblendet bleiben. W20 wurde entfernt: Die ID ist seit August 2026 an
    die Walnuss "Fernor" vergeben, die dadurch unsichtbar war. */
 const BLACKLIST = new Set(['W21','W22']);
+/* Editierabstand nach Levenshtein. Liegt hier, weil sowohl die Preiszuordnung
+   in kataster.js als auch der Sortenberater darauf zugreifen — kern.js laedt
+   als Erste. */
+function levenshtein(a, b) {
+  const m = a.length, n = b.length;
+  const dp = Array.from({length: m+1}, ()=>Array(n+1).fill(0));
+  for(let i=0;i<=m;i++) dp[i][0]=i;
+  for(let j=0;j<=n;j++) dp[0][j]=j;
+  for(let i=1;i<=m;i++) for(let j=1;j<=n;j++){
+    dp[i][j] = Math.min(dp[i-1][j]+1, dp[i][j-1]+1, dp[i-1][j-1]+(a[i-1]!==b[j-1]?1:0));
+  }
+  return dp[m][n];
+}
+
 function escHtml(s){return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function escAttr(s){return (s||'').replace(/&/g,'&amp;').replace(/'/g,'&#39;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\(/g,'&#40;').replace(/\)/g,'&#41;');}
 

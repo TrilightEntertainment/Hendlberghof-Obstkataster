@@ -81,6 +81,33 @@ def main():
         hinweise += [(kurz, nr, z) for nr, z in ungerade_anfuehrung(text)]
         print("  %-28s %s | Verkettungen %d" % (kurz, "  ".join(teile), v))
 
+    # Versionsstempel: index.html, sw.js und die Precache-Liste muessen dieselbe
+    # Nummer nennen. Seit der Dateitrennung (F6) speichert der Browser die
+    # js-Dateien unabhaengig von index.html zwischen - ohne Stempel bekaeme ein
+    # Besucher neues Markup mit altem Code. Faellt beim Testen kaum auf, weil der
+    # eigene Browser die Dateien gerade frisch geholt hat.
+    idx = os.path.join(WURZEL, "index.html")
+    sw = os.path.join(WURZEL, "sw.js")
+    if os.path.exists(idx) and os.path.exists(sw):
+        t_idx, t_sw = open(idx, encoding="utf-8").read(), open(sw, encoding="utf-8").read()
+        stempel = set(re.findall(r'src="js/[a-z]+\.js\?v=(\d+)"', t_idx))
+        cache = re.search(r"CACHE_NAME\s*=\s*'hendlberghof-v(\d+)'", t_sw)
+        pre = set(re.findall(r"'\./js/[a-z]+\.js\?v=(\d+)'", t_sw))
+        if len(stempel) > 1:
+            fehler.append("index.html nennt mehrere Versionsstempel: %s" % ", ".join(sorted(stempel)))
+        elif not stempel:
+            fehler.append("index.html: js-Verweise ohne ?v=<nummer> - der Browser "
+                          "liefert sonst alten Code zu neuem Markup")
+        elif cache and stempel != {cache.group(1)}:
+            fehler.append("Versionsstempel %s in index.html passt nicht zu "
+                          "CACHE_NAME v%s in sw.js" % (stempel.pop(), cache.group(1)))
+        elif pre and pre != stempel:
+            fehler.append("Precache-Liste in sw.js nennt Stempel %s, index.html %s"
+                          % (", ".join(sorted(pre)), ", ".join(sorted(stempel))))
+        else:
+            print("Versionsstempel stimmig: v%s in index.html, sw.js und Precache-Liste."
+                  % (cache.group(1) if cache else "?"))
+
     basis = {}
     if os.path.exists(BASIS_DATEI):
         basis = json.load(open(BASIS_DATEI, encoding="utf-8"))

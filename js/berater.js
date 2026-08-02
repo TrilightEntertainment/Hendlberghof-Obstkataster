@@ -624,19 +624,7 @@ function renderSortenListe(){
     const idsText=(s.baum_ids&&s.baum_ids.length)?' '+s.baum_ids.map(id=>'<span class="idbadge">ID '+id+'</span>').join(' '):'';
     const verwendungText=(s.verwendung&&s.verwendung.length)?s.verwendung.join(', '):'';
     const lageplanBtn=(s.quelle==='hof'&&state.positions)?(()=>{const pi=(s.baum_ids||[]).find(id=>state.positions[id]);return pi?'<button class="btn secondary" style="font-size:.78rem;padding:2px 8px;margin-top:4px;" onclick="event.stopPropagation();showOnLageplan(\''+escAttr(pi)+'\')">Im Lageplan anzeigen</button>':'';})():'';
-    const safeSn=escAttr(s.name);
-    const preise=getPreisFuerSorte(s.name);
-    let preisHtml='';
-    if(preise.length){
-      preisHtml='<div style="margin-top:6px;padding-top:6px;border-top:1px solid var(--border);">';
-      preise.forEach(p=>{
-        preisHtml+='<div style="display:flex;align-items:center;gap:6px;font-size:.82rem;margin:2px 0;"><span style="color:var(--gruen);font-weight:600;">'+p.preis.toFixed(2)+' EUR</span> <span style="color:var(--muted);">('+p.quelle+(p.unterlage?' '+p.unterlage:'')+(p.alter?' '+p.alter:'')+')</span>';
-        preisHtml+=' <button class="btn secondary" style="font-size:.72rem;padding:1px 6px;" onclick="event.stopPropagation();addToBestellliste(\''+safeSn+'\','+JSON.stringify(p).replace(/"/g,'&quot;')+')">Zur Bestellung hinzufügen</button>';
-        if(p.vorbestellbar) preisHtml+=' <span style="font-size:.7rem;color:var(--muted);">(vorbestellbar)</span>';
-        preisHtml+='</div>';
-      });
-      preisHtml+='</div>';
-    }
+    const preisHtml = renderShopBlock(s.name, {quelle:s.quelle, frucht:s.frucht, kompakt:true});
     return '<div class="sl-card" onclick="openSortenModal(\''+escAttr(s.name)+'\')">'+quelleBadge+
       '<div class="sl-card-name">'+s.name+'<span class="sl-card-ids">'+idsText+'</span></div>'+
       '<div class="sl-card-reife">'+s.frucht+(pflText?' · Pflückzeit: '+pflText+mittelText:(mittelText?' · Mittelwert:'+mittelText:''))+(verwendungText?' · '+verwendungText:'')+'</div>'+
@@ -691,22 +679,11 @@ function renderBeraterBatch(count){
     const quelleLabel=s.quelle==='arche'?'Arche Noah':'Hofsorte';
     const idText=(s.baum_ids&&s.baum_ids.length)?' '+s.baum_ids.map(id=>'<span class="idbadge">ID '+id+'</span>').join(' '):'';
     const posBaumId=state.positions? Object.keys(state.positions).find(k=>{const t=getTree(k);return t&&t.sorte===sn;}) : null;
-    const preise=getPreisFuerSorte(sn);
     const safeSn=escAttr(sn);
     const lageplanBtn=posBaumId?'<button class="btn secondary" style="font-size:.78rem;padding:3px 10px;" onclick="event.stopPropagation();showOnLageplan(\''+escAttr(posBaumId)+'\')">Im Lageplan anzeigen</button>':'';
     const guildBtn=s.frucht?'<button class="btn secondary" style="font-size:.78rem;padding:3px 10px;" onclick="event.stopPropagation();showGuildPopup(\''+escAttr(sn)+'\')">Begleitpflanzen</button>':'';
     const btnRow=(lageplanBtn||guildBtn)?'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;padding-top:6px;border-top:1px solid var(--border);">'+lageplanBtn+guildBtn+'</div>':'';
-    let preisHtml='';
-    if(preise.length){
-      preisHtml='<div style="margin-top:6px;padding-top:6px;border-top:1px solid var(--border);">';
-      preise.forEach(p=>{
-        preisHtml+='<div style="display:flex;align-items:center;gap:6px;font-size:.82rem;margin:2px 0;"><span style="color:var(--gruen);font-weight:600;">'+p.preis.toFixed(2)+' EUR</span> <span style="color:var(--muted);">('+p.quelle+(p.unterlage?' '+p.unterlage:'')+(p.alter?' '+p.alter:'')+')</span>';
-        preisHtml+=' <button class="btn secondary" style="font-size:.72rem;padding:1px 6px;" onclick="event.stopPropagation();addToBestellliste(\''+safeSn+'\','+JSON.stringify(p).replace(/"/g,'&quot;')+')">Zur Bestellung hinzufügen</button>';
-        if(p.vorbestellbar) preisHtml+=' <span style="font-size:.7rem;color:var(--muted);">(vorbestellbar)</span>';
-        preisHtml+='</div>';
-      });
-      preisHtml+='</div>';
-    }
+    const preisHtml = renderShopBlock(sn, {quelle:s.quelle, frucht:s.frucht, kompakt:true});
     const archeHtml=archeNoahLink(s);
     html+='<div class="sb-sorte" style="cursor:pointer" onclick="openSortenModal(\''+safeSn+'\')"><div class="sb-sorte-name">'+sn+idText+'<span class="sb-reife">Pflueckzeit: '+reife+nTxt+' &middot; bis '+s.standort.hmax+'m</span></div><div class="sb-tags">'+tags+'</div><div class="sb-gilde"><strong>'+quelleLabel+'</strong> '+s.standort.basis+'</div>'+(archeHtml?'<div style="margin-top:6px;">'+archeHtml+'</div>':'')+btnRow+preisHtml+'</div>';
   }
@@ -1683,22 +1660,13 @@ function downloadPreisCsvTemplate() {
   showToast('Vorlage heruntergeladen','success');
 }
 
+/* Nur noch ein dünner Aufsatz auf getFremdlieferanten() in kataster.js. Vorher
+   gab es zwei Zuordnungen mit unterschiedlicher Genauigkeit — die unscharfe hier
+   und eine exakte in getBestellbarkeit(). Damit konnte dieselbe Sorte auf der
+   Karte einen Preis zeigen und in der Bestellbarkeit als „nicht verfügbar"
+   gelten. Eine Zuordnung, ein Ergebnis. */
 function getPreisFuerSorte(sorteName) {
-  if(!sorteName) return [];
-  const norm = s => s.toLowerCase().replace(/[^a-z0-9äöüß]/g,'');
-  const sn = norm(sorteName);
-  const results = [];
-  Object.entries(state.preislisten||{}).forEach(([qid, q])=>{
-    (q.preise||[]).forEach(p => {
-      if(!p.sorte) return;
-      const ps = norm(p.sorte);
-      const match = ps === sn || ps.includes(sn) || sn.includes(ps) || levenshtein(ps, sn) <= 2;
-      if(match) {
-        results.push({ quelle: q.name, email: q.email, qid, preis: p.preis, unterlage: p.unterlage, alter: p.alter, vorbestellbar: p.vorbestellbar, mwst_satz: p.mwst_satz || 13 });
-      }
-    });
-  });
-  return results;
+  return getFremdlieferanten(sorteName);
 }
 
 // ─── PREISLISTEN-IMPORT ──────────────────────────────────────────────────────
@@ -1919,17 +1887,6 @@ function fuzzyMatchSorte(csvSorte, csvUnterlage) {
     if(dist <= 2 && dist < bestDist){ bestDist = dist; best = { name: sName, exact: false, dist }; }
   }
   return best;
-}
-
-function levenshtein(a, b) {
-  const m = a.length, n = b.length;
-  const dp = Array.from({length: m+1}, ()=>Array(n+1).fill(0));
-  for(let i=0;i<=m;i++) dp[i][0]=i;
-  for(let j=0;j<=n;j++) dp[0][j]=j;
-  for(let i=1;i<=m;i++) for(let j=1;j<=n;j++){
-    dp[i][j] = Math.min(dp[i-1][j]+1, dp[i][j-1]+1, dp[i-1][j-1]+(a[i-1]!==b[j-1]?1:0));
-  }
-  return dp[m][n];
 }
 
 function previewPreisImport() {
