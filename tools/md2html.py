@@ -11,6 +11,9 @@ def inline(t):
     t = re.sub(r'~~([^~]+)~~', r'<del>\1</del>', t)
     t = re.sub(r'(?<![\*\w])\*([^*\n]+)\*(?!\*)', r'<em>\1</em>', t)
     t = re.sub(r'\[([^\]]+)\]\(([^)]+)\)', r'<a href="\2">\1</a>', t)
+    # Erledigt-Kaestchen. Nach den Links, damit [text](url) nicht getroffen wird.
+    t = t.replace('[x]', '<span class="erledigt">&#9745;</span>')
+    t = t.replace('[ ]', '<span class="offen">&#9744;</span>')
     return t
 
 def konvertiere(md):
@@ -101,7 +104,9 @@ def konvertiere(md):
                   and not zeilen[i].lstrip().startswith('|') \
                   and zeilen[i].startswith('  '):
                 inhalt.append(zeilen[i].strip()); i += 1
-            out.append('<li>%s</li>' % inline(' '.join(inhalt)))
+            text = ' '.join(inhalt)
+            klasse = ' class="aufgabe"' if text[:3] in ('[x]', '[ ]') else ''
+            out.append('<li%s>%s</li>' % (klasse, inline(text)))
             continue
 
         # Leerzeile
@@ -160,6 +165,10 @@ tbody tr:nth-child(even){background:#FAF7EF}
 ul,ol{margin:.7rem 0;padding-left:1.4rem}
 li{margin:.35rem 0}
 del{color:var(--muted)}
+li.aufgabe{list-style:none;margin-left:-1.2rem}
+.erledigt{color:#6E8A4E;font-size:1.15em;margin-right:.25em}
+.offen{color:var(--muted);font-size:1.15em;margin-right:.25em}
+td .erledigt,td .offen{margin-right:0}
 .fuss{margin-top:4rem;padding-top:1rem;border-top:1px solid var(--rand);
       color:var(--muted);font-size:.85rem}
 @media (prefers-color-scheme:dark){
