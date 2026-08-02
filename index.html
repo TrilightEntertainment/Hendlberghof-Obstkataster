@@ -1101,6 +1101,7 @@ let _saveTimer = null;
 function saveState(){
   _sortenCache = null;
   _mittelCache = null;
+  invalidateTreeCache();
   clearTimeout(_saveTimer);
   _saveTimer = setTimeout(()=>{
     localStorage.setItem(LS_KEY, JSON.stringify(state));
@@ -1124,6 +1125,7 @@ function initState(){
   if(!state.ernten) state.ernten = {};
   if(!state.satPositions) state.satPositions = {};
   if(!state.deletedSatPositions) state.deletedSatPositions = {};
+  invalidateTreeCache();
 }
 
 function toggleVerifiziert(sorteName, context){
@@ -1197,6 +1199,7 @@ function applyRemoteState(remote){
   state.customTrees = _mergeArr(state.customTrees, remote.customTrees);
   _mittelCache=null;
   _sortenCache=null;
+  invalidateTreeCache();
   if(!state.verifiziert) state.verifiziert = {};
   if(!state.customTrees) state.customTrees = [];
   if(!state.baumEdits) state.baumEdits = {};
@@ -1220,7 +1223,24 @@ function applyRemoteState(remote){
   if(satMap) renderSatMarkers();
 }
 
-function getAllTrees(){
+/* ---------- Zusammengeführte Baumliste (zwischengespeichert) ----------
+   getTree() war als getAllTrees().find() gebaut, und getAllTrees() setzte die Liste
+   bei jedem Aufruf neu zusammen. Gemessen am Standort-Berater: 503 Aufrufe für zwölf
+   Karten, davon 502 aus getTree() — rund 93 % der Renderzeit reine Wiederholung, mit
+   quadratischem Wachstum bei mehr Bäumen.
+
+   Der Zwischenspeicher wird überall dort verworfen, wo auch _sortenCache und
+   _mittelCache verworfen werden — also bei jeder Zustandsänderung.
+
+   ACHTUNG: Aufrufer erhalten jetzt dieselbe Liste und dieselben Baumobjekte.
+   Beides darf nicht verändert werden. Alle elf Aufrufstellen wurden geprüft, sie
+   lesen ausschließlich (filter/map/forEach/find liefern neue Objekte bzw. lesen nur).
+   Wer künftig ein Ergebnis verändern will, arbeitet auf einer Kopie. */
+let _treeMap = null, _treeList = null;
+function invalidateTreeCache(){ _treeMap = null; _treeList = null; }
+
+function getTreeMap(){
+  if(_treeMap) return _treeMap;
   const custom = state.customTrees || [];
   /* Nach wirksamer ID zusammenführen: Ein in der App angelegter Baum kann per
      baumEdit die ID eines Katalogbaums erhalten (NEU-1 -> W20). Ohne diesen
@@ -1234,9 +1254,14 @@ function getAllTrees(){
     if(BLACKLIST.has(merged.id)) return;
     nachId.set(merged.id, merged);
   });
-  return Array.from(nachId.values());
+  _treeMap = nachId;
+  return nachId;
 }
-function getTree(id){ return getAllTrees().find(t=>t.id===id); }
+function getAllTrees(){
+  if(!_treeList) _treeList = Array.from(getTreeMap().values());
+  return _treeList;
+}
+function getTree(id){ return getTreeMap().get(id); }
 
 /* ---------- Tabs ---------- */
 function activateTab(tabName){
@@ -3431,6 +3456,7 @@ window.__dataReadyPromise = Promise.all([
   fetch('data/seed_positions.json').then(r=>{ if(!r.ok) throw new Error('seed_positions.json '+r.status); return r.json(); })
 ]).then(([baum, sorten, seed])=>{
   BAUM_DATA = baum; SORTEN_DATA = sorten; SEED_POSITIONS = seed;
+  invalidateTreeCache();   /* Katalog ist erst jetzt da */
   window.__dataReady = true;
   startApp();
 }).catch(err=>{
