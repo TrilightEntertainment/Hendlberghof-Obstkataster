@@ -693,16 +693,6 @@
     <div class="sbr-tab active" data-tab="sorten" onclick="sbrShowTab('sorten')">Sortenberater</div>
     <div class="sbr-tab" data-tab="berater" onclick="sbrShowTab('berater')">Standort-Berater</div>
   </div>
-  <div class="sbr-panel active" id="panel-sorten">
-    <div class="search-wrap" style="display:flex;gap:8px;align-items:center;">
-      <svg class="search-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-        <circle cx="10" cy="10" r="7" fill="none" stroke="currentColor" stroke-width="2"/>
-        <line x1="15" y1="15" x2="21" y2="21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-      </svg>
-      <input type="text" id="sl-search" placeholder="Sorte suchen…" oninput="onFilterChange()" style="flex:1;min-width:0;padding-left:34px;">
-      <button class="btn field" onclick="resetFilters()">✕</button>
-    </div>
-  </div>
   <div style="display:flex;gap:10px;flex-wrap:wrap;">
     <select id="sb-filter-frucht" onchange="onFilterChange()" style="flex:1;min-width:120px;">
       <option value="">Obstarten</option>
@@ -736,6 +726,14 @@
     </div>
   </div>
   <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+    <div class="search-wrap" style="flex:1;min-width:180px;">
+      <svg class="search-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <circle cx="10" cy="10" r="7" fill="none" stroke="currentColor" stroke-width="2"/>
+        <line x1="15" y1="15" x2="21" y2="21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+      <input type="text" id="sl-search" placeholder="Sorte suchen…" oninput="onFilterChange()">
+    </div>
+    <button class="btn field" onclick="resetFilters()">✕</button>
     <button class="btn field" onclick="exportSortenbeschreibungenPDF()" title="Sortenbeschreibungen der aktuellen Filterauswahl als PDF exportieren">⬇ PDF</button>
      <button class="sbr-btn" style="margin-left:auto" onclick="openBestelllisteModal()">🛒 Bestellliste <span id="cart-badge" style="display:none;background:var(--stroh);color:var(--gruen);border-radius:50%;padding:1px 6px;font-size:.7rem;margin-left:4px;font-weight:700;">0</span></button>
   </div>
@@ -3582,9 +3580,7 @@ let _sbrMode='sorten';
 function sbrShowTab(t){
   _sbrMode=t;
   document.querySelectorAll('#tab-sortenberater .sbr-tab').forEach(el=>el.classList.toggle('active',el.dataset.tab===t));
-  const ps=document.getElementById('panel-sorten');
   const pb=document.getElementById('panel-berater');
-  if(ps) ps.classList.toggle('active',t==='sorten');
   if(pb) pb.classList.toggle('active',t==='berater');
   renderResults();
 }
