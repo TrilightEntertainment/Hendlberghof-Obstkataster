@@ -948,6 +948,38 @@ function merkEigenHinzu(sorteName){
   showToast(`„${sorteName}" zur Liste hinzugefügt.`, 'success');
 }
 
+/* Menge und Entfernen für die Eigenproduktions-Merkliste. Adressiert wird über
+   die stabile `id`, nicht über den Listenindex: Die Ansicht wird nach jeder
+   Änderung neu aufgebaut, und ein Index hätte auf einen anderen Eintrag gezeigt,
+   sobald zwischenzeitlich etwas wegfiel. */
+function _merkEigenFinden(id){
+  const liste = getMerkliste(MERKLISTE_EIGEN);
+  const idx = liste.konfigurationen.findIndex(k => k.id === id);
+  return { liste, idx };
+}
+
+function merkEigenMenge(id, menge){
+  const { liste, idx } = _merkEigenFinden(id);
+  if(idx < 0) return;
+  const n = parseInt(menge, 10) || 0;
+  if(n <= 0) liste.konfigurationen.splice(idx, 1);
+  else liste.konfigurationen[idx].menge = n;
+  liste.geaendert = new Date().toISOString();
+  saveState();
+  if(typeof renderBestellModalContent === 'function') renderBestellModalContent();
+  updateCartBadge();
+}
+
+function merkEigenEntfernen(id){
+  const { liste, idx } = _merkEigenFinden(id);
+  if(idx < 0) return;
+  liste.konfigurationen.splice(idx, 1);
+  liste.geaendert = new Date().toISOString();
+  saveState();
+  if(typeof renderBestellModalContent === 'function') renderBestellModalContent();
+  updateCartBadge();
+}
+
 function toggleVerwendung(sorteName, cat){
   const s = getSorte(sorteName);
   const current = ((s && s.verwendung) || []).slice();

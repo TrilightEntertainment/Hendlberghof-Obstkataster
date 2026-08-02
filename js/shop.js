@@ -103,7 +103,7 @@ function renderBestellModalContent() {
   const today = new Date().toLocaleDateString('de-AT',{day:'2-digit',month:'2-digit',year:'numeric'});
   let html = '<div style="max-width:560px;">';
   html += '<button class="close" onclick="closeModal()">&times;</button>';
-  html += '<h2 style="font-family:var(--font-heading);color:var(--dark);margin:0 0 12px;">Bestellung &mdash; '+today+'</h2>';
+  html += '<h2 style="font-family:var(--font-heading);color:var(--dark);margin:0 0 12px;">Meine Listen &mdash; '+today+'</h2>';
 
   html += '<div class="section-title">Kontakt</div>';
   html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:12px;">';
@@ -115,7 +115,39 @@ function renderBestellModalContent() {
   html += '<input id="bk-telefon" placeholder="Telefon*" style="font-size:.82rem;padding:5px 8px;border:1px solid var(--border);border-radius:4px;">';
   html += '</div>';
 
-  if(!bestellListe.length) {
+  /* ---- Eigenproduktion (S2) --------------------------------------------
+     Das Fach `eigen` fuehrt keine Positionen mit Preis, sondern Baeume, die
+     erst hergestellt werden. Bis der Konfigurator steht (S3), stehen dort
+     einfache Wuensche (konfiguriert:false).
+
+     Bewusst NICHT in der Geldsumme: Der Preis ergibt sich aus Unterlage,
+     Stammform und Zahl der Veredelungen und steht erst nach der Konfiguration
+     fest. Eine Summe, die stillschweigend nur die zugekaufte Ware enthaelt,
+     waere irrefuehrend - deshalb steht der Grund sichtbar dabei. */
+  const eigen = ((state.merklisten || {})[MERKLISTE_EIGEN] || {}).konfigurationen || [];
+  if(eigen.length){
+    html += `<div style="margin-bottom:10px;padding:8px;border:1px solid var(--gruen);border-radius:6px;background:var(--gruen-hell);">
+      <div style="font-weight:600;font-size:.85rem;margin-bottom:4px;">Eigenproduktion Hendlberghof</div>`;
+    eigen.forEach(k=>{
+      const beschriftung = k.konfiguriert
+        ? `${escHtml(k.unterlage || 'Unterlage offen')} mit ${(k.sorten || []).length} Sorte(n)`
+        : `${escHtml(k.sorte || '')}${k.frucht ? ` · ${escHtml(k.frucht)}` : ''}`;
+      html += `<div style="display:flex;align-items:center;gap:6px;font-size:.82rem;margin:3px 0;">
+        <span style="flex:1;">${beschriftung}${k.konfiguriert ? '' : ' <span style="color:var(--muted);">— noch nicht zusammengestellt</span>'}</span>
+        <input type="number" min="1" value="${k.menge || 1}"
+               style="width:45px;font-size:.8rem;text-align:center;padding:2px;border:1px solid var(--border);border-radius:3px;"
+               onchange="merkEigenMenge('${escAttr(k.id)}', this.value)">
+        <button style="background:none;border:none;color:var(--dachziegel);cursor:pointer;font-size:.8rem;"
+                onclick="merkEigenEntfernen('${escAttr(k.id)}')" title="Entfernen">&times;</button>
+      </div>`;
+    });
+    html += `<div style="font-size:.76rem;color:var(--muted);margin-top:4px;border-top:1px solid var(--border);padding-top:4px;">
+      Preis steht erst nach der Zusammenstellung fest — nicht in der Summe unten enthalten.
+    </div></div>`;
+  }
+
+
+  if(!bestellListe.length && !eigen.length) {
     html += '<p style="font-size:.85rem;color:var(--muted);text-align:center;padding:16px 0;">Noch keine Sorten ausgewaehlt. Fuege Sorten im Sortenberater hinzu.</p>';
   } else {
     let gesamt = 0;
@@ -137,7 +169,11 @@ function renderBestellModalContent() {
       html += '</div>';
       gesamt += qSumme;
     });
-    html += '<div style="text-align:right;font-size:.95rem;font-weight:700;padding:8px 0;border-top:2px solid var(--dark);">Gesamtsumme: '+gesamt.toFixed(2)+' EUR</div>';
+    /* Nur zeigen, wenn zugekaufte Ware dabei ist. Bei reiner Eigenproduktion
+       stuende hier sonst „Gesamt: 0,00 EUR" - der Preis ist nicht null,
+       er steht nur noch nicht fest. */
+    if(bestellListe.length)
+  html += '<div style="text-align:right;font-size:.95rem;font-weight:700;padding:8px 0;border-top:2px solid var(--dark);">Gesamtsumme: '+gesamt.toFixed(2)+' EUR</div>';
   }
 
   html += '<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;">';
