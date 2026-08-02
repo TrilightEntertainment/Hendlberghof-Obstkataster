@@ -1095,7 +1095,7 @@ function loadState(){
       return parsed;
     }
   }catch(e){ console.error('State corrupted, resetting:', e); setTimeout(()=>showToast('Gespeicherte Daten beschädigt — Zurückgesetzt.','error',5000),500); }
-  return { positions: Object.assign({}, SEED_POSITIONS), sukzession:{}, ernten:{}, verifiziert:{}, customTrees:[], baumEdits:{}, sortenEdits:{}, importLog:[], importSnapshots:[], phaenologie:{}, sortenSichtbar:{}, preislisten:{}, bestellungen:[], satPositions:{}, deletedSatPositions:{} };
+  return { positions: Object.assign({}, SEED_POSITIONS), sukzession:{}, ernten:{}, verifiziert:{}, customTrees:[], baumEdits:{}, sortenEdits:{}, importLog:[], importSnapshots:[], phaenologie:{}, sortenSichtbar:{}, preislisten:{}, bestellungen:[], satPositions:{}, deletedSatPositions:{}, obstarten:{} };
 }
 let _saveTimer = null;
 function saveState(){
@@ -1125,6 +1125,7 @@ function initState(){
   if(!state.ernten) state.ernten = {};
   if(!state.satPositions) state.satPositions = {};
   if(!state.deletedSatPositions) state.deletedSatPositions = {};
+  if(!state.obstarten) state.obstarten = {};   /* Abwandlungen zu OBSTARTEN_STANDARD */
   invalidateTreeCache();
 }
 
@@ -1181,6 +1182,7 @@ function applyRemoteState(remote){
   state._pinFmt = remote._pinFmt || state._pinFmt;
   state.phaenologie = _mergeObj(state.phaenologie, remote.phaenologie);
   state.sortenSichtbar = _mergeObj(state.sortenSichtbar, remote.sortenSichtbar);
+  state.obstarten = _mergeObj(state.obstarten, remote.obstarten);
   state.preislisten = _mergeObj(state.preislisten, remote.preislisten);
   state.sukzession = _mergeObj(state.sukzession, remote.sukzession);
   state.ernten = _mergeObj(state.ernten, remote.ernten);
@@ -1214,6 +1216,7 @@ function applyRemoteState(remote){
   if(!state.ernten) state.ernten = {};
   if(!state.satPositions) state.satPositions = {};
   if(!state.deletedSatPositions) state.deletedSatPositions = {};
+  if(!state.obstarten) state.obstarten = {};
   localStorage.setItem(LS_KEY, JSON.stringify(state));
   refreshFilterOptions();
   renderBaumTable();
@@ -1221,6 +1224,68 @@ function applyRemoteState(remote){
   renderUnplacedSelect();
   if(document.getElementById('tab-lageplan').style.display!=='none') renderPins();
   if(satMap) renderSatMarkers();
+}
+
+/* ---------- Obstart-Regeln ----------
+   Bestimmt, was je Obstart angeboten wird. Gesteuert über Daten statt über
+   Sonderfälle im Code: Eine neue Obstart braucht eine Zeile, keinen Eingriff in
+   die Logik. Ohne das würde der Konfigurator auf Apfel und Birne verdrahtet und
+   beim ersten Zwetschken-Import wieder geöffnet.
+
+     veredelung   Wird diese Obstart überhaupt veredelt angeboten?
+     mehrsorten   Dürfen mehrere Sorten auf einen Baum?
+     max_sorten   Obergrenze; nur bei mehrsorten von Belang.
+
+   Walnuss steht bewusst auf veredelung:false — vorerst kein Angebot. Die Sorten
+   bleiben in Kataster, Übersicht und Berater voll sichtbar; sie sind lediglich
+   nicht bestellbar. Nicht anbieten heißt nicht verstecken.
+
+   Schlüssel sind kleingeschrieben, nachgeschlagen wird ebenso. Die Daten führen
+   „Apfel", ZIELE_DEF führt „apfel" — diese Uneinheitlichkeit soll hier nicht
+   noch einmal zur Falle werden.
+
+   Unbekannte Obstarten gelten als nicht veredelbar und nicht mehrsortenfähig.
+   Bewusst vorsichtig: lieber eine zu wenig anbieten als eine zu viel. */
+const OBSTARTEN_STANDARD = {
+  'apfel':     { veredelung:true,  mehrsorten:true,  max_sorten:4 },
+  'birne':     { veredelung:true,  mehrsorten:true,  max_sorten:4 },
+  'walnuss':   { veredelung:false, mehrsorten:false, max_sorten:1 },
+  'zwetschke': { veredelung:true,  mehrsorten:false, max_sorten:1 },
+  'kirsche':   { veredelung:true,  mehrsorten:false, max_sorten:1 },
+  'paw paw':   { veredelung:false, mehrsorten:false, max_sorten:1 }
+};
+const OBSTART_UNBEKANNT = { veredelung:false, mehrsorten:false, max_sorten:1 };
+
+function obstartSchluessel(frucht){ return String(frucht || '').trim().toLowerCase(); }
+
+/* Liefert immer ein vollständiges Regelobjekt, nie undefined.
+   `bekannt` unterscheidet „bewusst gesperrt" von „nie hinterlegt". */
+function getObstartRegel(frucht){
+  const k = obstartSchluessel(frucht);
+  /* state.obstarten erlaubt es, Regeln später über die Verwaltung zu ergänzen
+     oder abzuwandeln, ohne den Code anzufassen. */
+  const eigen = (typeof state !== 'undefined' && state && state.obstarten
+                 && state.obstarten[k]) || null;
+  const standard = OBSTARTEN_STANDARD[k] || null;
+  if(!k || (!standard && !eigen)) return Object.assign({bekannt:false}, OBSTART_UNBEKANNT);
+  return Object.assign({bekannt:true}, OBSTART_UNBEKANNT, standard || {}, eigen || {});
+}
+
+function istVeredelbar(frucht){ return getObstartRegel(frucht).veredelung === true; }
+
+function maxSortenProBaum(frucht){
+  const r = getObstartRegel(frucht);
+  return r.mehrsorten ? Math.max(1, parseInt(r.max_sorten, 10) || 1) : 1;
+}
+
+function istMehrsortenfaehig(frucht){ return maxSortenProBaum(frucht) > 1; }
+
+/* Alle hinterlegten Obstarten — Standard plus eigene. Für Auswahlfelder. */
+function bekannteObstarten(){
+  const menge = new Set(Object.keys(OBSTARTEN_STANDARD));
+  Object.keys((typeof state !== 'undefined' && state && state.obstarten) || {})
+    .forEach(k => menge.add(k));
+  return Array.from(menge).sort();
 }
 
 /* ---------- Zusammengeführte Baumliste (zwischengespeichert) ----------
