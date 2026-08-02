@@ -1,0 +1,49 @@
+name: Monatliches Backup
+
+# Laeuft am 1. jedes Monats um 03:00 UTC und kann jederzeit von Hand
+# gestartet werden (Actions -> "Monatliches Backup" -> "Run workflow").
+on:
+  schedule:
+    - cron: "0 3 1 * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write          # noetig, damit der Job das Backup committen darf
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Repository auschecken
+        uses: actions/checkout@v4
+
+      - name: Python einrichten
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Abhaengigkeiten installieren
+        run: pip install --quiet openpyxl
+
+      - name: Backup erzeugen (Firestore + Katalog -> JSON & Excel)
+        run: |
+          python3 tools/backup_hendlberghof.py --ziel backup --daten data
+
+      - name: Aenderungen committen
+        run: |
+          git config user.name  "Backup-Automatik"
+          git config user.email "actions@github.com"
+          git add backup/
+          if git diff --staged --quiet; then
+            echo "Keine Aenderungen – nichts zu committen."
+          else
+            git commit -m "Backup $(date +%Y-%m): Firestore-Stand + Excel-Auswertung"
+            git push
+          fi
+
+      - name: Backup zusaetzlich als Download bereitstellen (90 Tage)
+        uses: actions/upload-artifact@v4
+        with:
+          name: hendlberghof-backup-${{ github.run_number }}
+          path: backup/
+          retention-days: 90
