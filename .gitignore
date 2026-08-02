@@ -1,0 +1,6 @@
+# Sicherungskopien von tools/katalog_rueckweg.py --anwenden.
+# Duerfen nie ins Repo: sie enthalten den Katalogstand vor der Uebernahme
+# und wuerden die Historie nur verrauschen.
+*.bak
+
+.DS_Store
