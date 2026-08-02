@@ -93,6 +93,27 @@ echo "-- Unterlagen: $anz Dokumente nach $DOK" | tee -a "$LOG"
 ls -1t "$ZIEL"/*_state.json    2>/dev/null | tail -n +25 | xargs -r rm -f
 ls -1t "$ZIEL"/*_kataster.xlsx 2>/dev/null | tail -n +25 | xargs -r rm -f
 
+# --- 5. Zweitkopie ausser Haus (iCloud Drive, privat) ------------------------
+# Rechner und Time Machine stehen am selben Ort - gegen Diebstahl, Brand oder
+# Wasserschaden hilft nur eine Kopie woanders. GitHub scheidet aus, weil hier
+# Bestelldaten und Betriebsinterna liegen.
+#
+# Bewusst OHNE --delete: Die Spiegelung darf nur hinzufuegen. Raeumt Schritt 4
+# alte Monate weg, bleiben sie in der Zweitkopie erhalten - und ein Fehler, der
+# lokal Dateien loescht, kann die Zweitkopie nicht mitreissen.
+ICLOUD_BASIS="$HOME/Library/Mobile Documents/com~apple~CloudDocs"
+if [ -d "$ICLOUD_BASIS" ]; then
+  ICLOUD="$ICLOUD_BASIS/Hendlberghof-Backups"
+  mkdir -p "$ICLOUD"
+  if rsync -a --exclude 'launchd.log' "$ZIEL/" "$ICLOUD/" 2>&1 | tee -a "$LOG"; then
+    echo "-- Zweitkopie in iCloud Drive" | tee -a "$LOG"
+  else
+    echo "-- HINWEIS: Spiegelung nach iCloud fehlgeschlagen" | tee -a "$LOG"
+  fi
+else
+  echo "-- HINWEIS: iCloud Drive nicht gefunden - keine Zweitkopie ausser Haus" | tee -a "$LOG"
+fi
+
 ANZ=$(ls -1 "$ZIEL"/*_kataster.xlsx 2>/dev/null | wc -l | tr -d ' ')
 echo "Fertig. $ANZ Monats-Backups lokal in $ZIEL" | tee -a "$LOG"
 echo "" | tee -a "$LOG"
