@@ -553,6 +553,22 @@
            border-left:3px solid #D9B458;padding:6px 9px;margin:4px 0;border-radius:0 4px 4px 0;}
   .kf-preis{margin-top:12px;padding-top:8px;border-top:2px solid var(--dark);
             text-align:right;font-size:.95rem;font-weight:700;}
+
+  /* ---------- Produktionsstatus (S5) ---------- */
+  .best-zeile{padding:8px 0;border-bottom:1px solid var(--border);font-size:.84rem;}
+  .best-kopf{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+  .best-badge{font-size:.72rem;padding:2px 8px;border-radius:10px;font-weight:600;white-space:nowrap;}
+  .best-knoepfe{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:6px;}
+  .best-knoepfe .btn{font-size:.72rem;padding:2px 8px;}
+  /* Die ganze Kette bleibt sichtbar, damit erkennbar ist, was noch kommt —
+     nicht nur, wo es gerade steht. Bei ein bis zwei Jahren Vorlauf ist genau
+     das der Punkt. */
+  .pstat{display:flex;align-items:center;gap:3px;flex-wrap:wrap;margin:6px 0 2px;font-size:.7rem;}
+  .pstat-schritt{padding:1px 6px;border-radius:3px;white-space:nowrap;}
+  .pstat-schritt.fertig{background:var(--gruen-hell);color:var(--gruen);}
+  .pstat-schritt.aktuell{background:var(--gruen);color:#F1EDE2;font-weight:600;}
+  .pstat-schritt.offen{color:var(--muted);}
+  .pstat-pfeil{color:var(--border);}
 </style>
 </head>
 <body>
@@ -1014,10 +1030,10 @@
 
 <!-- Aus einem einzelnen Script-Block herausgeloest (F6). Reihenfolge ist
      bindend: Ueber Dateigrenzen hinweg gibt es kein Hoisting mehr. -->
-<script src="js/kern.js?v=100"></script>
-<script src="js/kataster.js?v=100"></script>
-<script src="js/lageplan.js?v=100"></script>
-<script src="js/start.js?v=100"></script>
+<script src="js/kern.js?v=101"></script>
+<script src="js/kataster.js?v=101"></script>
+<script src="js/lageplan.js?v=101"></script>
+<script src="js/start.js?v=101"></script>
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
@@ -1100,8 +1116,8 @@
     });
   }
 </script>
-<script src="js/berater.js?v=100"></script>
-<script src="js/shop.js?v=100"></script>
-<script src="js/konfigurator.js?v=100"></script>
+<script src="js/berater.js?v=101"></script>
+<script src="js/shop.js?v=101"></script>
+<script src="js/konfigurator.js?v=101"></script>
 </body>
 </html>

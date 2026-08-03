@@ -154,8 +154,22 @@ function renderBestellModalContent() {
                 onclick="merkEigenEntfernen('${escAttr(k.id)}')" title="Entfernen">&times;</button>
       </div>`;
     });
+    /* Ausfallregelung: Veredelungen wachsen nicht immer an. Wird das erst
+       bemerkt, wenn es passiert ist, steht der Hof vor einer Absage und der
+       Kunde vor einer Lücke im Frühjahr. Einmal vorher gefragt, ist es eine
+       Formalie statt eines Ärgernisses. */
+    const regel = _bestellAusfallWert();
     html += `<div style="font-size:.76rem;color:var(--muted);margin-top:4px;border-top:1px solid var(--border);padding-top:4px;">
       Preis steht erst nach der Zusammenstellung fest — nicht in der Summe unten enthalten.
+    </div>
+    <div style="margin-top:6px;font-size:.78rem;">
+      <label for="bk-ausfall" style="color:var(--muted);">Falls eine Veredelung nicht anwächst:</label>
+      <select id="bk-ausfall" style="font-size:.8rem;padding:3px 6px;border:1px solid var(--border);border-radius:4px;margin-top:3px;width:100%;">
+        <option value="ruecksprache"${regel==='ruecksprache'?' selected':''}>Rücksprache — gemeinsam entscheiden</option>
+        <option value="ersatzsorte"${regel==='ersatzsorte'?' selected':''}>Ersatzsorte nach Ihrer Wahl</option>
+        <option value="folgejahr"${regel==='folgejahr'?' selected':''}>Nachlieferung im Folgejahr</option>
+        <option value="storno"${regel==='storno'?' selected':''}>Storno dieser Position</option>
+      </select>
     </div>
     <button class="btn secondary" style="font-size:.76rem;padding:3px 10px;margin-top:6px;"
             onclick="anfrageSenden('${MERKLISTE_EIGEN}')">Anfrage an den Hof senden</button>
@@ -255,6 +269,20 @@ function bestellungDrucken() {
 
 const HOF_EMAIL_STANDARD = 'mail@hendlberghof.at';
 
+/* Die Ansicht wird bei jeder Aenderung neu gebaut; die Auswahl im Formular
+   ueberlebt das nicht. Deshalb im Zustand gehalten. */
+const AUSFALL_TEXT = {
+  ruecksprache: 'Rücksprache — gemeinsam entscheiden',
+  ersatzsorte:  'Ersatzsorte nach Wahl des Kunden',
+  folgejahr:    'Nachlieferung im Folgejahr',
+  storno:       'Storno dieser Position'
+};
+function _bestellAusfallWert(){
+  const el = document.getElementById('bk-ausfall');
+  if(el && el.value) state._ausfallregelung = el.value;
+  return state._ausfallregelung || 'ruecksprache';
+}
+
 function anfragenAufteilen(){
   const raus = [];
 
@@ -310,7 +338,9 @@ function anfrageText(a, kf){
       if(k.notiz) teile.push(`      Anmerkung: ${k.notiz}`);
       zeilen.push(...teile);
     });
-    zeilen.push('', 'Preis nach Angebot.');
+    const regel = _bestellAusfallWert();
+    zeilen.push('', 'Preis nach Angebot.',
+      `Falls eine Veredelung nicht anwächst: ${AUSFALL_TEXT[regel] || regel}`);
   }
 
   if(a.positionen.length){
@@ -392,10 +422,62 @@ function bestellungPdf(){
   doc.save('Bestellung_Hendlberghof_'+today.replace(/\./g,'-')+'.pdf');
 }
 
+/* Kapazitaet: Reisermenge je Sorte ist endlich, und ein Winter hat nur so viele
+   Veredelungstage. Ohne diese Pruefung entstehen Auftraege, die niemand
+   erfuellen kann — und die man erst bemerkt, wenn abgesagt werden muss.
+
+   Bewusst Rueckfrage statt Sperre: Ob eine Sorte noch reicht, weiss der Hof
+   besser als eine Zahl in der Konfiguration. Ohne hinterlegte Grenzen (Standard)
+   passiert gar nichts. */
+function kapazitaetPruefen(anfragen){
+  const kap = (getProduktion().kapazitaet) || {};
+  if(kap.je_sorte_max == null && kap.baeume_gesamt == null) return true;
+
+  const jeSorte = {};
+  let gesamt = 0;
+  const zaehle = (sorte, menge)=>{
+    jeSorte[sorte] = (jeSorte[sorte] || 0) + menge;
+    gesamt += menge;
+  };
+
+  /* Bereits zugesagte, noch nicht gelieferte Eigenproduktion mitzaehlen. */
+  (state.bestellungen || []).forEach(o=>{
+    if(o.typ !== 'eigen' || orderStatus(o) === 'geliefert') return;
+    (o.konfigurationen || []).forEach(k=>{
+      ((k.sorten || []).map(x => x.sorte).filter(Boolean).length
+        ? k.sorten.map(x => x.sorte) : [k.sorte]).forEach(s => zaehle(s, k.menge || 1));
+    });
+  });
+  /* Dazu das, was jetzt gespeichert werden soll. */
+  anfragen.filter(a => a.typ === 'eigen').forEach(a=>{
+    a.konfigurationen.forEach(k=>{
+      ((k.sorten || []).map(x => x.sorte).filter(Boolean).length
+        ? k.sorten.map(x => x.sorte) : [k.sorte]).forEach(s => zaehle(s, k.menge || 1));
+    });
+  });
+
+  const ueber = [];
+  if(kap.je_sorte_max != null){
+    Object.keys(jeSorte).forEach(s=>{
+      if(jeSorte[s] > kap.je_sorte_max)
+        ueber.push(`${s}: ${jeSorte[s]} von höchstens ${kap.je_sorte_max}`);
+    });
+  }
+  if(kap.baeume_gesamt != null && gesamt > kap.baeume_gesamt)
+    ueber.push(`insgesamt ${gesamt} von höchstens ${kap.baeume_gesamt} Bäumen`);
+  if(!ueber.length) return true;
+
+  return confirm('Die Kapazität für diese Saison wäre überschritten:\n\n  '
+    + ueber.join('\n  ')
+    + '\n\nMitgezählt sind bereits zugesagte, noch nicht gelieferte Bäume.'
+    + '\nTrotzdem speichern?');
+}
+
 function bestellungSpeichern() {
   const anfragen = anfragenAufteilen();
   if(!anfragen.length) { showToast('Beide Listen sind leer.','error'); return; }
   if(!_validateBestellfelder()){ showToast('Bitte alle Pflichtfelder ausfüllen.','error'); return; }
+  if(!kapazitaetPruefen(anfragen)) return;
   const kf = _bestellFeldWerte();
   const kontakt = {
     vorname: kf.vname, nachname: kf.nname, strasse: kf.strasse,
@@ -419,6 +501,7 @@ function bestellungSpeichern() {
       kontakt,
       items: JSON.parse(JSON.stringify(a.positionen)),
       konfigurationen: JSON.parse(JSON.stringify(a.konfigurationen)),
+      ausfallregelung: a.typ === 'eigen' ? _bestellAusfallWert() : null,
       gesamt: a.summe
     });
   });
@@ -440,34 +523,116 @@ function bestellungSpeichern() {
 
 /* ─── BESTELLHISTORIE ───────────────────────────────────────────────────────── */
 
+/* ---------- Produktionsstatus (S5) ----------
+   Zwischen Vorbestellung und Lieferung liegen ein bis zwei Jahre. In dieser Zeit
+   ist sichtbarer Fortschritt das Einzige, was den Auftrag zusammenhaelt — "wir
+   melden uns" traegt keine zwei Winter.
+
+   Zwei Ketten, weil zwei verschiedene Vorgaenge: Ein selbst veredelter Baum
+   durchlaeuft die Herstellung, ein zugekaufter wird bestellt und geliefert.
+   Eine gemeinsame Kette haette bei Fremdlieferungen vier Schritte gezeigt, die
+   dort nie eintreten. */
+const STATUS_KETTE = {
+  eigen:     ['vorgemerkt','bestaetigt','reiser','veredelt','angewachsen','lieferbereit','geliefert'],
+  lieferant: ['vorgemerkt','bestaetigt','bestellt','geliefert']
+};
+
+const STATUS_TEXT = {
+  vorgemerkt:   { label:'Vorgemerkt',        farbe:'#7A5700', bg:'#FFF4E0' },
+  bestaetigt:   { label:'Bestätigt',         farbe:'#3B6D11', bg:'#EAF3DE' },
+  reiser:       { label:'Reiser geschnitten', farbe:'#185FA5', bg:'#E6F1FB' },
+  veredelt:     { label:'Veredelt',          farbe:'#185FA5', bg:'#E6F1FB' },
+  angewachsen:  { label:'Angewachsen',       farbe:'#185FA5', bg:'#E6F1FB' },
+  lieferbereit: { label:'Lieferbereit',      farbe:'#3B6D11', bg:'#EAF3DE' },
+  bestellt:     { label:'Bestellt',          farbe:'#185FA5', bg:'#E6F1FB' },
+  geliefert:    { label:'Geliefert',         farbe:'#5F5E5A', bg:'#F0EDE5' }
+};
+
+/* Aeltere Auftraege tragen noch offen/bestaetigt/versendet. Uebersetzt statt
+   umgeschrieben: Die Daten liegen in der Cloud und im Backup, und eine
+   Wanderung waere ein Schreibvorgang auf allen Geraeten fuer nichts. */
+const STATUS_ALT = { offen:'vorgemerkt', versendet:'bestellt' };
+
+function orderKette(o){
+  return STATUS_KETTE[o && o.typ === 'eigen' ? 'eigen' : 'lieferant'];
+}
+
+function orderStatus(o){
+  const roh = STATUS_ALT[o.status] || o.status || 'vorgemerkt';
+  const kette = orderKette(o);
+  return kette.indexOf(roh) >= 0 ? roh : kette[0];
+}
+
+function orderStatusWeiter(orderId, richtung){
+  const o = (state.bestellungen || []).find(x => x.id === orderId);
+  if(!o) return;
+  const kette = orderKette(o);
+  const i = kette.indexOf(orderStatus(o));
+  const neu = kette[Math.min(kette.length - 1, Math.max(0, i + richtung))];
+  if(neu === orderStatus(o)) return;
+  o.status = neu;
+  if(!o.statusverlauf) o.statusverlauf = {};
+  o.statusverlauf[neu] = new Date().toISOString();
+  saveState();
+  renderBestellhistorie();
+}
+
+/* Fortschrittsleiste: zeigt die ganze Kette, damit erkennbar ist, was noch
+   kommt — nicht nur, wo es gerade steht. */
+function renderStatusleiste(o){
+  const kette = orderKette(o);
+  const jetzt = kette.indexOf(orderStatus(o));
+  return `<div class="pstat">` + kette.map((s, i) => {
+    const t = STATUS_TEXT[s] || { label:s };
+    const zustand = i < jetzt ? 'fertig' : (i === jetzt ? 'aktuell' : 'offen');
+    const wann = (o.statusverlauf || {})[s];
+    const titel = wann ? ` title="${escAttr(new Date(wann).toLocaleDateString('de-AT'))}"` : '';
+    return `<span class="pstat-schritt ${zustand}"${titel}>${escHtml(t.label)}</span>`;
+  }).join('<span class="pstat-pfeil">›</span>') + `</div>`;
+}
+
 function renderBestellhistorie() {
   if(!isAdmin()) { document.getElementById('bestellhistorie-list').innerHTML=''; return; }
   const orders = state.bestellungen || [];
   if(!orders.length) {
-    document.getElementById('bestellhistorie-list').innerHTML = '<p style="font-size:.85rem;color:var(--muted);">Noch keine Bestellungen vorhanden.</p>';
+    document.getElementById('bestellhistorie-list').innerHTML =
+      '<p style="font-size:.85rem;color:var(--muted);">Noch keine Anfragen.</p>';
     return;
   }
-  const statusCfg = {
-    offen: {label:'Offen', color:'#D97706', bg:'#FEF3C7'},
-    bestaetigt: {label:'Bestätigt', color:'#059669', bg:'#D1FAE5'},
-    versendet: {label:'Versendet', color:'#6366F1', bg:'#E0E7FF'}
-  };
-  let html = '';
-  orders.slice().reverse().forEach(o => {
+  const html = orders.slice().reverse().map(o=>{
     const d = new Date(o.datum).toLocaleDateString('de-AT',{day:'2-digit',month:'2-digit',year:'numeric'});
-    const name = (o.kontakt?.vorname||'')+' '+(o.kontakt?.nachname||'');
-    const st = statusCfg[o.status] || statusCfg.offen;
-    html += '<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);font-size:.85rem;flex-wrap:wrap;">';
-    html += '<span style="color:var(--muted);width:80px;">'+d+'</span>';
-    html += '<span style="flex:1;min-width:100px;">'+name.trim()+'</span>';
-    html += '<span style="font-weight:600;">'+(o.gesamt||0).toFixed(2)+' EUR</span>';
-    html += '<span style="font-size:.72rem;padding:2px 8px;border-radius:10px;background:'+st.bg+';color:'+st.color+';font-weight:600;">'+st.label+'</span>';
-    if(o.status==='offen') html += '<button class="btn secondary" style="font-size:.72rem;padding:2px 8px;color:#059669;" onclick="setOrderStatus(\''+o.id+'\',\'bestaetigt\')">Bestätigen</button>';
-    else if(o.status==='bestaetigt') html += '<button class="btn secondary" style="font-size:.72rem;padding:2px 8px;color:#6366F1;" onclick="setOrderStatus(\''+o.id+'\',\'versendet\')">Versendet</button>';
-    html += '<button class="btn secondary" style="font-size:.75rem;padding:2px 8px;" onclick="showBestellDetails(\''+o.id+'\')">Details</button>';
-    html += '<button class="btn secondary" style="font-size:.75rem;padding:2px 8px;color:var(--dachziegel);" onclick="storniereBestellung(\''+o.id+'\')">Stornieren</button>';
-    html += '</div>';
-  });
+    const name = `${(o.kontakt||{}).vorname||''} ${(o.kontakt||{}).nachname||''}`.trim();
+    const st = orderStatus(o);
+    const t = STATUS_TEXT[st] || {label:st, farbe:'#5F5E5A', bg:'#F0EDE5'};
+    const kette = orderKette(o);
+    const i = kette.indexOf(st);
+    const anzahl = (o.items||[]).length + (o.konfigurationen||[]).length;
+    const summe = (o.gesamt == null)
+      ? '<span style="color:var(--muted);font-weight:400;">nach Angebot</span>'
+      : `${o.gesamt.toFixed(2)} EUR`;
+    return `<div class="best-zeile">
+      <div class="best-kopf">
+        <span style="color:var(--muted);white-space:nowrap;">${d}</span>
+        <span style="flex:1;min-width:110px;">${escHtml(name)}
+          <span style="color:var(--muted);">· ${escHtml(o.empfaenger || '—')}</span></span>
+        <span style="font-weight:600;white-space:nowrap;">${summe}</span>
+        <span class="best-badge" style="background:${t.bg};color:${t.farbe};">${escHtml(t.label)}</span>
+      </div>
+      ${renderStatusleiste(o)}
+      <div class="best-knoepfe">
+        ${i > 0 ? `<button class="btn secondary" onclick="orderStatusWeiter('${escAttr(o.id)}', -1)">‹ zurück</button>` : ''}
+        ${i < kette.length - 1
+          ? `<button class="btn secondary" onclick="orderStatusWeiter('${escAttr(o.id)}', 1)">${escHtml((STATUS_TEXT[kette[i+1]]||{}).label || 'weiter')} ›</button>`
+          : (typeof katasterUebernahme === 'function'
+              ? `<button class="btn secondary" onclick="katasterUebernahme('${escAttr(o.id)}')">Ins Kataster übernehmen</button>`
+              : '')}
+        <span style="flex:1;"></span>
+        <span style="color:var(--muted);">${anzahl} Position(en)</span>
+        <button class="btn secondary" onclick="showBestellDetails('${escAttr(o.id)}')">Details</button>
+        <button class="btn secondary" style="color:var(--dachziegel);" onclick="storniereBestellung('${escAttr(o.id)}')">Stornieren</button>
+      </div>
+    </div>`;
+  }).join('');
   document.getElementById('bestellhistorie-list').innerHTML = html;
 }
 

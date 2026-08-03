@@ -991,6 +991,78 @@ function merkEigenEntfernen(id){
   updateCartBadge();
 }
 
+/* ---------- Gelieferte Bäume ins Kataster übernehmen (S5) ----------
+   Am Ende der Kette steht ein Baum, der real auf der Wiese steht. Die App kennt
+   Sorte, Menge und Unterlage bereits — sie noch einmal abzutippen wäre die
+   Sorte von Arbeit, die zu Tippfehlern und veralteten Katastern führt.
+
+   Angelegt wird als Overlay (customTrees) mit NEU-Nummern. Standort und
+   Position bleiben leer: Wo der Baum steht, weiß nur, wer ihn gepflanzt hat.
+   Die IDs sollten anschließend auf die Hofsystematik umbenannt werden — siehe
+   den Fall W20 in AGENTS.md. */
+function katasterUebernahme(orderId){
+  const o = (state.bestellungen || []).find(x => x.id === orderId);
+  if(!o) return;
+
+  /* Was ist zu pflanzen? Positionen und Konfigurationen zusammen. */
+  const zuPflanzen = [];
+  (o.items || []).forEach(p=>{
+    for(let i = 0; i < (p.menge || 1); i++)
+      zuPflanzen.push({ sorte:p.sorte, unterlage:p.unterlage || '' });
+  });
+  (o.konfigurationen || []).forEach(k=>{
+    const sorten = k.konfiguriert ? (k.sorten || []).map(x => x.sorte) : [k.sorte];
+    for(let i = 0; i < (k.menge || 1); i++)
+      zuPflanzen.push({ sorte: sorten[0], unterlage: k.unterlage || '',
+                        weitere: sorten.slice(1) });
+  });
+  if(!zuPflanzen.length){ showToast('Nichts zu übernehmen.','error'); return; }
+
+  const beschreibung = zuPflanzen.map(x =>
+    x.weitere && x.weitere.length ? `${x.sorte} (+${x.weitere.length})` : x.sorte).join(', ');
+  if(!confirm(`${zuPflanzen.length} Baum/Bäume ins Kataster übernehmen?\n\n${beschreibung}\n\n`
+    + 'Sie bekommen vorläufige IDs (NEU-…) ohne Standort. '
+    + 'ID und Position bitte anschließend im Baumkataster vergeben.')) return;
+
+  if(!state.customTrees) state.customTrees = [];
+  const vergeben = new Set(getAllTrees().map(t => t.id)
+    .concat(state.customTrees.map(c => c.id)));
+  let n = 1;
+  const naechsteId = () => {
+    while(vergeben.has(`NEU-${n}`)) n++;
+    vergeben.add(`NEU-${n}`);
+    return `NEU-${n}`;
+  };
+
+  const heute = new Date().toISOString().slice(0, 10);
+  zuPflanzen.forEach(x=>{
+    const s = getSorte(x.sorte) || {};
+    state.customTrees.push({
+      id: naechsteId(),
+      sorte: x.sorte,
+      frucht: s.frucht || '',
+      unterlage: x.unterlage,
+      ausgepflanzt: heute,
+      standort_zeile: '',
+      position: null,
+      /* Mehrsortenbaum: die weiteren Sorten stehen in der Bemerkung, bis das
+         Kataster ein eigenes Feld dafür hat. Verschweigen wäre schlimmer. */
+      eigenschaften: (x.weitere && x.weitere.length)
+        ? `Mehrsortenbaum, zusätzlich veredelt: ${x.weitere.join(', ')}`
+        : ''
+    });
+  });
+
+  o.ins_kataster = new Date().toISOString();
+  invalidateTreeCache();
+  saveState();
+  refreshFilterOptions();
+  renderBaumTable();
+  renderBestellhistorie();
+  showToast(`${zuPflanzen.length} Baum/Bäume übernommen — bitte IDs und Standorte vergeben.`,
+            'success', 5000);
+}
+
 function toggleVerwendung(sorteName, cat){
   const s = getSorte(sorteName);
   const current = ((s && s.verwendung) || []).slice();
