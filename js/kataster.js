@@ -614,21 +614,60 @@ function getSorte(sorteName){
 
 const MERKLISTE_EIGEN = 'eigen';
 
+/* ---------- Zwei getrennte Merklisten (A3) ----------
+   Ein Besucher am Hof soll sich etwas merken können, ohne sich anzumelden.
+   Läge seine Liste im geteilten `state`, hätte das zwei Folgen: Seine Einträge
+   kämen nie an (Firestore nimmt ohne Anmeldung nichts entgegen) — und schlimmer,
+   die Synchronisierung hätte ihm die Merkliste des Hofes ins Gerät gespielt.
+   `applyRemoteState` führte `merklisten` bis dahin bedingungslos zusammen.
+
+   Deshalb: Angemeldet schreibt in `state.merklisten` (geht auf alle Geräte und
+   ins Backup), nicht angemeldet in einen eigenen localStorage-Schlüssel, der
+   dieses Gerät nie verlässt. Die Listen bleiben getrennt; beim Anmelden wird
+   nichts übernommen, sonst vermischte sich die Planung des Hofes mit dem, was
+   ein Besucher an diesem Gerät angesehen hat. */
+const MERK_GAST_KEY = 'hendlberghof_merkliste_gast';
+let _gastMerklisten = null;
+
+function merklistenTopf(){
+  if(typeof isEditMode === 'function' && isEditMode()){
+    if(!state.merklisten) state.merklisten = {};
+    return state.merklisten;
+  }
+  if(_gastMerklisten === null){
+    try { _gastMerklisten = JSON.parse(localStorage.getItem(MERK_GAST_KEY) || '{}'); }
+    catch(e){ _gastMerklisten = {}; }
+  }
+  return _gastMerklisten;
+}
+
+function merkSpeichern(){
+  if(typeof isEditMode === 'function' && isEditMode()){ saveState(); return; }
+  try { localStorage.setItem(MERK_GAST_KEY, JSON.stringify(_gastMerklisten || {})); }
+  catch(e){ /* Speicher voll oder gesperrt — die Liste bleibt für diese Sitzung */ }
+}
+
+/* Nach dem An- oder Abmelden zeigt die App den jeweils anderen Topf. */
+function merklistenNeuLaden(){
+  _gastMerklisten = null;
+  if(typeof ladeMerklisten === 'function') ladeMerklisten();
+}
+
 function getMerkliste(qid){
-  if(!state.merklisten) state.merklisten = {};
-  if(!state.merklisten[qid]){
-    state.merklisten[qid] = (qid === MERKLISTE_EIGEN)
+  const topf = merklistenTopf();
+  if(!topf[qid]){
+    topf[qid] = (qid === MERKLISTE_EIGEN)
       ? { konfigurationen: [], geaendert: '' }
       : { positionen: [], geaendert: '' };
   }
-  return state.merklisten[qid];
+  return topf[qid];
 }
 
 /* Flache Sicht über alle Lieferantenlisten — die Form, in der die vorhandene
    Bestelloberfläche arbeitet. `qid` wird je Eintrag mitgeführt. */
 function merkPositionenFlach(){
   const raus = [];
-  const m = (typeof state !== 'undefined' && state && state.merklisten) || {};
+  const m = merklistenTopf();
   Object.keys(m).forEach(qid=>{
     if(qid === MERKLISTE_EIGEN) return;
     ((m[qid] || {}).positionen || []).forEach(p => raus.push(Object.assign({}, p, {qid})));
@@ -639,9 +678,9 @@ function merkPositionenFlach(){
 /* Gegenstück: schreibt die flache Liste zurück in die Fächer je Lieferant.
    Lieferantenlisten werden dabei neu aufgebaut, `eigen` bleibt unberührt. */
 function schreibeMerklistenZurueck(positionen){
-  if(!state.merklisten) state.merklisten = {};
-  Object.keys(state.merklisten).forEach(qid=>{
-    if(qid !== MERKLISTE_EIGEN) delete state.merklisten[qid];
+  const topf = merklistenTopf();
+  Object.keys(topf).forEach(qid=>{
+    if(qid !== MERKLISTE_EIGEN) delete topf[qid];
   });
   const jetzt = new Date().toISOString();
   (positionen || []).forEach(p=>{
@@ -655,7 +694,7 @@ function schreibeMerklistenZurueck(positionen){
 }
 
 function merkAnzahl(){
-  const eigen = ((state.merklisten || {})[MERKLISTE_EIGEN] || {}).konfigurationen || [];
+  const eigen = (merklistenTopf()[MERKLISTE_EIGEN] || {}).konfigurationen || [];
   return merkPositionenFlach().length + eigen.length;
 }
 
@@ -697,7 +736,7 @@ function migriereAltenWarenkorb(){
     localStorage.setItem(`${ALT}_migriert_${new Date().toISOString().slice(0,10)}`, roh);
     localStorage.removeItem(ALT);
   }catch(e){ /* Speicher voll oder gesperrt — die Übernahme selbst steht schon */ }
-  if(uebernommen) saveState();
+  if(uebernommen) merkSpeichern();
   return uebernommen;
 }
 
@@ -983,7 +1022,7 @@ function merkEigenHinzu(sorteName){
     angelegt: new Date().toISOString()
   });
   liste.geaendert = new Date().toISOString();
-  saveState();
+  merkSpeichern();
   updateCartBadge();
   showToast(`„${sorteName}" zur Liste hinzugefügt.`, 'success');
 }
@@ -1005,7 +1044,7 @@ function merkEigenMenge(id, menge){
   if(n <= 0) liste.konfigurationen.splice(idx, 1);
   else liste.konfigurationen[idx].menge = n;
   liste.geaendert = new Date().toISOString();
-  saveState();
+  merkSpeichern();
   if(typeof renderBestellModalContent === 'function') renderBestellModalContent();
   updateCartBadge();
 }
@@ -1015,7 +1054,7 @@ function merkEigenEntfernen(id){
   if(idx < 0) return;
   liste.konfigurationen.splice(idx, 1);
   liste.geaendert = new Date().toISOString();
-  saveState();
+  merkSpeichern();
   if(typeof renderBestellModalContent === 'function') renderBestellModalContent();
   updateCartBadge();
 }
@@ -1163,6 +1202,118 @@ function renderSortenrechte(){
       wenig anbieten als eine zu viel. Geklärt wird über CPVO Variety Finder und AGES;
       die Triage im Plan ist Vorarbeit, keine Rechtsauskunft.
     </div>`;
+}
+
+/* ---------- QR-Etiketten (A2) ----------
+   Der Besucher steht vor dem Baum; der QR-Code bringt ihn auf dessen Karte.
+
+   Die Adresse im Code ist auf Jahre in Metall oder Kunststoff gestanzt — ein
+   Hosting-Wechsel danach macht jedes Etikett wertlos. Deshalb ist sie
+   einstellbar und sollte auf die eigene Domain zeigen, nicht auf github.io.
+
+   Grossschreibung ist Absicht: QR-Codes fassen im alphanumerischen Modus
+   deutlich mehr Zeichen je Fläche als im Byte-Modus. Auf einem 25-mm-Etikett
+   entscheidet das darüber, ob ein Handy bei schlechtem Licht noch liest.
+   tiefenVerweisOeffnen() liest deshalb ohne Rücksicht auf Gross-/Kleinschreibung. */
+function etikettBasisUrl(){
+  const eigen = ((typeof state !== 'undefined' && state && state.betrieb) || {}).basis_url;
+  if(eigen) return String(eigen).replace(/\/+$/, '');
+  return (location.origin + location.pathname).replace(/\/index\.html$/i, '').replace(/\/+$/, '');
+}
+
+function _qrDatenUrl(text, px){
+  if(typeof QRCode === 'undefined') return null;
+  const halter = document.createElement('div');
+  halter.style.cssText = 'position:absolute;left:-9999px;top:0;';
+  document.body.appendChild(halter);
+  try {
+    /* Fehlerkorrektur Q (25 %): Etiketten im Freien bekommen Kratzer, Staub und
+       Regenränder ab. Die Stufe kostet Fläche, aber M wäre draußen zu knapp. */
+    new QRCode(halter, { text, width:px, height:px,
+      correctLevel: QRCode.CorrectLevel.Q });
+    const c = halter.querySelector('canvas');
+    return c ? c.toDataURL('image/png') : null;
+  } catch(e){ return null; }
+  finally { halter.remove(); }
+}
+
+function renderEtikettenAdmin(){
+  const karte = document.getElementById('card-etiketten');
+  const el = document.getElementById('etiketten-admin');
+  if(!karte || !el) return;
+  if(!isAdmin()){ karte.style.display = 'none'; return; }
+  karte.style.display = '';
+
+  const arten = [...new Set(getAllTrees().map(t => t.frucht).filter(Boolean))].sort();
+  el.innerHTML = `
+    <div class="pa-zeile">
+      <label>Adresse im QR-Code</label>
+      <input type="text" style="flex:1;min-width:240px;" value="${escAttr(etikettBasisUrl())}"
+             onchange="_betriebSetzen('basis_url', this.value)">
+    </div>
+    <div class="pa-erklaerung">
+      Steht Jahre lang auf dem Etikett — auf die eigene Domain zeigen lassen, nicht auf
+      github.io. Ein Hosting-Wechsel danach macht jedes gedruckte Etikett wertlos.
+    </div>
+    <div class="pa-zeile">
+      <label>Auswahl</label>
+      <select id="etik-auswahl">
+        <option value="">alle Bäume (${getAllTrees().length})</option>
+        <option value="__platziert">nur im Lageplan verortete</option>
+        ${arten.map(a => `<option value="${escAttr(a)}">nur ${escHtml(a)}</option>`).join('')}
+      </select>
+      <button class="btn secondary" onclick="etikettenPdf()">PDF erzeugen</button>
+    </div>
+    <div class="pa-erklaerung">
+      24 Etiketten je A4-Seite. Zum Aufhängen bitte eine lose Schlaufe verwenden —
+      ein fest gezogener Draht schnürt den Stamm im Lauf der Jahre ein.
+    </div>`;
+}
+
+function etikettenPdf(){
+  if(!window.jspdf){ showToast('PDF-Bibliothek nicht geladen — Internet nötig.','error'); return; }
+  if(typeof QRCode === 'undefined'){ showToast('QR-Bibliothek nicht geladen — Internet nötig.','error'); return; }
+
+  const wahl = (document.getElementById('etik-auswahl') || {}).value || '';
+  let baeume = getAllTrees();
+  if(wahl === '__platziert') baeume = baeume.filter(t => (state.positions || {})[t.id]);
+  else if(wahl) baeume = baeume.filter(t => t.frucht === wahl);
+  baeume = baeume.slice().sort((a, b) => String(a.id).localeCompare(String(b.id), 'de', {numeric:true}));
+  if(!baeume.length){ showToast('Keine Bäume in dieser Auswahl.','error'); return; }
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit:'mm', format:'a4' });
+  const basis = etikettBasisUrl();
+  const spalten = 3, zeilen = 8;
+  const breite = 63, hoehe = 33, randX = 10, randY = 12;
+
+  baeume.forEach((t, i)=>{
+    const auf = i % (spalten * zeilen);
+    if(i && auf === 0) doc.addPage();
+    const x = randX + (auf % spalten) * breite;
+    const y = randY + Math.floor(auf / spalten) * hoehe;
+
+    doc.setDrawColor(210, 205, 190);
+    doc.roundedRect(x, y, breite - 3, hoehe - 3, 2, 2);
+
+    /* Endet die Basis auf einen Dateinamen, darf kein Schrägstrich dazwischen —
+       sonst entsteht „…/index.html/?BAUM=W20“, was nirgends hinführt. */
+    const url = `${basis}${/\.html?$/i.test(basis) ? '' : '/'}?BAUM=${String(t.id).toUpperCase()}`;
+    const bild = _qrDatenUrl(url, 240);
+    if(bild) doc.addImage(bild, 'PNG', x + 3, y + 4, 22, 22);
+
+    doc.setTextColor(40, 54, 42);
+    doc.setFontSize(13); doc.setFont(undefined, 'bold');
+    doc.text(String(t.id), x + 28, y + 10);
+    doc.setFontSize(9); doc.setFont(undefined, 'normal');
+    doc.text(doc.splitTextToSize(t.sorte || '', breite - 32).slice(0, 2), x + 28, y + 16);
+    doc.setTextColor(120, 118, 110);
+    doc.setFontSize(7.5);
+    doc.text(t.frucht || '', x + 28, y + 26);
+  });
+
+  doc.save(`Etiketten_${new Date().toISOString().slice(0,10)}.pdf`);
+  showToast(`${baeume.length} Etiketten auf ${Math.ceil(baeume.length / 24)} Seite(n).`, 'success', 4000);
 }
 
 function toggleVerwendung(sorteName, cat){

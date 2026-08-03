@@ -42,7 +42,7 @@ function updateCartBadge(){
      Aufrufer aktualisieren das Abzeichen vor saveCart(). Dann zeigte es einen
      Eintrag zu wenig. Hier zaehlt die Arbeitskopie, die immer aktuell ist —
      damit ist die Reihenfolge der Aufrufe gleichgueltig. */
-  const eigen = ((state.merklisten || {})[MERKLISTE_EIGEN] || {}).konfigurationen || [];
+  const eigen = (merklistenTopf()[MERKLISTE_EIGEN] || {}).konfigurationen || [];
   const n = (Array.isArray(bestellListe) ? bestellListe.length : 0) + eigen.length;
   badge.textContent=n;
   badge.style.display=n>0?'inline':'none';
@@ -124,7 +124,7 @@ function renderBestellModalContent() {
      Stammform und Zahl der Veredelungen und steht erst nach der Konfiguration
      fest. Eine Summe, die stillschweigend nur die zugekaufte Ware enthaelt,
      waere irrefuehrend - deshalb steht der Grund sichtbar dabei. */
-  const eigen = ((state.merklisten || {})[MERKLISTE_EIGEN] || {}).konfigurationen || [];
+  const eigen = (merklistenTopf()[MERKLISTE_EIGEN] || {}).konfigurationen || [];
   if(eigen.length){
     html += `<div style="margin-bottom:10px;padding:8px;border:1px solid var(--gruen);border-radius:6px;background:var(--gruen-hell);">
       <div style="font-weight:600;font-size:.85rem;margin-bottom:4px;">Eigenproduktion Hendlberghof</div>`;
@@ -213,7 +213,11 @@ function renderBestellModalContent() {
   html += '<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;">';
   html += '<button class="btn secondary" onclick="bestellungDrucken()">Drucken</button>';
   html += '<button class="btn secondary" onclick="bestellungPdf()">PDF erstellen</button>';
-  html += '<button class="btn secondary" onclick="bestellungSpeichern()">Anfragen speichern</button>';
+  /* Speichern ist Buchhaltung des Hofes, nicht Sache des Besuchers: Ohne
+     Anmeldung erreicht der Eintrag die Cloud nie, waere also ein Knopf, der
+     Sicherheit vortaeuscht. Fuer Gaeste fuehrt der Weg ueber "Anfrage senden". */
+  if(typeof isEditMode === 'function' && isEditMode())
+    html += '<button class="btn secondary" onclick="bestellungSpeichern()">Anfragen speichern</button>';
   html += '</div>';
   html += '</div>';
   document.getElementById('modal-content').innerHTML = html;
@@ -286,7 +290,7 @@ function _bestellAusfallWert(){
 function anfragenAufteilen(){
   const raus = [];
 
-  const eigen = ((state.merklisten || {})[MERKLISTE_EIGEN] || {}).konfigurationen || [];
+  const eigen = (merklistenTopf()[MERKLISTE_EIGEN] || {}).konfigurationen || [];
   if(eigen.length){
     raus.push({
       typ: 'eigen', qid: MERKLISTE_EIGEN,

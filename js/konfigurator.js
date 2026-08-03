@@ -494,7 +494,7 @@ function konfigUebernehmen(){
   else liste.konfigurationen.push(eintrag);
   liste.geaendert = new Date().toISOString();
 
-  saveState();
+  merkSpeichern();
   updateCartBadge();
   _konfig = null;
   showToast(`Baum mit ${eintrag.sorten.length} Sorte(n) zur Liste hinzugefügt.`, 'success');

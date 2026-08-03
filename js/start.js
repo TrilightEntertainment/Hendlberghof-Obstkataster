@@ -7,6 +7,40 @@
    Hoisting mehr, und start.js setzt window.__dataReadyPromise, das berater.js
    beim Laden bereits liest. */
 
+/* ---------- Tiefe Verweise (A2) ----------
+   Ein QR-Code am Baum soll dessen Karte öffnen, nicht die Gesamtliste. Der
+   Besucher steht vor genau diesem Baum — ihn erst suchen zu lassen, verschenkt
+   den Moment, in dem das Interesse entsteht.
+
+     ?baum=W20        öffnet die Baumkarte
+     ?sorte=Rubinette öffnet die Sortenkarte
+
+   Gross- und Kleinschreibung sind gleichgültig: QR-Codes werden im
+   alphanumerischen Modus dichter und damit auf kleinen Etiketten besser
+   lesbar, wenn sie durchgehend gross geschrieben sind.
+
+   Unbekannte Werte führen nicht ins Leere, sondern melden sich — ein Etikett
+   an einem umgesetzten oder umbenannten Baum darf keine stumme Seite zeigen. */
+function tiefenVerweisOeffnen(){
+  let p;
+  try { p = new URLSearchParams(window.location.search); } catch(e){ return; }
+  const baum = (p.get('baum') || p.get('BAUM') || '').trim();
+  const sorte = (p.get('sorte') || p.get('SORTE') || '').trim();
+  if(!baum && !sorte) return;
+
+  if(baum){
+    const t = getAllTrees().find(x => String(x.id).toLowerCase() === baum.toLowerCase());
+    if(t){ activateTab('baumkataster'); openBaumModal(t.id); return; }
+    showToast(`Baum „${baum}“ ist im Kataster nicht (mehr) verzeichnet.`, 'error', 5000);
+    return;
+  }
+  const treffer = SORTEN_DATA.find(s => s.sorte.toLowerCase() === sorte.toLowerCase())
+    || (typeof AN_SORTEN !== 'undefined'
+        && AN_SORTEN.find(a => a.name.toLowerCase() === sorte.toLowerCase()));
+  if(treffer){ openSortenModal(treffer.sorte || treffer.name); return; }
+  showToast(`Sorte „${sorte}“ ist nicht hinterlegt.`, 'error', 5000);
+}
+
 /* ---------- Login & Edit-Modus ---------- */
 function applyEditModeUI(){
   const on = isEditMode();
@@ -44,8 +78,16 @@ function applyEditModeUI(){
     if(placeLabel) placeLabel.textContent = 'Position setzen';
     const st = document.getElementById('place-status');
     if(st) st.textContent = '';
-    closeModal();
+    /* Nur Bearbeitungsmasken schliessen. Baum- und Sortenkarten sind reine
+       Ansicht — sie wegzunehmen, weil die Anmeldung sich meldet, wuerde
+       ausgerechnet den QR-Besucher treffen: Seine Karte oeffnet beim Start und
+       das Firebase-Ereignis kaeme Sekundenbruchteile spaeter. */
+    const mt = (document.getElementById('modal-content') || {}).dataset || {};
+    if(mt.modalType !== 'baum' && mt.modalType !== 'sorte') closeModal();
   }
+  /* Beim An- und Abmelden wechselt die Merkliste den Topf (A3) — die Ansicht
+     muss dem folgen, sonst zeigt sie die Liste des anderen Zustands. */
+  if(typeof merklistenNeuLaden === 'function') merklistenNeuLaden();
 }
 
 const LOGIN_ACCOUNTS = {
@@ -432,6 +474,7 @@ function startApp(){
   renderImportTemplates();
   renderSortenlistenSichtbar();
   if(window.__pendingRemoteState){ const r = window.__pendingRemoteState; window.__pendingRemoteState = null; applyRemoteState(r); }
+  tiefenVerweisOeffnen();   /* nach applyEditModeUI — das schliesst sonst das Modal */
   showWelcomeBannerIfNeeded();
   const lo=document.getElementById('loading-overlay');
   if(lo){ lo.style.opacity='0'; setTimeout(()=>lo.remove(), 400); }

@@ -738,6 +738,12 @@
       leere Kapazit&auml;tsfelder bedeuten keine Grenze.</p>
       <div id="produktion-admin"></div>
     </div>
+    <div class="card" style="max-width:640px;margin-top:16px;" id="card-etiketten">
+      <h3>QR-Etiketten f&uuml;r die B&auml;ume</h3>
+      <p class="snippet">Erzeugt ein PDF mit Etiketten: QR-Code, ID, Sorte und Obstart. Wer am Baum
+      scannt, landet direkt auf dessen Karte &mdash; nicht in der Gesamtliste.</p>
+      <div id="etiketten-admin"></div>
+    </div>
     <div class="card" style="max-width:640px;margin-top:16px;" id="card-sortenrechte">
       <h3>Sortenrechte</h3>
       <p class="snippet">Je Sorte festlegen, ob sie selbst veredelt werden darf. &bdquo;Ungekl&auml;rt&ldquo;
@@ -1053,13 +1059,14 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
 <!-- Aus einem einzelnen Script-Block herausgeloest (F6). Reihenfolge ist
      bindend: Ueber Dateigrenzen hinweg gibt es kein Hoisting mehr. -->
-<script src="js/kern.js?v=102"></script>
-<script src="js/kataster.js?v=102"></script>
-<script src="js/lageplan.js?v=102"></script>
-<script src="js/start.js?v=102"></script>
+<script src="js/kern.js?v=103"></script>
+<script src="js/kataster.js?v=103"></script>
+<script src="js/lageplan.js?v=103"></script>
+<script src="js/start.js?v=103"></script>
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
@@ -1142,8 +1149,8 @@
     });
   }
 </script>
-<script src="js/berater.js?v=102"></script>
-<script src="js/shop.js?v=102"></script>
-<script src="js/konfigurator.js?v=102"></script>
+<script src="js/berater.js?v=103"></script>
+<script src="js/shop.js?v=103"></script>
+<script src="js/konfigurator.js?v=103"></script>
 </body>
 </html>

@@ -227,7 +227,11 @@ function applyRemoteState(remote){
   state.phaenologie = _mergeObj(state.phaenologie, remote.phaenologie);
   state.sortenSichtbar = _mergeObj(state.sortenSichtbar, remote.sortenSichtbar);
   state.obstarten = _mergeObj(state.obstarten, remote.obstarten);
-  state.merklisten = _mergeObj(state.merklisten, remote.merklisten);
+  /* Merklisten NUR im angemeldeten Zustand zusammenfuehren. Ohne diese Bedingung
+     bekaeme ein Besucher am Hof die Merkliste des Betriebs ins Geraet gespielt -
+     seine eigene liegt seit A3 in einem getrennten, geraetelokalen Topf. */
+  if(typeof isEditMode === 'function' && isEditMode())
+    state.merklisten = _mergeObj(state.merklisten, remote.merklisten);
   state.preislisten = _mergeObj(state.preislisten, remote.preislisten);
   state.sukzession = _mergeObj(state.sukzession, remote.sukzession);
   state.ernten = _mergeObj(state.ernten, remote.ernten);
@@ -418,6 +422,7 @@ function activateTab(tabName){
     renderBestellhistorie();
     if(typeof renderProduktionAdmin === 'function') renderProduktionAdmin();
     if(typeof renderSortenrechte === 'function') renderSortenrechte();
+    if(typeof renderEtikettenAdmin === 'function') renderEtikettenAdmin();
     renderOverlayPruefung();
     renderSortenlistenSichtbar();
     renderImportLog();
