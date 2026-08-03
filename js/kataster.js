@@ -1299,8 +1299,13 @@ function etikettenPdf(){
     /* Endet die Basis auf einen Dateinamen, darf kein Schrägstrich dazwischen —
        sonst entsteht „…/index.html/?BAUM=W20“, was nirgends hinführt. */
     const url = `${basis}${/\.html?$/i.test(basis) ? '' : '/'}?BAUM=${String(t.id).toUpperCase()}`;
-    const bild = _qrDatenUrl(url, 240);
-    if(bild) doc.addImage(bild, 'PNG', x + 3, y + 4, 22, 22);
+    /* 132 Pixel auf 22 mm sind rund 150 dpi — fuer einen QR-Code reichlich, denn
+       gelesen werden Module, nicht Feinheiten. jsPDF legt Bilder sonst roh ab:
+       Mit 240 Pixeln wog das PDF fuer 20 Etiketten 6 MB, bei 81 Baeumen waeren
+       es rund 24 MB gewesen. Mit kleinerer Aufloesung und 'FAST' bleibt es
+       handlich genug zum Mailen und Drucken. */
+    const bild = _qrDatenUrl(url, 132);
+    if(bild) doc.addImage(bild, 'PNG', x + 3, y + 4, 22, 22, undefined, 'FAST');
 
     doc.setTextColor(40, 54, 42);
     doc.setFontSize(13); doc.setFont(undefined, 'bold');
