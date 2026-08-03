@@ -3,7 +3,7 @@
   "bestellungen"
  ],
  "hinweis": "Live-Nutzerdaten aus Firestore. Katalog liegt versioniert in data/.",
- "stand": "2026-08-02",
+ "stand": "2026-08-03",
  "state": {
   "_pinFmt": "img",
   "baumEdits": {},
