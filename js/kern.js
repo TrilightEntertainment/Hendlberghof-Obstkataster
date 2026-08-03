@@ -275,6 +275,29 @@ function applyRemoteState(remote){
   if(satMap) renderSatMarkers();
 }
 
+/* ---------- Betriebsmodus (A1) ----------
+   Die App soll auch für andere Betriebe taugen: eine Baumschule mit
+   besichtigbarer Fläche, einen reinen Versandhandel, einen Schaugarten ohne
+   Verkauf. Statt solche Annahmen im Code zu verteilen, steht hier ein Schalter.
+
+   Dazu „Shop aktiv" als eigener Hebel für die Saisonpause: Merken bleibt
+   möglich, Bestellen nicht. Wer im Juli den Bestellschluss überschritten hat,
+   will Interessenten nicht verlieren, sondern vertrösten. */
+const BETRIEBSMODI = {
+  A: { label:'Schaugarten und Manufaktur', kataster:true,  eigenproduktion:true,  fremdliste:true },
+  B: { label:'Baumschule',                 kataster:true,  eigenproduktion:false, fremdliste:true },
+  C: { label:'Nur Sortenliste',            kataster:false, eigenproduktion:false, fremdliste:true },
+  D: { label:'Nur Kataster',               kataster:true,  eigenproduktion:false, fremdliste:false }
+};
+
+function getBetrieb(){
+  const b = (typeof state !== 'undefined' && state && state.betrieb) || {};
+  const modus = BETRIEBSMODI[b.modus] ? b.modus : 'A';
+  /* shop_aktiv fehlt = aktiv. Ein neuer Betrieb soll verkaufen können, ohne
+     erst einen Schalter zu finden. */
+  return Object.assign({ modus, shop_aktiv: b.shop_aktiv !== false }, BETRIEBSMODI[modus]);
+}
+
 /* ---------- Obstart-Regeln ----------
    Bestimmt, was je Obstart angeboten wird. Gesteuert über Daten statt über
    Sonderfälle im Code: Eine neue Obstart braucht eine Zeile, keinen Eingriff in
@@ -393,6 +416,8 @@ function activateTab(tabName){
   if(tabName==='daten'){
     renderPreislistenAdmin();
     renderBestellhistorie();
+    if(typeof renderProduktionAdmin === 'function') renderProduktionAdmin();
+    if(typeof renderSortenrechte === 'function') renderSortenrechte();
     renderOverlayPruefung();
     renderSortenlistenSichtbar();
     renderImportLog();

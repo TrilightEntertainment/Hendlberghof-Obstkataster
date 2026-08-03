@@ -61,6 +61,155 @@ function konfigLieferjahr(){
   return heute.getFullYear() + ((p.saison || {}).lieferjahr_offset || 2) + (nachSchluss ? 1 : 0);
 }
 
+/* ---------- Verwaltung: Betrieb, Preise, Saison, Kapazität (A1) ----------
+   Bis hierher standen Preise und Grenzen nur im Code. Ohne diese Maske hätte
+   der Hof „Preis nach Angebot" auf ewig stehen lassen müssen — nicht weil die
+   Rechnung fehlt, sondern weil niemand die Zahlen eintragen kann.
+
+   Geschrieben wird nach state.produktion und state.betrieb; beides wandert über
+   Firestore auf alle Geräte und steckt im Monatsbackup. */
+function _prodSetzen(pfad, wert){
+  if(!state.produktion) state.produktion = {};
+  const teile = pfad.split('.');
+  let ziel = state.produktion;
+  for(let i = 0; i < teile.length - 1; i++){
+    if(!ziel[teile[i]]) ziel[teile[i]] = {};
+    ziel = ziel[teile[i]];
+  }
+  const letzte = teile[teile.length - 1];
+  /* Leeres Feld heißt „nicht hinterlegt", nicht „null Euro". Der Unterschied
+     entscheidet, ob die App einen Preis nennt oder auf das Angebot verweist. */
+  const t = String(wert).trim();
+  ziel[letzte] = (t === '') ? null : (isNaN(Number(t)) ? t : Number(t));
+  saveState();
+  renderProduktionAdmin();
+}
+
+function _betriebSetzen(feld, wert){
+  if(!state.betrieb) state.betrieb = {};
+  state.betrieb[feld] = wert;
+  saveState();
+  renderProduktionAdmin();
+  refreshFilterOptions();
+  renderResults();
+}
+
+function unterlageSetzen(id, feld, wert){
+  const p = getProduktion();
+  const liste = (state.produktion && state.produktion.unterlagen)
+    ? state.produktion.unterlagen
+    : JSON.parse(JSON.stringify(p.unterlagen));   /* beim ersten Ändern übernehmen */
+  const u = liste.find(x => x.id === id);
+  if(!u) return;
+  if(feld === 'aktiv') u.aktiv = !!wert;
+  else if(feld === 'preis'){
+    const t = String(wert).trim();
+    u.preis = (t === '') ? null : Number(t);
+  } else u[feld] = wert;
+  if(!state.produktion) state.produktion = {};
+  state.produktion.unterlagen = liste;
+  saveState();
+  renderProduktionAdmin();
+}
+
+function renderProduktionAdmin(){
+  const karte = document.getElementById('card-produktion');
+  const el = document.getElementById('produktion-admin');
+  if(!karte || !el) return;
+  if(!isAdmin()){ karte.style.display = 'none'; return; }
+  karte.style.display = '';
+
+  const p = getProduktion();
+  const b = getBetrieb();
+  const kap = p.kapazitaet || {};
+  const sai = p.saison || {};
+  const zahl = (wert, platzhalter) =>
+    `value="${wert == null ? '' : escAttr(String(wert))}" placeholder="${escAttr(platzhalter)}"`;
+
+  el.innerHTML = `
+    <div class="section-title">Betrieb</div>
+    <div class="pa-zeile">
+      <label>Modus</label>
+      <select onchange="_betriebSetzen('modus', this.value)">
+        ${Object.keys(BETRIEBSMODI).map(k =>
+          `<option value="${k}"${k === b.modus ? ' selected' : ''}>${k} — ${escHtml(BETRIEBSMODI[k].label)}</option>`).join('')}
+      </select>
+    </div>
+    <div class="pa-erklaerung">
+      Kataster ${b.kataster ? 'sichtbar' : 'aus'} ·
+      Eigenveredelung ${b.eigenproduktion ? 'ja' : 'nein'} ·
+      Fremdlisten ${b.fremdliste ? 'ja' : 'nein'}
+    </div>
+    <div class="pa-zeile">
+      <label>Shop aktiv</label>
+      <input type="checkbox"${b.shop_aktiv ? ' checked' : ''}
+             onchange="_betriebSetzen('shop_aktiv', this.checked)">
+      <span class="pa-erklaerung" style="margin:0;">Aus = Saisonpause: Merken bleibt, Bestellen ruht.</span>
+    </div>
+
+    <div class="section-title">Preise Eigenproduktion</div>
+    <div class="pa-zeile">
+      <label>Grundpreis (EUR)</label>
+      <input type="number" step="0.01" min="0" ${zahl(p.grundpreis, 'leer = nach Angebot')}
+             onchange="_prodSetzen('grundpreis', this.value)">
+    </div>
+    <div class="pa-zeile">
+      <label>Aufpreis je zusätzlicher Veredelung</label>
+      <input type="number" step="0.01" min="0" ${zahl(p.aufpreis_je_veredelung, 'EUR')}
+             onchange="_prodSetzen('aufpreis_je_veredelung', this.value)">
+    </div>
+    <div class="pa-erklaerung">
+      Solange der Grundpreis leer ist, schreibt der Konfigurator „Preis wird mit dem
+      Angebot bekanntgegeben“ — eine Null wäre eine Preisauskunft, die niemand gegeben hat.
+    </div>
+
+    <div class="section-title">Saison</div>
+    <div class="pa-zeile">
+      <label>Bestellschluss (MM-TT)</label>
+      <input type="text" ${zahl(sai.bestellschluss, '12-31')}
+             onchange="_prodSetzen('saison.bestellschluss', this.value)">
+    </div>
+    <div class="pa-zeile">
+      <label>Jahre bis zur Lieferung</label>
+      <input type="number" min="1" max="5" ${zahl(sai.lieferjahr_offset, '2')}
+             onchange="_prodSetzen('saison.lieferjahr_offset', this.value)">
+      <span class="pa-erklaerung" style="margin:0;">Ergibt derzeit: Herbst ${konfigLieferjahr()}</span>
+    </div>
+
+    <div class="section-title">Kapazität je Saison</div>
+    <div class="pa-zeile">
+      <label>Höchstens je Sorte</label>
+      <input type="number" min="1" ${zahl(kap.je_sorte_max, 'leer = keine Grenze')}
+             onchange="_prodSetzen('kapazitaet.je_sorte_max', this.value)">
+    </div>
+    <div class="pa-zeile">
+      <label>Höchstens Bäume gesamt</label>
+      <input type="number" min="1" ${zahl(kap.baeume_gesamt, 'leer = keine Grenze')}
+             onchange="_prodSetzen('kapazitaet.baeume_gesamt', this.value)">
+    </div>
+    <div class="pa-erklaerung">
+      Beim Speichern einer Anfrage wird nachgefragt, wenn die Grenze überschritten würde —
+      zugesagte, noch nicht gelieferte Bäume mitgezählt. Keine Sperre: Ob eine Sorte noch
+      reicht, weißt du besser als diese Zahl.
+    </div>
+
+    <div class="section-title">Unterlagen</div>
+    <table class="pa-tabelle">
+      <thead><tr><th>Name</th><th>Obstart</th><th>Wuchs</th><th>Aufpreis</th><th>aktiv</th></tr></thead>
+      <tbody>
+        ${p.unterlagen.map(u => `<tr>
+          <td>${escHtml(u.name)}</td>
+          <td>${escHtml(u.frucht || '')}</td>
+          <td>${escHtml(u.wuchs || '')}</td>
+          <td><input type="number" step="0.01" min="0" style="width:70px;"
+                     ${zahl(u.preis, '0')} onchange="unterlageSetzen('${escAttr(u.id)}','preis',this.value)"></td>
+          <td><input type="checkbox"${u.aktiv === false ? '' : ' checked'}
+                     onchange="unterlageSetzen('${escAttr(u.id)}','aktiv',this.checked)"></td>
+        </tr>`).join('')}
+      </tbody>
+    </table>`;
+}
+
 /* ---------- Laufende Zusammenstellung ---------- */
 let _konfig = null;
 
@@ -80,7 +229,10 @@ function konfiguratorOeffnen(sorteName, vorhandeneId){
     return;
   }
 
-  const unterlagen = getProduktion().unterlagen.filter(u => u.frucht === frucht);
+  /* Nur freigeschaltete Unterlagen anbieten — die Verwaltung kann welche
+     stilllegen, ohne sie zu loeschen. */
+  const unterlagen = getProduktion().unterlagen
+    .filter(u => u.frucht === frucht && u.aktiv !== false);
   _konfig = {
     id: vorhandeneId || `K${Date.now().toString(36)}`,
     frucht,
@@ -197,7 +349,7 @@ function renderKonfigurator(){
   if(!_konfig) return;
   const p = getProduktion();
   const max = maxSortenProBaum(_konfig.frucht);
-  const unterlagen = p.unterlagen.filter(u => u.frucht === _konfig.frucht);
+  const unterlagen = p.unterlagen.filter(u => u.frucht === _konfig.frucht && u.aktiv !== false);
   const gewaehlteUnterlage = unterlagen.find(u => u.id === _konfig.unterlage) || {};
   const gewaehlteForm = p.stammformen.find(f => f.id === _konfig.stammform) || {};
   const waehlbar = konfigWaehlbareSorten();

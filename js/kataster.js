@@ -820,11 +820,27 @@ function getBestellbarkeit(sorteName, info){
     return erg;
   }
 
-  erg.lieferanten = getFremdlieferanten(name);
+  /* Betriebsmodus und Saisonpause wirken hier, an der einen Stelle — nicht in
+     jedem Renderer. Merken bleibt in allen Fällen möglich; gesperrt wird nur
+     der Kaufweg. */
+  const betrieb = getBetrieb();
+
+  erg.betriebsmodus = betrieb.modus;
+  erg.shop_aktiv = betrieb.shop_aktiv;
+  erg.lieferanten = betrieb.fremdliste ? getFremdlieferanten(name) : [];
 
   const regel = getObstartRegel(frucht);
   const reiserDa = katalog ? katalog.als_reiser_verfuegbar !== false : false;
-  erg.eigenproduktion = regel.veredelung && vermehrung === VERMEHRUNG_FREI && reiserDa;
+  erg.eigenproduktion = betrieb.eigenproduktion
+    && regel.veredelung && vermehrung === VERMEHRUNG_FREI && reiserDa;
+
+  if(!betrieb.shop_aktiv){
+    erg.eigenproduktion = false;
+    erg.lieferanten = [];
+    erg.zustand = 'pausiert';
+    erg.grund = 'Bestellungen pausieren derzeit — Merken ist weiterhin möglich.';
+    return erg;
+  }
 
   /* 2. Eigenveredelung hat Vorrang — das ist das Kernprodukt. */
   if(erg.eigenproduktion){
@@ -852,6 +868,8 @@ function getBestellbarkeit(sorteName, info){
 
   /* 5. Sonst: Grund benennen, statt nur „nicht verfügbar" zu zeigen. */
   if(!frucht) erg.grund = 'Obstart nicht hinterlegt.';
+  else if(!betrieb.eigenproduktion)
+    erg.grund = 'Eigene Veredelung wird in diesem Betrieb nicht angeboten.';
   else if(!regel.veredelung)
     erg.grund = regel.bekannt
       ? `Für ${frucht} wird derzeit keine Veredelung angeboten.`
@@ -884,6 +902,17 @@ function renderShopBlock(sorteName, kontext){
 
   if(b.zustand === 'nur_beratung')
     return rahmen(`<span class="shop-hinweis">Nur zur Beratung — Arche-Noah-Sorten sind nicht käuflich.</span>`);
+
+  /* Saisonpause: Kaufen aus, Merken an. Wer im Sommer nach Bestellschluss
+     kommt, soll nicht verlorengehen — er soll vorgemerkt werden. */
+  if(b.zustand === 'pausiert'){
+    return rahmen(
+      `<div class="shop-zeile">
+         <span class="shop-hinweis">${escHtml(b.grund)}</span>
+         <button class="btn secondary shop-btn"
+                 onclick="event.stopPropagation();merkEigenHinzu('${sn}')">Merken</button>
+       </div>`);
+  }
 
   const teile = [];
 
@@ -1061,6 +1090,79 @@ function katasterUebernahme(orderId){
   renderBestellhistorie();
   showToast(`${zuPflanzen.length} Baum/Bäume übernommen — bitte IDs und Standorte vergeben.`,
             'success', 5000);
+}
+
+/* ---------- Sortenrechte (A1) ----------
+   Seit F4 entscheidet `vermehrung`, ob eine Sorte selbst veredelt werden darf.
+   Bisher liess sich das Feld nur ausserhalb der App setzen.
+
+   Wichtig: Aenderungen hier landen als Overlay, nicht im Katalog — die App kann
+   data/sorten_data.json nicht schreiben. Der Weg zurueck ist
+   tools/katalog_rueckweg.py; darauf weist die Karte hin, sonst driften Katalog
+   und Cloud wieder auseinander. */
+function setVermehrung(sorteName, wert){
+  if(!state.sortenEdits) state.sortenEdits = {};
+  if(!state.sortenEdits[sorteName]) state.sortenEdits[sorteName] = {};
+  state.sortenEdits[sorteName].vermehrung = wert;
+  saveState();
+  renderSortenrechte();
+  renderResults();
+}
+
+function renderSortenrechte(){
+  const karte = document.getElementById('card-sortenrechte');
+  const el = document.getElementById('sortenrechte-liste');
+  if(!karte || !el) return;
+  if(!isAdmin()){ karte.style.display = 'none'; return; }
+  karte.style.display = '';
+
+  const filter = (document.getElementById('sr-filter') || {}).value || '';
+  const sorten = SORTEN_DATA.slice().sort((a, b) => a.sorte.localeCompare(b.sorte, 'de'));
+  const zaehl = { frei:0, geschuetzt:0, unklar:0 };
+  sorten.forEach(s => zaehl[getVermehrung(s.sorte)]++);
+
+  const sichtbar = sorten.filter(s => !filter || getVermehrung(s.sorte) === filter);
+  const offen = Object.keys(state.sortenEdits || {})
+    .filter(n => (state.sortenEdits[n] || {}).vermehrung !== undefined).length;
+
+  el.innerHTML = `
+    <div class="pa-zeile">
+      <label>Anzeigen</label>
+      <select id="sr-filter" onchange="renderSortenrechte()">
+        <option value=""${!filter ? ' selected' : ''}>alle (${sorten.length})</option>
+        <option value="frei"${filter === 'frei' ? ' selected' : ''}>frei (${zaehl.frei})</option>
+        <option value="geschuetzt"${filter === 'geschuetzt' ? ' selected' : ''}>geschützt (${zaehl.geschuetzt})</option>
+        <option value="unklar"${filter === 'unklar' ? ' selected' : ''}>ungeklärt (${zaehl.unklar})</option>
+      </select>
+    </div>
+    ${offen ? `<div class="pa-erklaerung" style="color:#7A5700;">
+      ${offen} Änderung(en) liegen als Overlay über dem Katalog. Damit sie dauerhaft
+      werden: <code>python3 tools/katalog_rueckweg.py --anwenden</code>, committen, dann
+      in dieser Ansicht unten „Overlays aufräumen“.</div>` : ''}
+    <div style="max-height:340px;overflow-y:auto;margin-top:4px;">
+      <table class="pa-tabelle">
+        <thead><tr><th>Sorte</th><th>Obstart</th><th>Vermehrung</th></tr></thead>
+        <tbody>
+          ${sichtbar.map(s=>{
+            const v = getVermehrung(s.sorte);
+            return `<tr>
+              <td>${escHtml(s.sorte)}</td>
+              <td style="color:var(--muted);">${escHtml(s.frucht || '')}</td>
+              <td><select onchange="setVermehrung('${escAttr(s.sorte)}', this.value)">
+                <option value="unklar"${v === 'unklar' ? ' selected' : ''}>ungeklärt — gesperrt</option>
+                <option value="frei"${v === 'frei' ? ' selected' : ''}>frei</option>
+                <option value="geschuetzt"${v === 'geschuetzt' ? ' selected' : ''}>geschützt</option>
+              </select></td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+    </div>
+    <div class="pa-erklaerung">
+      „Ungeklärt“ sperrt die Eigenveredelung — bewusst vorsichtig: lieber eine Sorte zu
+      wenig anbieten als eine zu viel. Geklärt wird über CPVO Variety Finder und AGES;
+      die Triage im Plan ist Vorarbeit, keine Rechtsauskunft.
+    </div>`;
 }
 
 function toggleVerwendung(sorteName, cat){

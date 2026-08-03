@@ -569,6 +569,18 @@
   .pstat-schritt.aktuell{background:var(--gruen);color:#F1EDE2;font-weight:600;}
   .pstat-schritt.offen{color:var(--muted);}
   .pstat-pfeil{color:var(--border);}
+
+  /* ---------- Verwaltung Eigenproduktion (A1) ---------- */
+  .pa-zeile{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:5px 0;font-size:.84rem;}
+  .pa-zeile label{min-width:210px;color:var(--muted);}
+  .pa-zeile input[type=text],.pa-zeile input[type=number],.pa-zeile select{
+    font-size:.84rem;padding:4px 7px;border:1px solid var(--border);border-radius:4px;
+    background:#fff;min-width:130px;}
+  .pa-erklaerung{font-size:.77rem;color:var(--muted);margin:2px 0 10px;line-height:1.45;}
+  .pa-tabelle{width:100%;border-collapse:collapse;font-size:.82rem;margin-top:4px;}
+  .pa-tabelle th{text-align:left;font-weight:600;color:var(--muted);font-size:.76rem;
+                 border-bottom:1px solid var(--border);padding:3px 6px 3px 0;}
+  .pa-tabelle td{padding:3px 6px 3px 0;border-bottom:1px solid var(--border);}
 </style>
 </head>
 <body>
@@ -718,6 +730,20 @@
       <h3>Daten importieren</h3>
       <p class="snippet">Vorsicht: überschreibt den aktuellen, mit allen Geräten synchronisierten Datenstand mit dem Inhalt der Datei. Nur zur Wiederherstellung aus einem Backup verwenden, nicht für den normalen Gebrauch.</p>
       <input type="file" id="file-import" accept="application/json">
+    </div>
+    <div class="card" style="max-width:640px;margin-top:16px;" id="card-produktion">
+      <h3>Eigenproduktion &amp; Betrieb</h3>
+      <p class="snippet">Betriebsmodus, Preise, Saison, Kapazit&auml;t und Unterlagen. Diese Werte steuern,
+      was der Konfigurator anbietet und rechnet &mdash; leere Preisfelder bedeuten &bdquo;nach Angebot&ldquo;,
+      leere Kapazit&auml;tsfelder bedeuten keine Grenze.</p>
+      <div id="produktion-admin"></div>
+    </div>
+    <div class="card" style="max-width:640px;margin-top:16px;" id="card-sortenrechte">
+      <h3>Sortenrechte</h3>
+      <p class="snippet">Je Sorte festlegen, ob sie selbst veredelt werden darf. &bdquo;Ungekl&auml;rt&ldquo;
+      sperrt die Eigenveredelung. &Auml;nderungen hier liegen als Overlay &uuml;ber dem Katalog &mdash;
+      dauerhaft werden sie erst &uuml;ber den Katalog-R&uuml;ckweg.</p>
+      <div id="sortenrechte-liste"></div>
     </div>
     <div class="card" style="max-width:640px;margin-top:16px;" id="card-overlays">
       <h3>Overlays aufräumen</h3>
@@ -1030,10 +1056,10 @@
 
 <!-- Aus einem einzelnen Script-Block herausgeloest (F6). Reihenfolge ist
      bindend: Ueber Dateigrenzen hinweg gibt es kein Hoisting mehr. -->
-<script src="js/kern.js?v=101"></script>
-<script src="js/kataster.js?v=101"></script>
-<script src="js/lageplan.js?v=101"></script>
-<script src="js/start.js?v=101"></script>
+<script src="js/kern.js?v=102"></script>
+<script src="js/kataster.js?v=102"></script>
+<script src="js/lageplan.js?v=102"></script>
+<script src="js/start.js?v=102"></script>
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
@@ -1116,8 +1142,8 @@
     });
   }
 </script>
-<script src="js/berater.js?v=101"></script>
-<script src="js/shop.js?v=101"></script>
-<script src="js/konfigurator.js?v=101"></script>
+<script src="js/berater.js?v=102"></script>
+<script src="js/shop.js?v=102"></script>
+<script src="js/konfigurator.js?v=102"></script>
 </body>
 </html>
