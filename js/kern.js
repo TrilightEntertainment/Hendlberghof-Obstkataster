@@ -188,6 +188,21 @@ function toggleVerifiziert(sorteName, context){
 /* ---------- Editierbarkeit (Login-geschützt via Firebase Authentication) ---------- */
 function isEditMode(){ return !!window.__firebaseUser; }
 function getCurrentState(){ return state; }
+
+/* Bestellungen kommen seit 3.8.2026 aus einem eigenen, nur angemeldet lesbaren
+   Dokument — nicht mehr aus dem oeffentlichen state. Zusammengefuehrt wird wie
+   bisher ueber die ID, damit zwei Geraete sich nicht gegenseitig ueberschreiben. */
+function applyRemoteBestellungen(liste){
+  if(!Array.isArray(liste)) return;
+  if(!state.bestellungen) state.bestellungen = [];
+  const vorhanden = new Set(state.bestellungen.map(o => o.id));
+  let neu = 0;
+  liste.forEach(o=>{ if(o && o.id && !vorhanden.has(o.id)){ state.bestellungen.push(o); neu++; } });
+  if(neu){
+    localStorage.setItem(LS_KEY, JSON.stringify(state));
+    if(typeof renderBestellhistorie === 'function') renderBestellhistorie();
+  }
+}
 function applyRemoteState(remote){
   if(!remote) return;
   const localKeys = Object.keys(state.satPositions||{});

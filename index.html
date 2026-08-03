@@ -1063,10 +1063,10 @@
 
 <!-- Aus einem einzelnen Script-Block herausgeloest (F6). Reihenfolge ist
      bindend: Ueber Dateigrenzen hinweg gibt es kein Hoisting mehr. -->
-<script src="js/kern.js?v=104"></script>
-<script src="js/kataster.js?v=104"></script>
-<script src="js/lageplan.js?v=104"></script>
-<script src="js/start.js?v=104"></script>
+<script src="js/kern.js?v=105"></script>
+<script src="js/kataster.js?v=105"></script>
+<script src="js/lageplan.js?v=105"></script>
+<script src="js/start.js?v=105"></script>
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
@@ -1090,8 +1090,27 @@
   const db = getFirestore(app);
   enableIndexedDbPersistence(db).catch(()=>{ /* mehrere offene Tabs o.ä. - Offline-Cache dann nur eingeschränkt */ });
 
+  /* Zwei Dokumente statt einem (Datenschutz, 3.8.2026).
+
+     app_state/main       oeffentlich lesbar - Katalog-Overlays, Positionen,
+                          Ernten, Beobachtungen. Nichts davon ist personenbezogen.
+     app_state/bestellungen  nur angemeldet - Anfragen mit Name, Adresse,
+                          E-Mail und Telefon.
+
+     Firestore-Regeln greifen je Dokument, nicht je Feld. Solange die
+     Bestellungen im selben Dokument lagen wie der Katalog, war jede
+     Kundenanschrift fuer jeden abrufbar, der die Projekt-URL kennt - und die
+     steht im Quelltext der App. Ein Feld laesst sich nicht verstecken, nur ein
+     Dokument.
+
+     GRUNDSATZ: Bestellungen werden NIE wieder in das oeffentliche Dokument
+     geschrieben, auch nicht ersatzweise, wenn das private scheitert. Dann
+     bleiben sie lokal und im Monatsbackup, und der Nutzer bekommt eine
+     Warnung - Verfuegbarkeit rechtfertigt keine Offenlegung. */
   const stateDocRef = doc(db, 'app_state', 'main');
+  const bestellDocRef = doc(db, 'app_state', 'bestellungen');
   let firstSnapshot = true;
+  let bestellAbo = null;
 
   onSnapshot(stateDocRef, async (snap)=>{
     if(window.__dataReadyPromise){ try{ await window.__dataReadyPromise; }catch(e){} }
@@ -1118,14 +1137,35 @@
     return out;
   };
 
+  let bestellWarnungGezeigt = false;
   window.__syncToFirestore = async (data)=>{
+    const bestellungen = data.bestellungen || [];
+
+    /* Zuerst der private Teil. Gelingt er nicht, bleiben die Bestellungen lokal
+       - sie wandern trotzdem nicht ins oeffentliche Dokument. */
+    if(auth.currentUser){
+      try {
+        await setDoc(bestellDocRef, { liste: bestellungen, stand: new Date().toISOString() });
+      } catch(err){
+        console.warn('Bestellungen konnten nicht privat gesichert werden:', err);
+        if(bestellungen.length && !bestellWarnungGezeigt){
+          bestellWarnungGezeigt = true;
+          if(window.showToast) window.showToast(
+            `Bestellungen bleiben vorerst nur auf diesem Gerät — die Firestore-Regel für `
+            + `app_state/bestellungen fehlt noch. Siehe firestore.rules.`, 'error', 9000);
+        }
+      }
+    }
+
     try {
       const snap = await getDoc(stateDocRef);
       if(snap.exists()){
         const remote = snap.data();
         data.satPositions = _satMerge(data.satPositions, remote.satPositions, data.deletedSatPositions);
       }
-      await setDoc(stateDocRef, data);
+      const oeffentlich = Object.assign({}, data);
+      delete oeffentlich.bestellungen;      /* nie im oeffentlichen Dokument */
+      await setDoc(stateDocRef, oeffentlich);
     } catch(err){
       console.warn('Synchronisierung fehlgeschlagen (Änderung bleibt lokal gespeichert):', err);
     }
@@ -1139,6 +1179,21 @@
     window.__firebaseUser = user;
     if(window.applyEditModeUI) window.applyEditModeUI();
     if(user && !wasLoggedIn) closeModal();
+
+    /* Das private Dokument erst abonnieren, wenn jemand angemeldet ist - ohne
+       Anmeldung waere jeder Versuch ein Regelverstoss und wuerde die Konsole
+       mit Fehlern fuellen. */
+    if(user && !bestellAbo){
+      bestellAbo = onSnapshot(bestellDocRef, async (snap)=>{
+        if(window.__dataReadyPromise){ try{ await window.__dataReadyPromise; }catch(e){} }
+        if(snap.exists() && window.applyRemoteBestellungen)
+          window.applyRemoteBestellungen(snap.data().liste || []);
+      }, (err)=>{
+        console.warn('Bestellungen nicht abrufbar (Regel für app_state/bestellungen fehlt?):', err);
+      });
+    } else if(!user && bestellAbo){
+      bestellAbo(); bestellAbo = null;
+    }
   });
 </script>
 
@@ -1149,8 +1204,8 @@
     });
   }
 </script>
-<script src="js/berater.js?v=104"></script>
-<script src="js/shop.js?v=104"></script>
-<script src="js/konfigurator.js?v=104"></script>
+<script src="js/berater.js?v=105"></script>
+<script src="js/shop.js?v=105"></script>
+<script src="js/konfigurator.js?v=105"></script>
 </body>
 </html>

@@ -240,6 +240,17 @@ def main():
             with open(p, encoding="utf-8") as f:
                 katalog[name] = json.load(f)
 
+    # Seit 3.8.2026 liegen Bestellungen in app_state/bestellungen und sind ohne
+    # Anmeldung nicht lesbar - genau das war der Zweck der Trennung. Dieses
+    # Skript authentifiziert sich nicht, bekommt sie also nicht mehr. Das ist
+    # gewollt, darf aber nicht stillschweigend geschehen: Wer --mit-bestellungen
+    # aufruft, erwartet Bestellungen.
+    if a.mit_bestellungen and not state.get("bestellungen"):
+        print("  Hinweis: Bestellungen liegen seit der Trennung in einem eigenen,\n"
+              "           nur angemeldet lesbaren Dokument und sind hier nicht enthalten.\n"
+              "           Vollstaendige Sicherung: in der App unter\n"
+              "           Daten & Sicherung -> Daten exportieren (JSON).")
+
     json_pfad = os.path.join(a.ziel, f"{stempel}_state.json")
     with open(json_pfad, "w", encoding="utf-8") as f:
         # sort_keys: Firestore liefert die Felder in wechselnder Reihenfolge.

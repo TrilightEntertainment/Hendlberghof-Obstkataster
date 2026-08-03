@@ -1,9 +1,37 @@
 rules_version = '2';
+
+/* Hendlberghof Obstdatenbank — Zugriffsregeln
+   Stand 3. 8. 2026
+
+   Firestore prueft je DOKUMENT, nicht je Feld. Ein einzelnes Feld laesst sich
+   nicht verbergen. Deshalb liegen personenbezogene Daten seit dieser Fassung in
+   einem eigenen Dokument statt gemeinsam mit dem Katalog.
+
+   Vorher stand hier nur `allow read: if true` fuer app_state/main — und in
+   diesem Dokument lagen auch die Bestellungen mit Name, Adresse, E-Mail und
+   Telefon. Damit war jede Kundenanschrift fuer jeden abrufbar, der die
+   Projekt-ID kennt; die steht im Quelltext der App. */
+
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    /* Katalog-Overlays, Positionen, Ernten, Beobachtungen. Oeffentlich lesbar,
+       weil die App ohne Anmeldung benutzbar sein soll — nichts davon ist
+       personenbezogen. Schreiben nur angemeldet. */
     match /app_state/main {
       allow read: if true;
       allow write: if request.auth != null;
+    }
+
+    /* Anfragen und Bestellungen mit Kontaktdaten. Weder lesbar noch schreibbar
+       ohne Anmeldung. */
+    match /app_state/bestellungen {
+      allow read, write: if request.auth != null;
+    }
+
+    /* Alles Uebrige bleibt gesperrt. */
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }
