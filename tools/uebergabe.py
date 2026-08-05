@@ -20,6 +20,7 @@ oeffentlich. Nur dieses Skript liegt dort - es enthaelt keine Inhalte.
 Aufruf:
   python3 tools/uebergabe.py
   python3 tools/uebergabe.py --ziel ~/woanders
+  python3 tools/uebergabe.py --ohne-medien   # ohne PDFs und Lageplanbild
 """
 
 import argparse, collections, json, os, re, shutil, subprocess, sys, urllib.request
@@ -136,11 +137,17 @@ def stand_erheben():
 def main():
     ap = argparse.ArgumentParser(description="Uebergabepaket erzeugen")
     ap.add_argument("--ziel", default=os.path.expanduser("~/Hendlberghof-Backups/uebergabe"))
+    ap.add_argument("--ohne-medien", action="store_true",
+                    help="Arche-Noah-Blaetter, Lageplanbild und Symbole weglassen "
+                         "(spart rund 19 MB; nur sinnvoll, wenn der Empfaenger "
+                         "Zugriff auf das Repo hat)")
     a = ap.parse_args()
 
     tag = datetime.now().strftime("%Y-%m-%d")
     ordner = os.path.join(a.ziel, f"UEBERGABE_{tag}")
-    os.makedirs(os.path.join(ordner, "daten"), exist_ok=True)
+    # "data", nicht "daten": Die App holt data/baum_data.json. Mit einem
+    # eingedeutschten Ordnernamen laesst sich das Paket nicht starten.
+    os.makedirs(os.path.join(ordner, "data"), exist_ok=True)
     os.makedirs(os.path.join(ordner, "werkzeuge"), exist_ok=True)
 
     # 1. Erhobener Stand
@@ -169,19 +176,38 @@ def main():
     for n in ("baum_data.json", "sorten_data.json", "seed_positions.json"):
         p = os.path.join(REPO, "data", n)
         if os.path.exists(p):
-            shutil.copy(p, os.path.join(ordner, "daten"))
+            shutil.copy(p, os.path.join(ordner, "data"))
     hb = os.path.expanduser("~/Hendlberghof-Backups")
     neueste = sorted([f for f in os.listdir(hb) if f.endswith("_state.json")]) if os.path.isdir(hb) else []
     if neueste:
         shutil.copy(os.path.join(hb, neueste[-1]),
-                    os.path.join(ordner, "daten", "firestore_" + neueste[-1]))
+                    os.path.join(ordner, "data", "firestore_" + neueste[-1]))
 
     # 4. Anwendung und Werkzeuge
     for p, ziel in ((os.path.join(PROJEKT, "files", "Hendlberghof_Obstdatenbank.html"), ordner),
                     (os.path.join(REPO, "sw.js"), ordner),
-                    (os.path.join(REPO, "firestore.rules"), ordner)):
+                    (os.path.join(REPO, "manifest.json"), ordner),
+                    (os.path.join(REPO, "README.md"), ordner),
+                    (os.path.join(REPO, "firestore.rules"), ordner),
+                    (os.path.join(PROJEKT, ".claude", "serve.py"), ordner),
+                    (os.path.join(PROJEKT, ".claude", "launch.json"), ordner)):
         if os.path.exists(p):
             shutil.copy(p, ziel)
+
+    # 4b. Belegte Quellen und Medien.
+    #     Liegen zwar im Git und damit ausser Haus - aber eine Uebergabe muss aus
+    #     sich heraus funktionieren. Wer das Archiv bekommt, hat nicht
+    #     zwangslaeufig Zugriff auf das Repo, und ohne das Lageplanbild bleibt
+    #     die Karte leer. Die Arche-Noah-Blaetter sind die Belege fuer die
+    #     standort-Attribute; ohne sie steht die Sortenberatung ohne Quelle da.
+    if not a.ohne_medien:
+        for unter in ("arche_pdfs", "arche_pdfs_birnen", "assets", "icons"):
+            quelle = os.path.join(REPO, unter)
+            if os.path.isdir(quelle):
+                ziel = os.path.join(ordner, unter)
+                shutil.rmtree(ziel, ignore_errors=True)
+                shutil.copytree(quelle, ziel,
+                                ignore=shutil.ignore_patterns(".DS_Store"))
     js_ziel = os.path.join(ordner, "js")
     if os.path.isdir(os.path.join(PROJEKT, "files", "js")):
         shutil.rmtree(js_ziel, ignore_errors=True)
