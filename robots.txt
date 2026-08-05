@@ -1,0 +1,16 @@
+# Hendlberghof Obstdatenbank — nicht bei Suchmaschinen listen.
+#
+# Die Hauptseite www.hendlberghof.at traegt ebenfalls noindex. Ohne diese
+# Sperre waere der Kataster der einzige auffindbare Teil des Auftritts und
+# wuerde Besucher an der Website vorbeifuehren. Sie kommen ueber Direktlink,
+# QR-Code am Baum, Newsletter und Markt.
+#
+# ACHTUNG: Eine robots.txt gilt nur, wenn sie unter dem Wurzelpfad der Domain
+# liegt. Solange die Seite unter trilightentertainment.github.io/Hendlberghof-
+# Obstkataster/ laeuft, landet diese Datei in einem Unterverzeichnis und wird
+# von Suchmaschinen NICHT gelesen. Wirksam ist dann allein das
+# <meta name="robots"> in index.html. Erst mit der eigenen Subdomain
+# (kataster.hendlberghof.at) liegt sie richtig und greift zusaetzlich.
+
+User-agent: *
+Disallow: /

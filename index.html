@@ -3,6 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<!-- Nicht bei Suchmaschinen listen. Die Hauptseite www.hendlberghof.at traegt
+     ebenfalls noindex; ohne diese Zeile waere ausgerechnet der Kataster der
+     einzige auffindbare Teil des Auftritts und wuerde Besucher an der Website
+     vorbeifuehren. Besucher kommen ueber Direktlink, QR-Code am Baum,
+     Newsletter und Markt. Umkehrbar, sobald der Betrieb gefunden werden soll. -->
+<meta name="robots" content="noindex, nofollow">
 <title>Hendlberghof – Obstdatenbank</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#2E3F2A">
@@ -1063,10 +1069,10 @@
 
 <!-- Aus einem einzelnen Script-Block herausgeloest (F6). Reihenfolge ist
      bindend: Ueber Dateigrenzen hinweg gibt es kein Hoisting mehr. -->
-<script src="js/kern.js?v=105"></script>
-<script src="js/kataster.js?v=105"></script>
-<script src="js/lageplan.js?v=105"></script>
-<script src="js/start.js?v=105"></script>
+<script src="js/kern.js?v=106"></script>
+<script src="js/kataster.js?v=106"></script>
+<script src="js/lageplan.js?v=106"></script>
+<script src="js/start.js?v=106"></script>
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
@@ -1204,8 +1210,8 @@
     });
   }
 </script>
-<script src="js/berater.js?v=105"></script>
-<script src="js/shop.js?v=105"></script>
-<script src="js/konfigurator.js?v=105"></script>
+<script src="js/berater.js?v=106"></script>
+<script src="js/shop.js?v=106"></script>
+<script src="js/konfigurator.js?v=106"></script>
 </body>
 </html>
