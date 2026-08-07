@@ -138,7 +138,7 @@ function loadState(){
       return parsed;
     }
   }catch(e){ console.error('State corrupted, resetting:', e); setTimeout(()=>showToast('Gespeicherte Daten beschädigt — Zurückgesetzt.','error',5000),500); }
-  return { positions: Object.assign({}, SEED_POSITIONS), sukzession:{}, ernten:{}, verifiziert:{}, customTrees:[], baumEdits:{}, sortenEdits:{}, importLog:[], importSnapshots:[], phaenologie:{}, sortenSichtbar:{}, preislisten:{}, bestellungen:[], satPositions:{}, deletedSatPositions:{}, obstarten:{}, merklisten:{} };
+  return { positions: Object.assign({}, SEED_POSITIONS), sukzession:{}, ernten:{}, verifiziert:{}, customTrees:[], baumEdits:{}, sortenEdits:{}, importLog:[], importSnapshots:[], phaenologie:{}, sortenSichtbar:{}, preislisten:{}, bestellungen:[], satPositions:{}, deletedSatPositions:{}, obstarten:{}, merklisten:{}, produktion:{}, betrieb:{} };
 }
 let _saveTimer = null;
 function saveState(){
@@ -170,6 +170,8 @@ function initState(){
   if(!state.deletedSatPositions) state.deletedSatPositions = {};
   if(!state.obstarten) state.obstarten = {};   /* Abwandlungen zu OBSTARTEN_STANDARD */
   if(!state.merklisten) state.merklisten = {};
+  if(!state.produktion) state.produktion = {};
+  if(!state.betrieb) state.betrieb = {};
   invalidateTreeCache();
 }
 
@@ -242,6 +244,14 @@ function applyRemoteState(remote){
   state.phaenologie = _mergeObj(state.phaenologie, remote.phaenologie);
   state.sortenSichtbar = _mergeObj(state.sortenSichtbar, remote.sortenSichtbar);
   state.obstarten = _mergeObj(state.obstarten, remote.obstarten);
+  /* Einstellungen aus der Verwaltung (A1). Fehlten hier bis 5.8.2026 — mit der
+     Folge, dass Preise, Kapazitaet und Betriebsmodus zwar in die Cloud gingen,
+     aber auf keinem anderen Geraet je ankamen. Der Konfigurator zeigte
+     Besuchern weiter "Preis nach Angebot", obwohl Preise hinterlegt waren, und
+     der Schalter "Shop aktiv" haette fuer Besucher nie gewirkt — eine Sperre,
+     die stillschweigend nicht sperrt, ist schlimmer als keine. */
+  state.produktion = _mergeObj(state.produktion, remote.produktion);
+  state.betrieb = _mergeObj(state.betrieb, remote.betrieb);
   /* Merklisten NUR im angemeldeten Zustand zusammenfuehren. Ohne diese Bedingung
      bekaeme ein Besucher am Hof die Merkliste des Betriebs ins Geraet gespielt -
      seine eigene liegt seit A3 in einem getrennten, geraetelokalen Topf. */
@@ -282,6 +292,8 @@ function applyRemoteState(remote){
   if(!state.deletedSatPositions) state.deletedSatPositions = {};
   if(!state.obstarten) state.obstarten = {};
   if(!state.merklisten) state.merklisten = {};
+  if(!state.produktion) state.produktion = {};
+  if(!state.betrieb) state.betrieb = {};
   localStorage.setItem(LS_KEY, JSON.stringify(state));
   /* Arbeitskopie der Merklisten nachziehen, sonst zeigt dieses Gerät weiter den
      Stand von vor der Synchronisierung. */
