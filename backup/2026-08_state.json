@@ -1,7 +1,7 @@
 {
  "entfernte_felder": [],
  "hinweis": "Live-Nutzerdaten aus Firestore. Katalog liegt versioniert in data/.",
- "stand": "2026-08-03",
+ "stand": "2026-08-07",
  "state": {
   "_pinFmt": "img",
   "baumEdits": {},
