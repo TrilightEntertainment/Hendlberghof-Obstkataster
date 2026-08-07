@@ -118,6 +118,21 @@ def stand_erheben():
              + ("**JA — das wäre ein Datenschutzproblem**" if "bestellungen" in felder
                 else "nein (seit 3.8.2026 in eigenem, gesperrtem Dokument)"))
 
+    # --- Website
+    theme = os.path.join(PROJEKT, "website-theme")
+    z.append("\n## Website-Umbau (A5)\n")
+    if os.path.isdir(theme):
+        for wurzel, _, dateien in os.walk(theme):
+            for n in sorted(dateien):
+                if n == ".DS_Store":
+                    continue
+                p = os.path.join(wurzel, n)
+                rel = os.path.relpath(p, theme)
+                z.append(f"- `{rel}` — {os.path.getsize(p)//1024 or 1} KB")
+        z.append("- liegt **ausserhalb des Repos** — nur im Übergabepaket gesichert")
+    else:
+        z.append("- kein `website-theme/` vorhanden")
+
     # --- Plan
     plan = os.path.join(PROJEKT, "PLAN_SHOP_MERKLISTE.md")
     if os.path.exists(plan):
@@ -208,6 +223,18 @@ def main():
                 shutil.rmtree(ziel, ignore_errors=True)
                 shutil.copytree(quelle, ziel,
                                 ignore=shutil.ignore_patterns(".DS_Store"))
+    # 4c. Der Website-Umbau (A5).
+    #     Wichtiger Sonderfall: website-theme/ liegt im Projektordner, NICHT im
+    #     Repo - es gehoert zu wordpress, nicht zum Kataster. Damit existiert es
+    #     nur auf diesem Mac. Faellt es hier heraus, ist es nirgends gesichert.
+    theme_quelle = os.path.join(PROJEKT, "website-theme")
+    if os.path.isdir(theme_quelle):
+        theme_ziel = os.path.join(ordner, "website-theme")
+        shutil.rmtree(theme_ziel, ignore_errors=True)
+        shutil.copytree(theme_quelle, theme_ziel,
+                        ignore=shutil.ignore_patterns(".DS_Store"))
+        kopiert.append("website-theme/")
+
     js_ziel = os.path.join(ordner, "js")
     if os.path.isdir(os.path.join(PROJEKT, "files", "js")):
         shutil.rmtree(js_ziel, ignore_errors=True)
