@@ -170,8 +170,8 @@ def main():
 
     # 2. Erklaerende Unterlagen
     kopiert = []
-    for n in ("UEBERGABE.md", "AGENTS.md", "PLAN_SHOP_MERKLISTE.md",
-              "STYLEGUIDE.md", "MIGRATION_OPENCODE.md"):
+    for n in ("EINSTIEG_PROMPT.md", "UEBERGABE.md", "AGENTS.md",
+              "PLAN_SHOP_MERKLISTE.md", "STYLEGUIDE.md", "MIGRATION_OPENCODE.md"):
         p = os.path.join(PROJEKT, n)
         if os.path.exists(p):
             shutil.copy(p, ordner); kopiert.append(n)
