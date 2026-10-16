@@ -94,6 +94,32 @@ for f in "$DOK"/*.md; do
 done
 echo "-- Unterlagen: $anz Dokumente nach $DOK (je auch als HTML)" | tee -a "$LOG"
 
+# --- 3b. Geretteter Inhalt der alten Website (nur lokal!) --------------------
+# 178 Mediathek-Eintraege, 33 Seiten und die WooCommerce-Produkte, am 16.10.2026
+# aus der WordPress-Installation geholt. Rund 420 MB, die es sonst NIRGENDS
+# mehr gibt: Die alte Seite wird abgeloest, und mit ihr verschwindet die
+# Mediathek. Darunter Dateien, die auf keiner Seite verlinkt sind - etwa das
+# Veredelungsvideo von 2018.
+#
+# Nicht ins Repo: Das Repo ist oeffentlich, und 420 MB Bilder gehoeren ohnehin
+# nicht in eine Git-Historie.
+#
+# rsync statt cp, weil sich nach dem ersten Lauf fast nichts mehr aendert -
+# kopiert wird dann nur noch der Unterschied.
+INHALT="$REPO/../website-inhalt"
+if [ -d "$INHALT" ]; then
+  # Bewusst OHNE --delete, aus demselben Grund wie bei der iCloud-Spiegelung
+  # weiter unten: Die Sicherung darf nur hinzufuegen. Wer im Arbeitsordner
+  # versehentlich loescht, soll die Sicherung nicht mitreissen.
+  if rsync -a "$INHALT/" "$ZIEL/website-inhalt/" 2>&1 | tee -a "$LOG"; then
+    groesse=$(du -sh "$ZIEL/website-inhalt" 2>/dev/null | cut -f1)
+    anzahl=$(find "$ZIEL/website-inhalt" -type f | wc -l | tr -d ' ')
+    echo "-- Alte Website: $anzahl Dateien, $groesse" | tee -a "$LOG"
+  else
+    echo "-- HINWEIS: Sicherung der Website-Inhalte fehlgeschlagen" | tee -a "$LOG"
+  fi
+fi
+
 # --- 4. Alte lokale Backups aufraeumen: letzte 24 Monate behalten ------------
 # Im Repo wird nichts geloescht - dort ist die Historie ja der Sinn der Sache.
 ls -1t "$ZIEL"/*_state.json    2>/dev/null | tail -n +25 | xargs -r rm -f

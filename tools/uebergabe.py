@@ -235,6 +235,38 @@ def main():
                         ignore=shutil.ignore_patterns(".DS_Store"))
         kopiert.append("website-theme/")
 
+    # 4d. Der gerettete Inhalt der alten Website - aber nur der Textteil.
+    #     Die Bilder und die Mediathek sind zusammen rund 420 MB und wuerden
+    #     jedes Uebergabepaket sprengen; sie liegen im Monatsbackup und in
+    #     iCloud. Mitgegeben werden die Texte und die Verzeichnisse - damit
+    #     weiss der Nachfolger, was es gibt und wo es liegt.
+    inhalt_quelle = os.path.join(PROJEKT, "website-inhalt")
+    if os.path.isdir(inhalt_quelle):
+        inhalt_ziel = os.path.join(ordner, "website-inhalt")
+        shutil.rmtree(inhalt_ziel, ignore_errors=True)
+        os.makedirs(inhalt_ziel, exist_ok=True)
+        for unter in ("seiten", "beitraege"):
+            q = os.path.join(inhalt_quelle, unter)
+            if os.path.isdir(q):
+                shutil.copytree(q, os.path.join(inhalt_ziel, unter),
+                                ignore=shutil.ignore_patterns(".DS_Store"))
+        for rel in ("INHALT.md", "bilder.txt",
+                    "produkte/PRODUKTE.md", "produkte/produkte.json",
+                    "mediathek/MEDIATHEK.md", "mediathek/mediathek.json"):
+            q = os.path.join(inhalt_quelle, rel)
+            if os.path.exists(q):
+                z = os.path.join(inhalt_ziel, rel)
+                os.makedirs(os.path.dirname(z), exist_ok=True)
+                shutil.copy(q, z)
+        with open(os.path.join(inhalt_ziel, "LIESMICH.txt"), "w", encoding="utf-8") as f:
+            f.write("Textteil des geretteten Website-Inhalts.\n\n"
+                    "Die Bilder (33 MB), die vollstaendige Mediathek (361 MB) und die\n"
+                    "Produktbilder (23 MB) sind hier NICHT enthalten - sie wuerden das\n"
+                    "Paket sprengen. Sie liegen unter ~/Hendlberghof-Backups/website-inhalt/\n"
+                    "und als Zweitkopie in iCloud Drive. Welche Dateien es gibt, steht in\n"
+                    "MEDIATHEK.md und bilder.txt.\n")
+        kopiert.append("website-inhalt/ (Text)")
+
     js_ziel = os.path.join(ordner, "js")
     if os.path.isdir(os.path.join(PROJEKT, "files", "js")):
         shutil.rmtree(js_ziel, ignore_errors=True)
