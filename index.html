@@ -1061,25 +1061,25 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/4.2.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/5.0.8/jspdf.plugin.autotable.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
 <!-- Aus einem einzelnen Script-Block herausgeloest (F6). Reihenfolge ist
      bindend: Ueber Dateigrenzen hinweg gibt es kein Hoisting mehr. -->
-<script src="js/kern.js?v=107"></script>
-<script src="js/kataster.js?v=107"></script>
-<script src="js/lageplan.js?v=107"></script>
-<script src="js/start.js?v=107"></script>
+<script src="js/kern.js?v=108"></script>
+<script src="js/kataster.js?v=108"></script>
+<script src="js/lageplan.js?v=108"></script>
+<script src="js/start.js?v=108"></script>
 
 <script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-app.js";
   import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged }
-    from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
+    from "https://www.gstatic.com/firebasejs/12.17.1/firebase-auth.js";
   import { getFirestore, doc, getDoc, setDoc, onSnapshot, enableIndexedDbPersistence }
-    from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+    from "https://www.gstatic.com/firebasejs/12.17.1/firebase-firestore.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyBD4ZsWnJdZorSfxkcsk00vO9SquWK6l8A",
@@ -1210,8 +1210,8 @@
     });
   }
 </script>
-<script src="js/berater.js?v=107"></script>
-<script src="js/shop.js?v=107"></script>
-<script src="js/konfigurator.js?v=107"></script>
+<script src="js/berater.js?v=108"></script>
+<script src="js/shop.js?v=108"></script>
+<script src="js/konfigurator.js?v=108"></script>
 </body>
 </html>
