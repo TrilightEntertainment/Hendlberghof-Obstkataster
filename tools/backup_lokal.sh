@@ -106,19 +106,24 @@ echo "-- Unterlagen: $anz Dokumente nach $DOK (je auch als HTML)" | tee -a "$LOG
 #
 # rsync statt cp, weil sich nach dem ersten Lauf fast nichts mehr aendert -
 # kopiert wird dann nur noch der Unterschied.
-INHALT="$REPO/../website-inhalt"
-if [ -d "$INHALT" ]; then
+# Dazu der ausgewertete Text des Permakulturkonzepts samt gerenderten Karten
+# und der Kurzfassung fuer die Website. Die Original-PDFs liegen woanders
+# (~/Desktop/Farm/4 PK_Design/); gesichert wird hier die Auswertung, weil die
+# Kurzfassung eigene Arbeit ist und nirgends sonst steht.
+for name in website-inhalt permakulturkonzept; do
+  quelle="$REPO/../$name"
+  [ -d "$quelle" ] || continue
   # Bewusst OHNE --delete, aus demselben Grund wie bei der iCloud-Spiegelung
   # weiter unten: Die Sicherung darf nur hinzufuegen. Wer im Arbeitsordner
   # versehentlich loescht, soll die Sicherung nicht mitreissen.
-  if rsync -a "$INHALT/" "$ZIEL/website-inhalt/" 2>&1 | tee -a "$LOG"; then
-    groesse=$(du -sh "$ZIEL/website-inhalt" 2>/dev/null | cut -f1)
-    anzahl=$(find "$ZIEL/website-inhalt" -type f | wc -l | tr -d ' ')
-    echo "-- Alte Website: $anzahl Dateien, $groesse" | tee -a "$LOG"
+  if rsync -a "$quelle/" "$ZIEL/$name/" 2>&1 | tee -a "$LOG"; then
+    groesse=$(du -sh "$ZIEL/$name" 2>/dev/null | cut -f1)
+    anzahl=$(find "$ZIEL/$name" -type f | wc -l | tr -d ' ')
+    echo "-- $name: $anzahl Dateien, $groesse" | tee -a "$LOG"
   else
-    echo "-- HINWEIS: Sicherung der Website-Inhalte fehlgeschlagen" | tee -a "$LOG"
+    echo "-- HINWEIS: Sicherung von $name fehlgeschlagen" | tee -a "$LOG"
   fi
-fi
+done
 
 # --- 4. Alte lokale Backups aufraeumen: letzte 24 Monate behalten ------------
 # Im Repo wird nichts geloescht - dort ist die Historie ja der Sinn der Sache.
