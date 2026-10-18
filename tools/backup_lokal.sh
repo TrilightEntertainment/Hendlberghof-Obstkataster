@@ -110,7 +110,7 @@ echo "-- Unterlagen: $anz Dokumente nach $DOK (je auch als HTML)" | tee -a "$LOG
 # und der Kurzfassung fuer die Website. Die Original-PDFs liegen woanders
 # (~/Desktop/Farm/4 PK_Design/); gesichert wird hier die Auswertung, weil die
 # Kurzfassung eigene Arbeit ist und nirgends sonst steht.
-for name in website-inhalt permakulturkonzept; do
+for name in website-inhalt permakulturkonzept stil werkzeuge; do
   quelle="$REPO/../$name"
   [ -d "$quelle" ] || continue
   # Bewusst OHNE --delete, aus demselben Grund wie bei der iCloud-Spiegelung
