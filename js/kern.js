@@ -27,6 +27,29 @@ function levenshtein(a, b) {
   return dp[m][n];
 }
 
+/* Preis in oesterreichischer Schreibweise: 1.234,50 € statt 1234.50 EUR.
+   Vorher stand die Formatierung an fuenfzehn Stellen einzeln im Code und
+   lieferte ueberall die englische Form - ausgerechnet dort, wo es ums Geld
+   geht. Eine Funktion, damit sie nicht wieder auseinanderlaufen.
+
+   Von Hand statt ueber Intl.NumberFormat: Dessen Ausgabe haengt an den
+   Gebietsdaten des Geraets - Zeichen, Stellung des Zeichens und Art des
+   Leerzeichens koennen sich unterscheiden. Auf dem Zielgeraet (iPhone 8,
+   iOS 16) sind diese Daten von 2022. Hier soll ueberall dasselbe stehen,
+   auch im PDF und in der Mail.
+
+   Kein Wert heisst kein Preis: Gibt eur() fuer null einen leeren Text
+   zurueck, faellt der Aufrufer auf seinen eigenen Text zurueck ("Preis wird
+   mit dem Angebot bekanntgegeben"). Eine erfundene 0,00 € waere eine
+   Preisauskunft, die niemand gegeben hat. */
+function eur(n){
+  const z = Number(n);
+  if(n === null || n === undefined || n === '' || !isFinite(z)) return '';
+  const teile = Math.abs(z).toFixed(2).split('.');
+  const ganz = teile[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  return `${z < 0 ? '-' : ''}${ganz},${teile[1]} €`;
+}
+
 function escHtml(s){return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function escAttr(s){return (s||'').replace(/&/g,'&amp;').replace(/'/g,'&#39;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\(/g,'&#40;').replace(/\)/g,'&#41;');}
 

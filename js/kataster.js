@@ -981,7 +981,7 @@ function renderShopBlock(sorteName, kontext){
   /* Fremdlieferanten — je Preiseintrag eine Zeile. */
   b.lieferanten.forEach(l=>{
     const zusatz = [l.unterlage, l.alter].filter(Boolean).join(' ');
-    const preis = (typeof l.preis === 'number') ? l.preis.toFixed(2) + ' EUR' : 'Preis auf Anfrage';
+    const preis = (typeof l.preis === 'number') ? eur(l.preis) : 'Preis auf Anfrage';
     const daten = escAttr(JSON.stringify({
       qid: l.qid, quelle: l.quelle, email: l.email, preis: l.preis,
       unterlage: l.unterlage, alter: l.alter, mwst_satz: l.mwst_satz

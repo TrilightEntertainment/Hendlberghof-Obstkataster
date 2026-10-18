@@ -421,7 +421,7 @@ function renderKonfigurator(){
       <div class="kf-preis">
         ${preis == null
           ? 'Preis wird mit dem Angebot bekanntgegeben.'
-          : `${preis.toFixed(2)} EUR`}
+          : eur(preis)}
       </div>
 
       <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;">

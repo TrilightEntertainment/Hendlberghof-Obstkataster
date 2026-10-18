@@ -189,13 +189,13 @@ function renderBestellModalContent() {
         const zeilenPreis = item.preis * item.menge;
         qSumme += zeilenPreis;
         html += '<div style="display:flex;align-items:center;gap:6px;font-size:.82rem;margin:3px 0;">';
-        html += '<span style="flex:1;">'+item.sorte+(item.unterlage?' '+item.unterlage:'')+(item.alter?' '+item.alter:'')+' &mdash; '+item.preis.toFixed(2)+' EUR <span style="font-size:.72rem;color:var(--muted);">(inkl. 13% MwSt)</span></span>';
+        html += '<span style="flex:1;">'+item.sorte+(item.unterlage?' '+item.unterlage:'')+(item.alter?' '+item.alter:'')+' &mdash; '+eur(item.preis)+' <span style="font-size:.72rem;color:var(--muted);">(inkl. 13% MwSt)</span></span>';
         html += '<input type="number" min="1" value="'+item.menge+'" style="width:45px;font-size:.8rem;text-align:center;padding:2px;border:1px solid var(--border);border-radius:3px;" onchange="updateBestellMenge('+item.idx+',this.value)">';
-        html += '<span style="width:55px;text-align:right;">'+zeilenPreis.toFixed(2)+' EUR</span>';
+        html += '<span style="width:55px;text-align:right;">'+eur(zeilenPreis)+'</span>';
         html += '<button style="background:none;border:none;color:var(--dachziegel);cursor:pointer;font-size:.8rem;" onclick="removeFromBestellliste('+item.idx+')">x</button>';
         html += '</div>';
       });
-      html += '<div style="text-align:right;font-size:.82rem;font-weight:600;margin-top:4px;border-top:1px solid var(--border);padding-top:4px;">Gesamt '+g.quelle+': '+qSumme.toFixed(2)+' EUR</div>';
+      html += '<div style="text-align:right;font-size:.82rem;font-weight:600;margin-top:4px;border-top:1px solid var(--border);padding-top:4px;">Gesamt '+g.quelle+': '+eur(qSumme)+'</div>';
       /* Je Lieferant ein eigener Sendeknopf — die Anfrage enthaelt nur dessen
          Positionen. Ein gemeinsamer Knopf war der Grund fuer die Sammelmail. */
       html += `<button class="btn secondary" style="font-size:.76rem;padding:3px 10px;margin-top:6px;"
@@ -207,7 +207,7 @@ function renderBestellModalContent() {
        stuende hier sonst „Gesamt: 0,00 EUR" - der Preis ist nicht null,
        er steht nur noch nicht fest. */
     if(bestellListe.length)
-  html += '<div style="text-align:right;font-size:.95rem;font-weight:700;padding:8px 0;border-top:2px solid var(--dark);">Gesamtsumme: '+gesamt.toFixed(2)+' EUR</div>';
+  html += '<div style="text-align:right;font-size:.95rem;font-weight:700;padding:8px 0;border-top:2px solid var(--dark);">Gesamtsumme: '+eur(gesamt)+'</div>';
   }
 
   html += '<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;">';
@@ -352,9 +352,9 @@ function anfrageText(a, kf){
     a.positionen.forEach(p=>{
       const zusatz = [p.unterlage, p.alter].filter(Boolean).join(' ');
       zeilen.push(`  ${p.sorte}${zusatz ? ` (${zusatz})` : ''} x${p.menge}`
-        + ` = ${((p.preis || 0) * (p.menge || 1)).toFixed(2)} EUR (inkl. ${p.mwst_satz || 13}% MwSt)`);
+        + ` = ${eur((p.preis || 0) * (p.menge || 1))} (inkl. ${p.mwst_satz || 13}% MwSt)`);
     });
-    zeilen.push('', `Summe: ${a.summe.toFixed(2)} EUR`);
+    zeilen.push('', `Summe: ${eur(a.summe)}`);
   }
   return zeilen.join('\r\n');
 }
@@ -413,8 +413,8 @@ function bestellungPdf(){
     doc.text(g.quelle, 20, y); y += 6;
     doc.setFont(undefined,'normal');
     g.items.forEach(item=>{
-      const lp = (item.preis*item.menge).toFixed(2);
-      doc.text(item.sorte+(item.unterlage?' '+item.unterlage:'')+(item.alter?' '+item.alter:'')+'  x'+item.menge+'  '+lp+' EUR', 24, y);
+      const lp = eur(item.preis*item.menge);
+      doc.text(item.sorte+(item.unterlage?' '+item.unterlage:'')+(item.alter?' '+item.alter:'')+'  x'+item.menge+'  '+lp, 24, y);
       gesamt += item.preis*item.menge;
       y += 5;
     });
@@ -422,7 +422,7 @@ function bestellungPdf(){
   });
   doc.line(20, y, 190, y); y += 6;
   doc.setFont(undefined,'bold');
-  doc.text('Gesamt: '+gesamt.toFixed(2)+' EUR (inkl. 13% MwSt)', 20, y);
+  doc.text('Gesamt: '+eur(gesamt)+' (inkl. 13% MwSt)', 20, y);
   doc.save('Bestellung_Hendlberghof_'+today.replace(/\./g,'-')+'.pdf');
 }
 
@@ -613,7 +613,7 @@ function renderBestellhistorie() {
     const anzahl = (o.items||[]).length + (o.konfigurationen||[]).length;
     const summe = (o.gesamt == null)
       ? '<span style="color:var(--muted);font-weight:400;">nach Angebot</span>'
-      : `${o.gesamt.toFixed(2)} EUR`;
+      : eur(o.gesamt);
     return `<div class="best-zeile">
       <div class="best-kopf">
         <span style="color:var(--muted);white-space:nowrap;">${d}</span>
@@ -663,9 +663,9 @@ function showBestellDetails(orderId) {
   html += '</div>';
   html += '<div class="section-title">Sorten</div>';
   (o.items||[]).forEach(e=>{
-    html += '<div style="font-size:.82rem;margin:3px 0;">'+e.sorte+(e.unterlage?' '+e.unterlage:'')+(e.alter?' '+e.alter:'')+' &mdash; '+e.preis.toFixed(2)+' EUR x '+e.menge+' = '+(e.preis*e.menge).toFixed(2)+' EUR</div>';
+    html += '<div style="font-size:.82rem;margin:3px 0;">'+e.sorte+(e.unterlage?' '+e.unterlage:'')+(e.alter?' '+e.alter:'')+' &mdash; '+eur(e.preis)+' x '+e.menge+' = '+eur(e.preis*e.menge)+'</div>';
   });
-  html += '<div style="text-align:right;font-weight:700;margin-top:8px;">Gesamt: '+(o.gesamt||0).toFixed(2)+' EUR</div>';
+  html += '<div style="text-align:right;font-weight:700;margin-top:8px;">Gesamt: '+eur(o.gesamt||0)+'</div>';
   html += '</div>';
   document.getElementById('modal-content').innerHTML = html;
   document.getElementById('overlay').classList.add('open');

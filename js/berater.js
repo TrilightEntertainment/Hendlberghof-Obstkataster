@@ -1919,7 +1919,7 @@ function previewPreisImport() {
     html += '<tr style="border-top:1px solid var(--border);">';
     html += '<td style="padding:3px 6px;">'+r.sorte+'</td>';
     html += '<td style="padding:3px 6px;">'+r.unterlage+'</td>';
-    html += '<td style="padding:3px 6px;">'+r.preis.toFixed(2)+' EUR</td>';
+    html += '<td style="padding:3px 6px;">'+eur(r.preis)+'</td>';
     html += '<td style="padding:3px 6px;">'+r.mwst+'%</td>';
     html += '<td style="padding:3px 6px;">'+(r.vorbestellbar?'Ja':'Nein')+'</td>';
     html += '<td style="padding:3px 6px;color:'+matchColor+';font-weight:600;">'+matchText+'</td>';
