@@ -59,6 +59,12 @@ function applyEditModeUI(){
   if(cardBh) cardBh.style.display = admin ? '' : 'none';
   const banner = document.getElementById('edit-banner');
   if(on) banner.innerHTML = (admin ? 'Bearbeitungsmodus (Admin)' : 'Bearbeitungsmodus (Mitarbeiter:in)') + ' — Änderungen werden lokal gespeichert &nbsp;';
+  /* Frühstart: Firebase meldet die Anmeldung oft, bevor die Grunddaten geladen
+     sind und initState() gelaufen ist. Ohne state brach renderBaumTable() hier
+     mit „reading 'customTrees'“ ab — und alles danach blieb ungetan. Knöpfe und
+     Banner oben sind gesetzt; den Rest holt startApp() mit seinem eigenen
+     Aufruf von applyEditModeUI() nach, sobald die Daten da sind. */
+  if(!state) return;
   if(!on && (document.getElementById('tab-daten').style.display!=='none'
              || document.getElementById('tab-pruefung').style.display!=='none')){
     activateTab('baumkataster');
