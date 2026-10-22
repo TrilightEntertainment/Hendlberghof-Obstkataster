@@ -1,7 +1,7 @@
 rules_version = '2';
 
 /* Hendlberghof Obstdatenbank — Zugriffsregeln
-   Stand 3. 8. 2026
+   Stand 22. 10. 2026
 
    Firestore prueft je DOKUMENT, nicht je Feld. Ein einzelnes Feld laesst sich
    nicht verbergen. Deshalb liegen personenbezogene Daten seit dieser Fassung in
@@ -26,6 +26,12 @@ service cloud.firestore {
     /* Anfragen und Bestellungen mit Kontaktdaten. Weder lesbar noch schreibbar
        ohne Anmeldung. */
     match /app_state/bestellungen {
+      allow read, write: if request.auth != null;
+    }
+
+    /* Bestandsprüfung (seit 22. 10. 2026): Baumschulbestand, Prüfergebnisse
+       und frei getippte Notizen. Betriebsintern — nur angemeldet. */
+    match /app_state/pruefung {
       allow read, write: if request.auth != null;
     }
 

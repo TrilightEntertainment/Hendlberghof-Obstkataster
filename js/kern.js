@@ -457,6 +457,7 @@ function getTree(id){ return getTreeMap().get(id); }
 /* ---------- Tabs ---------- */
 function activateTab(tabName){
   if(tabName==='daten' && !isAdmin()) return;
+  if(tabName==='pruefung' && !isEditMode()) return;
   document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active', b.dataset.tab===tabName));
   document.querySelectorAll('main > section').forEach(s=>s.style.display='none');
   document.getElementById('tab-'+tabName).style.display='block';
@@ -467,6 +468,7 @@ function activateTab(tabName){
       setTimeout(()=>{ satMap.invalidateSize(); }, 50);
     }
   }
+  if(tabName==='pruefung' && typeof renderPruefung==='function') renderPruefung();
   if(tabName==='daten'){
     renderPreislistenAdmin();
     renderBestellhistorie();

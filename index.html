@@ -587,6 +587,80 @@
   .pa-tabelle th{text-align:left;font-weight:600;color:var(--muted);font-size:.76rem;
                  border-bottom:1px solid var(--border);padding:3px 6px 3px 0;}
   .pa-tabelle td{padding:3px 6px 3px 0;border-bottom:1px solid var(--border);}
+/* ---------- Bestandsprüfung (#tab-pruefung, Klassen .pr-*) ---------- */
+#tab-pruefung .pr-rahmen{max-width:720px;margin:0 auto;}
+#tab-pruefung .pr-fortschritt,#tab-pruefung .pr-leer,#tab-pruefung .pr-fund{background:var(--card-bg);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:12px;}
+#tab-pruefung .pr-leer h3,#tab-pruefung .pr-fund h3{font-family:Georgia,serif;font-weight:400;color:var(--ackerde);margin:0 0 6px;font-size:1.15rem;}
+#tab-pruefung .pr-leer p{font-size:.88rem;line-height:1.5;color:var(--text);}
+#tab-pruefung .pr-fund{border-left:3px solid var(--stroh);}
+#tab-pruefung .pr-fortschritt-zeile{display:flex;justify-content:space-between;font-size:.9rem;}
+#tab-pruefung .pr-fortschritt-zeile span{color:var(--muted);}
+#tab-pruefung .pr-balken{height:3px;background:var(--border);border-radius:2px;margin:8px 0;overflow:hidden;}
+#tab-pruefung .pr-balken div{height:100%;background:var(--waldrand);}
+#tab-pruefung .pr-zahlen{display:flex;flex-wrap:wrap;gap:6px 12px;font-size:.75rem;color:var(--muted);}
+#tab-pruefung .pr-scan{position:sticky;top:0;z-index:5;background:var(--kalkstein);padding:8px 0 10px;}
+#tab-pruefung .pr-scan label,#tab-pruefung .pr-zeile-label{display:block;font-size:.7rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;}
+#tab-pruefung .pr-scan-feld{display:flex;gap:8px;}
+#tab-pruefung .pr-scan-feld input{flex:1;min-width:0;font-size:22px;letter-spacing:1px;padding:10px 14px;background:var(--card-bg);border-color:var(--waldrand);}
+#tab-pruefung .pr-scan-feld .btn{min-width:48px;font-size:1rem;}
+#tab-pruefung .pr-scan-hinweis{font-size:.75rem;color:var(--muted);margin-top:5px;}
+#tab-pruefung .pr-filter{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;}
+#tab-pruefung .pr-filter select{width:100%;min-width:0;background:var(--card-bg);}
+#tab-pruefung .pr-trefferkopf{font-size:.82rem;color:var(--muted);margin:2px 0 10px;}
+#tab-pruefung .pr-keintreffer{display:flex;flex-direction:column;align-items:flex-start;gap:8px;color:var(--text);}
+#tab-pruefung .pr-liste{display:flex;flex-direction:column;gap:8px;}
+#tab-pruefung .pr-nichts{font-size:.88rem;color:var(--muted);font-style:italic;padding:12px 0;}
+#tab-pruefung .pr-karte{background:var(--card-bg);border:1px solid var(--border);border-left:3px solid var(--muted);border-radius:12px;padding:10px 14px;}
+#tab-pruefung .pr-karte[data-art="apfel"]{border-left-color:#dc2626;}
+#tab-pruefung .pr-karte[data-art="birne"]{border-left-color:#22c55e;}
+#tab-pruefung .pr-karte[data-art="zwetschke"],#tab-pruefung .pr-karte[data-art="ringlotte"]{border-left-color:#6b21a8;}
+#tab-pruefung .pr-karte[data-art="kirsche"],#tab-pruefung .pr-karte[data-art="weichsel"]{border-left-color:#be185d;}
+#tab-pruefung .pr-karte[data-art="walnuss"],#tab-pruefung .pr-karte[data-art="hasel"],#tab-pruefung .pr-karte[data-art="maroni"],#tab-pruefung .pr-karte[data-art="nuss"]{border-left-color:#b98e1a;}
+#tab-pruefung .pr-karte[data-art="quitte"]{border-left-color:var(--stroh);}
+#tab-pruefung .pr-karte.offen{border-color:var(--waldrand);}
+#tab-pruefung .pr-karte-kopf{display:flex;align-items:center;gap:10px;width:100%;min-height:40px;padding:0;background:none;border:none;text-align:left;font:inherit;color:inherit;cursor:pointer;}
+#tab-pruefung .pr-nr{flex-shrink:0;min-width:3.4em;text-align:center;font-weight:700;font-size:.9rem;font-variant-numeric:tabular-nums;color:var(--ackerde);border:1px solid var(--stroh);border-radius:6px;padding:2px 6px;}
+#tab-pruefung .pr-sorte{flex:1;min-width:0;font-family:Georgia,serif;font-size:1.05rem;color:var(--ackerde);}
+#tab-pruefung .pr-meta,#tab-pruefung .pr-hinweis{font-size:.76rem;color:var(--muted);margin-top:3px;line-height:1.4;}
+#tab-pruefung .pr-hinweis{color:#5F5747;}
+#tab-pruefung .pr-warn{font-size:.76rem;color:#92400e;margin-top:3px;line-height:1.4;}
+#tab-pruefung .pr-warn::before{content:"\25B3\00a0";}
+#tab-pruefung .pr-notiz-kurz{font-size:.8rem;margin-top:4px;font-style:italic;}
+#tab-pruefung .pr-chip{flex-shrink:0;font-size:.7rem;font-weight:600;border:1px solid;border-radius:20px;padding:2px 9px;white-space:nowrap;}
+#tab-pruefung .pr-st-stimmt{color:var(--waldrand);border-color:var(--waldrand);}
+#tab-pruefung .pr-st-fehlt{color:var(--dachziegel);border-color:var(--dachziegel);}
+#tab-pruefung .pr-st-tot{color:var(--ackerde);border-color:var(--ackerde);}
+#tab-pruefung .pr-st-abweichend{color:#92400e;border-color:#92400e;}
+#tab-pruefung .pr-st-ohneEtikett{color:#8a6d1f;border-color:var(--stroh);}
+#tab-pruefung .pr-st-weg{color:var(--muted);border-color:var(--muted);}
+#tab-pruefung .pr-zahl{border:none;}
+#tab-pruefung .pr-detail{border-top:1px solid var(--border);margin-top:10px;padding-top:10px;display:flex;flex-direction:column;gap:12px;}
+#tab-pruefung .pr-status-raster{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;}
+#tab-pruefung .pr-status-btn{min-height:46px;padding:6px 4px;border:1px solid;border-radius:var(--radius);background:var(--card-bg);font:inherit;font-size:.85rem;font-weight:600;cursor:pointer;}
+#tab-pruefung .pr-status-btn.aktiv{background:#f4f1e8;border-width:2px;}
+#tab-pruefung .pr-segment{display:flex;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;}
+#tab-pruefung .pr-segment button{flex:1;min-height:42px;border:none;background:var(--card-bg);font:inherit;font-size:.85rem;color:var(--muted);cursor:pointer;}
+#tab-pruefung .pr-segment button+button{border-left:1px solid var(--border);}
+#tab-pruefung .pr-segment button.aktiv{background:var(--gruen-hell);color:var(--waldrand);font-weight:600;}
+#tab-pruefung .pr-zeile{display:flex;flex-wrap:wrap;align-items:center;gap:8px;}
+#tab-pruefung .pr-zeile>.pr-zeile-label{width:100%;margin:0;}
+#tab-pruefung .pr-zeile .pr-segment{flex:1;}
+#tab-pruefung .pr-notiz input{width:100%;}
+#tab-pruefung .pr-gps{font-size:.78rem;color:var(--muted);font-variant-numeric:tabular-nums;}
+#tab-pruefung .pr-detail-fuss{display:flex;flex-wrap:wrap;align-items:center;gap:10px;}
+#tab-pruefung .pr-zeit{font-size:.75rem;color:var(--muted);}
+#tab-pruefung .pr-link{background:none;border:none;padding:4px 0;font:inherit;font-size:.78rem;color:var(--muted);text-decoration:underline;cursor:pointer;margin-left:auto;}
+#tab-pruefung .pr-mehr{width:100%;margin-top:10px;}
+#tab-pruefung .pr-fuss{display:flex;flex-wrap:wrap;gap:8px;margin-top:22px;padding-top:14px;border-top:1px solid var(--border);}
+#tab-pruefung .pr-quelle{width:100%;font-size:.72rem;color:var(--muted);}
+#tab-pruefung .pr-fund-raster{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:10px 0 12px;}
+#tab-pruefung .pr-fund-raster label{display:flex;flex-direction:column;gap:4px;font-size:.75rem;color:var(--muted);}
+#tab-pruefung .pr-fund-raster input,#tab-pruefung .pr-fund-raster select{width:100%;min-width:0;}
+@media (max-width:420px){
+  #tab-pruefung .pr-status-raster{grid-template-columns:1fr 1fr;}
+  #tab-pruefung .pr-fund-raster{grid-template-columns:1fr;}
+  #tab-pruefung .pr-fuss .btn{flex:1 1 100%;}
+}
 </style>
 </head>
 <body>
@@ -620,6 +694,7 @@
   <button class="tab-btn" data-tab="sortenberater">Sortenberater</button>
   <button class="tab-btn" data-tab="lageplan">Lageplan</button>
   <button class="tab-btn" data-tab="hilfe">Hilfe</button>
+  <button class="tab-btn" id="tab-btn-pruefung" data-tab="pruefung" style="display:none;">Prüfung</button>
   <button class="tab-btn" id="tab-btn-daten" data-tab="daten" style="display:none;">Daten &amp; Sicherung</button>
   <button class="tab-btn btn-login-toggle" onclick="handleLoginToggle()">Anmelden</button>
 </nav>
@@ -780,6 +855,23 @@
       <h3>Bestellhistorie</h3>
       <p class="snippet">Bisherige Bestellungen. Details anzeigen oder stornieren.</p>
       <div id="bestellhistorie-list"></div>
+    </div>
+  </section>
+
+  <!-- BESTANDSPRÜFUNG — nur angemeldet, Logik in js/pruefung.js -->
+  <section id="tab-pruefung" style="display:none;">
+    <div class="pr-rahmen">
+      <div id="pr-oben"></div>
+      <div class="pr-scan" id="pr-scan" style="display:none;">
+        <label for="pr-nummer">Etikett-Nr.</label>
+        <div class="pr-scan-feld">
+          <input type="text" id="pr-nummer" autocomplete="off" autocorrect="off" autocapitalize="characters"
+                 spellcheck="false" enterkeyhint="search" placeholder="tippen oder scannen">
+          <button type="button" class="btn secondary" data-pr="nummer-leeren" aria-label="Nummer löschen">✕</button>
+        </div>
+        <div class="pr-scan-hinweis">Scannen: ins Feld tippen → „Text scannen“ → Kamera aufs Etikett.</div>
+      </div>
+      <div id="pruefung-inhalt"></div>
     </div>
   </section>
 
@@ -1069,10 +1161,10 @@
 
 <!-- Aus einem einzelnen Script-Block herausgeloest (F6). Reihenfolge ist
      bindend: Ueber Dateigrenzen hinweg gibt es kein Hoisting mehr. -->
-<script src="js/kern.js?v=109"></script>
-<script src="js/kataster.js?v=109"></script>
-<script src="js/lageplan.js?v=109"></script>
-<script src="js/start.js?v=109"></script>
+<script src="js/kern.js?v=110"></script>
+<script src="js/kataster.js?v=110"></script>
+<script src="js/lageplan.js?v=110"></script>
+<script src="js/start.js?v=110"></script>
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-app.js";
@@ -1115,8 +1207,12 @@
      Warnung - Verfuegbarkeit rechtfertigt keine Offenlegung. */
   const stateDocRef = doc(db, 'app_state', 'main');
   const bestellDocRef = doc(db, 'app_state', 'bestellungen');
+  /* Bestandsprüfung (22.10.2026): Baumschulbestand und frei getippte Notizen —
+     ebenfalls nur angemeldet, aus demselben Grund wie die Bestellungen. */
+  const pruefDocRef = doc(db, 'app_state', 'pruefung');
   let firstSnapshot = true;
   let bestellAbo = null;
+  let pruefAbo = null;
 
   onSnapshot(stateDocRef, async (snap)=>{
     if(window.__dataReadyPromise){ try{ await window.__dataReadyPromise; }catch(e){} }
@@ -1177,6 +1273,19 @@
     }
   };
 
+  /* Vor dem Schreiben den Stand der Cloud einmischen — prüfen zwei Geräte
+     gleichzeitig, ginge sonst das Ergebnis des einen verloren. */
+  window.__syncPruefung = async (daten)=>{
+    if(!auth.currentUser) return;
+    try {
+      const snap = await getDoc(pruefDocRef);
+      const zusammen = snap.exists() ? window.pruefungZusammenfuehren(daten, snap.data()) : daten;
+      await setDoc(pruefDocRef, Object.assign({}, zusammen, { stand: new Date().toISOString() }));
+    } catch(err){
+      if(window.pruefSyncFehler) window.pruefSyncFehler(err);
+    }
+  };
+
   window.__firebaseSignIn = (email, password)=> signInWithEmailAndPassword(auth, email, password);
   window.__firebaseSignOut = ()=> signOut(auth);
 
@@ -1200,6 +1309,16 @@
     } else if(!user && bestellAbo){
       bestellAbo(); bestellAbo = null;
     }
+    if(user && !pruefAbo){
+      pruefAbo = onSnapshot(pruefDocRef, async (snap)=>{
+        if(window.__dataReadyPromise){ try{ await window.__dataReadyPromise; }catch(e){} }
+        if(snap.exists() && window.applyRemotePruefung) window.applyRemotePruefung(snap.data());
+      }, (err)=>{
+        if(window.pruefSyncFehler) window.pruefSyncFehler(err);
+      });
+    } else if(!user && pruefAbo){
+      pruefAbo(); pruefAbo = null;
+    }
   });
 </script>
 
@@ -1210,8 +1329,9 @@
     });
   }
 </script>
-<script src="js/berater.js?v=109"></script>
-<script src="js/shop.js?v=109"></script>
-<script src="js/konfigurator.js?v=109"></script>
+<script src="js/berater.js?v=110"></script>
+<script src="js/shop.js?v=110"></script>
+<script src="js/konfigurator.js?v=110"></script>
+<script src="js/pruefung.js?v=110"></script>
 </body>
 </html>

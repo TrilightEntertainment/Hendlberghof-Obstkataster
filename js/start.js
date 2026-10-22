@@ -51,13 +51,16 @@ function applyEditModeUI(){
   document.getElementById('btn-add-baum').style.display = admin ? '' : 'none';
   document.getElementById('edit-banner').style.display = on ? '' : 'none';
   document.getElementById('tab-btn-daten').style.display = admin ? '' : 'none';
+  document.getElementById('tab-btn-pruefung').style.display = on ? '' : 'none';
+  if(typeof renderPruefung === 'function') renderPruefung();   /* leert den Reiter beim Abmelden */
   const cardPl = document.getElementById('card-preislisten');
   if(cardPl) cardPl.style.display = admin ? '' : 'none';
   const cardBh = document.getElementById('card-bestellhistorie');
   if(cardBh) cardBh.style.display = admin ? '' : 'none';
   const banner = document.getElementById('edit-banner');
   if(on) banner.innerHTML = (admin ? 'Bearbeitungsmodus (Admin)' : 'Bearbeitungsmodus (Mitarbeiter:in)') + ' — Änderungen werden lokal gespeichert &nbsp;';
-  if(!on && document.getElementById('tab-daten').style.display!=='none'){
+  if(!on && (document.getElementById('tab-daten').style.display!=='none'
+             || document.getElementById('tab-pruefung').style.display!=='none')){
     activateTab('baumkataster');
   }
   renderBaumTable();
