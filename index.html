@@ -587,6 +587,19 @@
   .pa-tabelle th{text-align:left;font-weight:600;color:var(--muted);font-size:.76rem;
                  border-bottom:1px solid var(--border);padding:3px 6px 3px 0;}
   .pa-tabelle td{padding:3px 6px 3px 0;border-bottom:1px solid var(--border);}
+/* ---------- Anmeldung ---------- */
+.login-form{max-width:320px;margin-top:16px;display:flex;flex-direction:column;}
+.login-form label{font-size:.82rem;color:var(--muted);margin:0 0 4px;}
+.login-form input[type=email],.login-form input[type=password],.login-form input[type=text]{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:16px;font-family:inherit;color:var(--text);background:#fff;margin-bottom:14px;}
+.login-form input[readonly]{background:#faf7ef;color:var(--muted);}
+.login-pw-wrap{position:relative;}
+.login-pw-wrap input{padding-right:44px !important;}
+.login-pw-zeigen{position:absolute;right:6px;top:6px;width:34px;height:30px;display:flex;align-items:center;justify-content:center;background:none;border:none;color:var(--muted);cursor:pointer;}
+.login-pw-zeigen.aktiv{color:var(--waldrand);}
+.login-senden{width:100%;padding:11px;background:var(--dachziegel);color:#fff;border:none;border-radius:8px;font-size:1rem;font-weight:600;font-family:inherit;cursor:pointer;}
+.login-vergessen{align-self:flex-start;margin-top:14px;padding:4px 0;background:none;border:none;font:inherit;font-size:.82rem;color:var(--muted);text-decoration:underline;cursor:pointer;}
+.login-meldung{font-size:.82rem;margin-top:12px;line-height:1.45;color:var(--waldrand);}
+.login-meldung.fehler{color:var(--dachziegel);}
 /* ---------- Bestandsprüfung (#tab-pruefung, Klassen .pr-*) ---------- */
 #tab-pruefung .pr-rahmen{max-width:720px;margin:0 auto;}
 #tab-pruefung .pr-fortschritt,#tab-pruefung .pr-leer,#tab-pruefung .pr-fund{background:var(--card-bg);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:12px;}
@@ -1161,14 +1174,14 @@
 
 <!-- Aus einem einzelnen Script-Block herausgeloest (F6). Reihenfolge ist
      bindend: Ueber Dateigrenzen hinweg gibt es kein Hoisting mehr. -->
-<script src="js/kern.js?v=110"></script>
-<script src="js/kataster.js?v=110"></script>
-<script src="js/lageplan.js?v=110"></script>
-<script src="js/start.js?v=110"></script>
+<script src="js/kern.js?v=111"></script>
+<script src="js/kataster.js?v=111"></script>
+<script src="js/lageplan.js?v=111"></script>
+<script src="js/start.js?v=111"></script>
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-app.js";
-  import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged }
+  import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail }
     from "https://www.gstatic.com/firebasejs/12.17.1/firebase-auth.js";
   import { getFirestore, doc, getDoc, setDoc, onSnapshot, enableIndexedDbPersistence }
     from "https://www.gstatic.com/firebasejs/12.17.1/firebase-firestore.js";
@@ -1288,6 +1301,8 @@
 
   window.__firebaseSignIn = (email, password)=> signInWithEmailAndPassword(auth, email, password);
   window.__firebaseSignOut = ()=> signOut(auth);
+  /* Mail auf Deutsch; der Link führt auf Firebases eigene Seite zum Neusetzen. */
+  window.__firebasePasswortReset = (email)=>{ auth.languageCode = 'de'; return sendPasswordResetEmail(auth, email); };
 
   onAuthStateChanged(auth, (user)=>{
     const wasLoggedIn = !!window.__firebaseUser;
@@ -1329,9 +1344,9 @@
     });
   }
 </script>
-<script src="js/berater.js?v=110"></script>
-<script src="js/shop.js?v=110"></script>
-<script src="js/konfigurator.js?v=110"></script>
-<script src="js/pruefung.js?v=110"></script>
+<script src="js/berater.js?v=111"></script>
+<script src="js/shop.js?v=111"></script>
+<script src="js/konfigurator.js?v=111"></script>
+<script src="js/pruefung.js?v=111"></script>
 </body>
 </html>

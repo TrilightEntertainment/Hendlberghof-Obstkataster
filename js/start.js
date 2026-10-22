@@ -127,6 +127,10 @@ function showLoginDialog(){
   document.getElementById('overlay').classList.add('open');
 }
 
+/* Echtes <form> mit Benutzername- und Passwortfeld: Nur so bietet Safari an,
+   das Passwort im Schlüsselbund zu sichern, und füllt es beim nächsten Mal per
+   Face ID / Touch ID ein. Ein verstecktes Feld (type=hidden) erkennt Safari
+   nicht als Benutzernamen — deshalb steht die Adresse sichtbar, aber gesperrt. */
 function loginAsRole(role){
   pendingLoginRole = role;
   const email = LOGIN_ACCOUNTS[role];
@@ -134,34 +138,66 @@ function loginAsRole(role){
   const html = `
     <button class="close" onclick="closeModal()">&times;</button>
     <h2>Anmeldung — ${role==='admin'?'Admin':'Mitarbeiter:in'}</h2>
-    <div style="max-width:320px;margin-top:16px;">
-      <input type="hidden" id="login-email" value="${escAttr(email)}">
-      <p style="font-size:.85rem;color:var(--muted);margin-bottom:12px;">Angemeldet als: <b>${escHtml(email)}</b></p>
-      <div style="margin-bottom:16px;">
-        <label style="display:block;font-size:.82rem;color:var(--muted);margin-bottom:4px;">Passwort</label>
-        <div style="position:relative;">
-          <input type="password" id="login-pw" placeholder="Passwort eingeben"
-            style="width:100%;padding:10px 12px;padding-right:40px;border:1px solid var(--border);border-radius:8px;font-size:1rem;font-family:inherit;"
-            onkeydown="if(event.key==='Enter')submitLogin()">
-          <button type="button" onclick="var p=document.getElementById('login-pw');p.type=p.type==='password'?'text':'password';this.textContent=p.type==='password'?'👁️':'🙈'"
-            style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;font-size:1.1rem;cursor:pointer;padding:4px;">👁️</button>
-        </div>
+    <form id="login-form" class="login-form" autocomplete="on" onsubmit="event.preventDefault();submitLogin();">
+      <label for="login-email">Konto</label>
+      <input type="email" id="login-email" name="username" autocomplete="username" value="${escAttr(email)}" readonly>
+      <label for="login-pw">Passwort</label>
+      <div class="login-pw-wrap">
+        <input type="password" id="login-pw" name="password" autocomplete="current-password" placeholder="Passwort eingeben" required>
+        <button type="button" class="login-pw-zeigen" onclick="loginPasswortZeigen(this)" aria-label="Passwort zeigen">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>
+        </button>
       </div>
-      <button type="button" onclick="submitLogin()" style="width:100%;padding:10px;background:var(--dachziegel);color:#fff;border:none;border-radius:8px;font-size:1rem;font-weight:600;cursor:pointer;">Anmelden</button>
-      <div id="login-error" style="color:var(--dachziegel);font-size:.82rem;margin-top:12px;display:none;"></div>
-    </div>`;
+      <button type="submit" class="login-senden">Anmelden</button>
+      <div id="login-error" class="login-meldung fehler" style="display:none;"></div>
+      <button type="button" class="login-vergessen" onclick="passwortVergessen()">Passwort vergessen?</button>
+      <div id="login-info" class="login-meldung" style="display:none;"></div>
+    </form>`;
   document.getElementById('modal-content').innerHTML = html;
   document.getElementById('overlay').classList.add('open');
   setTimeout(()=>{ const pw=document.getElementById('login-pw'); if(pw) pw.focus(); }, 100);
+}
+function loginPasswortZeigen(btn){
+  const pw = document.getElementById('login-pw');
+  const zeigen = pw.type === 'password';
+  pw.type = zeigen ? 'text' : 'password';
+  btn.setAttribute('aria-label', zeigen ? 'Passwort verbergen' : 'Passwort zeigen');
+  btn.classList.toggle('aktiv', zeigen);
+}
+/* Firebase-Fehlercodes in Sätze, mit denen man etwas anfangen kann. */
+function loginFehlertext(err){
+  const code = (err && err.code) || '';
+  if(code === 'auth/invalid-credential' || code === 'auth/wrong-password' || code === 'auth/invalid-login-credentials')
+    return 'Passwort stimmt nicht. Unten „Passwort vergessen?“ schickt einen Link zum Neusetzen.';
+  if(code === 'auth/too-many-requests') return 'Zu viele Versuche — bitte ein paar Minuten warten.';
+  if(code === 'auth/network-request-failed') return 'Keine Verbindung. Anmelden geht nur mit Internet.';
+  if(code === 'auth/user-not-found') return 'Dieses Konto gibt es nicht.';
+  return `Anmeldung fehlgeschlagen: ${(err && err.message) || err}`;
 }
 function submitLogin(){
   const email = (document.getElementById('login-email').value||'').trim();
   const pw = document.getElementById('login-pw').value;
   const errEl = document.getElementById('login-error');
-  if(!email || !pw){ if(errEl){ errEl.textContent='Bitte E-Mail und Passwort eingeben.'; errEl.style.display='block'; } return; }
-  if(!window.__firebaseSignIn){ if(errEl){ errEl.textContent='Anmeldung ist noch nicht bereit, bitte kurz warten und erneut versuchen.'; errEl.style.display='block'; } return; }
-  window.__firebaseSignIn(email, pw).catch(err=>{
-    if(errEl){ errEl.textContent='Anmeldung fehlgeschlagen: '+(err && err.message ? err.message : err); errEl.style.display='block'; }
+  const zeige = text => { if(errEl){ errEl.textContent = text; errEl.style.display = 'block'; } };
+  if(!email || !pw){ zeige('Bitte das Passwort eingeben.'); return; }
+  if(!window.__firebaseSignIn){ zeige('Anmeldung ist noch nicht bereit, bitte kurz warten und erneut versuchen.'); return; }
+  window.__firebaseSignIn(email, pw).catch(err=> zeige(loginFehlertext(err)));
+}
+/* Schickt den Link zum Neusetzen an die Konto-Adresse. Firebase stellt die
+   Seite dafür selbst bereit — hier muss nichts gehostet werden. Ob die Adresse
+   existiert, verrät Firebase absichtlich nicht; die Meldung bleibt daher neutral. */
+function passwortVergessen(){
+  const email = (document.getElementById('login-email').value||'').trim();
+  const info = document.getElementById('login-info');
+  const errEl = document.getElementById('login-error');
+  if(errEl) errEl.style.display = 'none';
+  if(!window.__firebasePasswortReset){ showToast('Anmeldung ist noch nicht bereit — bitte kurz warten.', 'error', 4000); return; }
+  if(!confirm(`Link zum Neusetzen des Passworts an ${email} schicken?`)) return;
+  window.__firebasePasswortReset(email).then(()=>{
+    info.textContent = `E-Mail an ${email} ist unterwegs. Den Link darin öffnen, neues Passwort festlegen und hier anmelden. Nichts angekommen? Spam-Ordner prüfen.`;
+    info.style.display = 'block';
+  }).catch(err=>{
+    if(errEl){ errEl.textContent = loginFehlertext(err); errEl.style.display = 'block'; }
   });
 }
 
