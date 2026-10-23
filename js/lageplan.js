@@ -176,7 +176,7 @@ function renderSatMarkers(){
   satMap.invalidateSize();
   satMarkers.forEach(m=>{ m.remove() });
   satMarkers = [];
-  const farben = {apfel:'#dc2626', birne:'#22c55e', walnuss:'#b98e1a', zwetschke:'#6b21a8', kirsch:'#be185d', marille:'#f59e0b', quitte:'#84cc16', pflaume:'#7c3aed', sonstige:'#888'};
+  const farben = {apfel:'#dc2626', birne:'#22c55e', walnuss:'#b98e1a', zwetschke:'#6b21a8', kirsch:'#be185d', kirsche:'#be185d', weichsel:'#be185d', marille:'#f59e0b', quitte:'#84cc16', pflaume:'#7c3aed', sonstige:'#888'};
   const bounds = [];
   const satPos = state.satPositions || {};
   let _dragMoved = false;

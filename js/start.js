@@ -262,7 +262,10 @@ function buildEditForm(t, isNew, isSort){
         if(f.type==='textarea'){
           return `<div class="${cls}"><label>${f.label}</label><textarea name="${f.key}">${escHtml(String(val))}</textarea></div>`;
         } else if(f.type==='select'){
-          const opts = f.opts.map(o=>`<option${o===val?' selected':''}>${o}</option>`).join('');
+          /* Ein Wert außerhalb der Liste (Zwetschke, Mispel …) bleibt wählbar —
+             sonst stünde die erste Option da, und Speichern machte Apfel daraus. */
+          const optListe = val && !f.opts.includes(val) ? [val].concat(f.opts) : f.opts;
+          const opts = optListe.map(o=>`<option${o===val?' selected':''}>${escHtml(o)}</option>`).join('');
           return `<div class="${cls}"><label>${f.label}</label><select name="${f.key}"><option value="">– wählen –</option>${opts}</select></div>`;
         } else if(f.type==='checkboxgroup'){
           const current = (t && t[f.key]) || [];
@@ -483,12 +486,14 @@ function startApp(){
   /* State aufräumen: nicht mehr existierende Baum-IDs entfernen */
   const baumIds = new Set(BAUM_DATA.map(b=>b.id));
   let changed = false;
-  /* customTrees die nicht mehr in BAUM_DATA stehen oder blacklisted sind */
+  /* customTrees die nicht mehr in BAUM_DATA stehen oder blacklisted sind —
+     Übernahmen aus der Prüfung ausgenommen (siehe istPruefUebernahme). */
   if(state.customTrees && state.customTrees.length){
     const before = state.customTrees.length;
-    state.customTrees = state.customTrees.filter(c=>!BLACKLIST.has(c.id) && (baumIds.has(c.id) || c.id.startsWith('NEU-')));
+    state.customTrees = state.customTrees.filter(c=>!BLACKLIST.has(c.id) && (baumIds.has(c.id) || c.id.startsWith('NEU-') || istPruefUebernahme(c)));
     if(state.customTrees.length !== before) changed = true;
   }
+  (state.customTrees || []).filter(istPruefUebernahme).forEach(c=> baumIds.add(c.id));
   /* baumEdits für nicht mehr existierende IDs */
   if(state.baumEdits){
     for(const k of Object.keys(state.baumEdits)){

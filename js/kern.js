@@ -235,7 +235,9 @@ function applyRemoteState(remote){
   console.log('[sync] local satPositions:', localKeys, 'remote:', remoteKeys);
   /* Stale customTrees/Edits/Positions DES REMOTE bereinigen BEVOR merge */
   const baumIds = new Set(BAUM_DATA.map(b=>b.id));
-  const isAlive = (id)=> !BLACKLIST.has(id) && (baumIds.has(id) || id.startsWith('NEU-'));
+  const uebernahmeIds = new Set((state.customTrees||[]).concat(remote.customTrees||[])
+    .filter(istPruefUebernahme).map(c=>c.id));
+  const isAlive = (id)=> !BLACKLIST.has(id) && (baumIds.has(id) || id.startsWith('NEU-') || uebernahmeIds.has(id));
   if(remote.customTrees && Array.isArray(remote.customTrees)){
     remote.customTrees = remote.customTrees.filter(c=> isAlive(c.id));
   }
@@ -428,6 +430,13 @@ function bekannteObstarten(){
    lesen ausschließlich (filter/map/forEach/find liefern neue Objekte bzw. lesen nur).
    Wer künftig ein Ergebnis verändern will, arbeitet auf einer Kopie. */
 let _treeMap = null, _treeList = null;
+
+/* Aus der Bestandsprüfung übernommene Bäume (quelle:'pruefung') tragen ihre
+   Etikettnummer als ID statt einer NEU-Nummer: Am Baum hängt diese Nummer,
+   eine zweite würde nur verwirren. Das Aufräumen beim Start und beim Abgleich
+   verwirft sonst jedes Overlay, dessen ID weder im Katalog steht noch mit
+   NEU- beginnt — samt Stecknadel. Diese Kennung nimmt sie davon aus. */
+function istPruefUebernahme(c){ return !!(c && c.quelle === 'pruefung'); }
 function invalidateTreeCache(){ _treeMap = null; _treeList = null; }
 
 function getTreeMap(){

@@ -6,9 +6,9 @@
    Prüfmodus geht die Liste Gebiet für Gebiet durch: Etikettnummer scannen,
    Status antippen, bei ausgepflanzten Bäumen GPS übernehmen.
 
-   Grundsatz: Ins Kataster kommt nur, was vor Ort bestätigt ist. Diese Datei
-   schreibt deshalb NIE in state, BAUM_DATA oder das öffentliche Dokument —
-   die Übernahme ist ein eigener, späterer Schritt.
+   Grundsatz: Ins Kataster kommt nur, was vor Ort bestätigt ist. Prüfen
+   schreibt deshalb nie in state oder das öffentliche Dokument — nur die
+   ausdrückliche Übernahme (unten) tut das.
 
    Daten
      pruefung.liste       P-Nr → Eintrag, aus pruefung/pruefliste.json geladen
@@ -23,6 +23,16 @@
    Zusammengeführt wird je Eintrag nach Zeitstempel: Prüfen zwei Geräte
    gleichzeitig, gewinnt die jüngere Angabe zum selben Baum, und keine geht
    verloren, die nur ein Gerät kennt.
+
+   Angaben korrigieren: Was vor Ort anders ist als in der Tabelle (Unterlage,
+   Veredelungs- und Pflanzjahr, Standort, Sorte, Obstart), liegt als
+   ergebnis.korrektur neben dem Original. Die Liste bleibt unverändert; wirksam
+   ist pruefWert(), und mit ihm geht der Baum ins Kataster.
+
+   Übernahme: Bestätigte, ausgepflanzte Bäume legt der Admin nach einer
+   Vorschau als Overlay an (customTrees, quelle:'pruefung'), mit der
+   Etikettnummer als ID und — bei genügend genauem GPS — einer Stecknadel in
+   satPositions. Das ist die einzige Stelle, die in state schreibt.
 
    Scannen: Kein eigener Code. iOS erkennt Text in der Kamera selbst
    („Live Text“, ab iPhone XS). Das Nummernfeld ist bewusst ein normales
@@ -50,11 +60,27 @@ const PRUEF_NOTIZ_VORSCHLAEGE = [
 ];
 const PRUEF_BEET_GEBIETE = ['Baumschulbeet', 'Segment A', 'Segment B'];
 
+/* Unterlagen in einer Schreibweise, nach Häufigkeit im Bestand geordnet.
+   Die Tabelle kennt dieselbe Unterlage teils dreifach („BA 29“, „Q BA 29“,
+   „Quitte BA29“) — vorgeschlagen und übernommen wird nur noch die eine. */
+const PRUEF_UNTERLAGEN = ['MM106', 'Pyrodwarf', 'QBA', 'St. Julien Inra 2', 'M26', 'St. Julien A',
+  'Kirchensaller', 'Quitte BA29', 'Baumhasel', 'Colt', 'Bittenfeld', 'Gisela 5', 'Sämling',
+  'wurzelecht (Wurzelläufer)', 'unbekannt'];
+const PRUEF_UNTERLAGE_SCHREIBWEISEN = {
+  'ba 29':'Quitte BA29', 'q ba 29':'Quitte BA29', 'quitte ba29':'Quitte BA29', 'ba29':'Quitte BA29',
+  'st jul a':'St. Julien A', 'st. jul a':'St. Julien A', 'st julien a':'St. Julien A',
+  'gisela5':'Gisela 5', 'wurzelläufer':'wurzelecht (Wurzelläufer)', '?':'unbekannt'
+};
+const PRUEF_JAHRE = (()=>{ const a = []; for(let j = new Date().getFullYear(); j >= 2010; j--) a.push(String(j)); return a; })();
+/* GPS: ab dieser Genauigkeit wird sofort übernommen, darüber nachgefragt,
+   und für eine Stecknadel im Kataster muss sie mindestens STECKNADEL sein. */
+const PRUEF_GPS_GUT = 10, PRUEF_GPS_STECKNADEL = 25, PRUEF_GPS_WARTEN_S = 30;
+
 let pruefung = pruefungLeer();
 let pruefOffen = null;          /* P-Nr bzw. F-Id der aufgeklappten Karte */
 let pruefSichtbar = PRUEF_SEITE;
 let pruefFundForm = null;       /* null oder { etikett } — Formular „Fund ohne Eintrag“ */
-let pruefGpsLaeuft = null;
+let pruefGpsLaeuft = null;       /* { pnr, watch, timer, bestes, start } während der Messung */
 let pruefSyncWarnung = false;
 
 function pruefungLeer(){ return { liste:{}, listeStand:'', listeQuelle:'', ergebnisse:{}, funde:{} }; }
@@ -138,6 +164,40 @@ function pruefDatum(iso){
   return `${d.getDate()}. ${d.getMonth()+1}. ${d.getFullYear()}`;
 }
 function pruefStandardOrt(e){ return PRUEF_BEET_GEBIETE.includes(e.gebiet) ? 'beet' : 'ausgepflanzt'; }
+
+function pruefUnterlageNorm(v){
+  const t = String(v || '').trim();
+  return PRUEF_UNTERLAGE_SCHREIBWEISEN[t.toLowerCase()] || t;
+}
+/* Originalwert aus der Liste, so aufbereitet, wie er ins Kataster ginge.
+   Jahresfelder nur, wenn dort wirklich ein Jahr steht — „SEGMANT A“ oder
+   „Verschenkt“ in der Spalte Ausgepflanzt sind Hinweise, keine Jahre. */
+function pruefOriginal(e, feld){
+  if(feld === 'unterlage') return pruefUnterlageNorm(e.unterlage);
+  if(feld === 'veredelt') return /^\d{4}$/.test(e.veredelt || '') ? e.veredelt : '';
+  if(feld === 'ausgepflanzt') return /^\d{4}$/.test(e.ausgepflanzt || '') ? e.ausgepflanzt : '';
+  if(feld === 'standort') return e.standort || '';
+  return e[feld] || '';
+}
+function pruefWert(e, r, feld){
+  const k = r && r.korrektur;
+  return k && Object.prototype.hasOwnProperty.call(k, feld) ? k[feld] : pruefOriginal(e, feld);
+}
+function pruefGeaendert(e, r, feld){
+  const k = r && r.korrektur;
+  return !!(k && Object.prototype.hasOwnProperty.call(k, feld));
+}
+/* Häufigkeiten zählen, Häufigstes zuerst — für alle Vorschlagslisten. */
+function pruefNachHaeufigkeit(werte, vorne){
+  const zahl = {};
+  werte.filter(Boolean).forEach(w=>{ zahl[w] = (zahl[w]||0) + 1; });
+  const sortiert = Object.keys(zahl).sort((a, b)=> zahl[b] - zahl[a] || a.localeCompare(b, 'de'));
+  return (vorne || []).concat(sortiert.filter(w=> !(vorne || []).includes(w)));
+}
+function pruefAlleKorrekturen(){
+  return Object.values(pruefung.ergebnisse).concat(Object.values(pruefung.funde||{}))
+    .map(r=> (r && r.korrektur) || {});
+}
 
 /* Alle Einträge samt Funden in Gehreihenfolge — Funde jeweils am Ende ihres Gebiets. */
 function pruefAlleEintraege(){
@@ -233,6 +293,7 @@ function renderPruefung(){
   /* Ein einzelner Treffer klappt gleich auf — ein Tippen weniger pro Baum. */
   if(begriffe.length && treffer.length===1) pruefOffen = treffer[0].pnr;
 
+  const bereitZahl = pruefUebernahmeBereit().length;
   const sichtbar = begriffe.length ? treffer : treffer.slice(0, pruefSichtbar);
   const mehr = treffer.length - sichtbar.length;
 
@@ -256,11 +317,26 @@ function renderPruefung(){
     ${mehr > 0 ? `<button class="btn secondary pr-mehr" data-pr="mehr">${Math.min(mehr, PRUEF_SEITE)} weitere anzeigen (${mehr} übrig)</button>` : ''}
     <div class="pr-fuss">
       <button class="btn secondary" data-pr="fund-neu">Fund ohne Eintrag</button>
+      ${isAdmin() && bereitZahl ? `<button class="btn" data-pr="uebernahme">Ins Kataster übernehmen (${bereitZahl})</button>` : ''}
       <button class="btn secondary" data-pr="export">Ergebnisse als Excel</button>
       ${isAdmin() ? '<button class="btn secondary" data-pr="liste-laden">Prüfliste neu laden …</button>' : ''}
       <div class="pr-quelle">Liste: ${escHtml(pruefung.listeQuelle || '–')}, Stand ${escHtml(pruefDatum(pruefung.listeStand))}</div>
     </div>
-    <datalist id="pr-notizen">${pruefNotizVorschlaege().map(n=>`<option value="${escAttr(n)}">`).join('')}</datalist>`;
+    <datalist id="pr-notizen">${pruefNotizVorschlaege().map(n=>`<option value="${escAttr(n)}">`).join('')}</datalist>
+    ${renderPruefVorschlaege()}`;
+}
+
+/* Vorschlagslisten für „Angaben korrigieren“ — bereits Korrigiertes und
+   Häufiges zuerst, wie überall im Hof (feedback: Meistgenutztes zuerst). */
+function renderPruefVorschlaege(){
+  const korr = pruefAlleKorrekturen();
+  const liste = Object.values(pruefung.liste);
+  const baeume = getAllTrees();
+  const dl = (id, werte)=> `<datalist id="${id}">${werte.map(w=>`<option value="${escAttr(w)}">`).join('')}</datalist>`;
+  return dl('pr-dl-sorten', pruefNachHaeufigkeit(korr.map(k=>k.sorte).concat(liste.map(e=>e.sorte), baeume.map(t=>t.sorte))))
+    + dl('pr-dl-arten', pruefNachHaeufigkeit(korr.map(k=>k.frucht).concat(liste.map(e=>e.frucht), baeume.map(t=>t.frucht))))
+    + dl('pr-dl-unterlagen', pruefNachHaeufigkeit(korr.map(k=>k.unterlage), PRUEF_UNTERLAGEN))
+    + dl('pr-dl-standorte', pruefNachHaeufigkeit(korr.map(k=>k.standort).concat(baeume.map(t=>t.standort_zeile))));
 }
 
 function pruefPlanText(e){
@@ -271,9 +347,15 @@ function renderPruefKarte(e){
   const r = pruefErgebnis(e);
   const st = r && r.status ? pruefStatus(r.status) : null;
   const offen = pruefOffen === e.pnr;
-  const art = obstartSchluessel(e.frucht);
-  const meta = [e.frucht, e.unterlage, e.veredelt ? `veredelt ${e.veredelt}` : '', e.fund ? 'Fund' : e.pnr]
+  const w = feld => pruefWert(e, r, feld);
+  const art = obstartSchluessel(w('frucht'));
+  const veredelt = w('veredelt');
+  const meta = [w('frucht'), w('unterlage'),
+    veredelt ? (/^\d{4}$/.test(veredelt) ? `veredelt ${veredelt}` : veredelt) : '',
+    w('ausgepflanzt') ? `gepflanzt ${w('ausgepflanzt')}` : '', w('standort'),
+    e.fund ? 'Fund' : e.pnr]
     .filter(Boolean).map(escHtml).join(' · ');
+  const korrigiert = ['sorte','frucht','unterlage','veredelt','ausgepflanzt','standort'].some(f=> pruefGeaendert(e, r, f));
   const hinweis = [e.gebiet, pruefPlanText(e), e.hinweis, e.wo && !e.gebiet.includes(e.wo) ? `Tabelle: ${e.wo}` : '']
     .filter(Boolean).map(escHtml).join(' · ');
   let chip = '';
@@ -285,10 +367,11 @@ function renderPruefKarte(e){
     <div class="pr-karte${offen?' offen':''}${st?' geprueft':''}" data-art="${escAttr(art)}">
       <button type="button" class="pr-karte-kopf" data-pr="auf" data-pnr="${escAttr(e.pnr)}" aria-expanded="${offen}">
         <span class="pr-nr">${e.alt_id ? escHtml(e.alt_id) : '–'}</span>
-        <span class="pr-sorte">${e.sorte ? escHtml(e.sorte) : '<i>Sorte fehlt</i>'}</span>
+        <span class="pr-sorte">${w('sorte') ? escHtml(w('sorte')) : '<i>Sorte fehlt</i>'}</span>
         ${chip}
       </button>
-      <div class="pr-meta">${meta}</div>
+      <div class="pr-meta">${meta}${korrigiert ? ' <span class="pr-geaendert">korrigiert</span>' : ''}</div>
+      ${r && r.uebernommen ? `<div class="pr-kataster">Im Kataster als ${escHtml(r.uebernommen.id)}${r.uebernommen.stecknadel ? ' mit Stecknadel' : ' — Stecknadel im Lageplan setzen'}</div>` : ''}
       <div class="pr-hinweis">${hinweis}</div>
       ${(e.warnungen||[]).length ? `<div class="pr-warn">${e.warnungen.map(escHtml).join(' · ')}</div>` : ''}
       ${offen ? renderPruefDetail(e, r) : (r && r.notiz ? `<div class="pr-notiz-kurz">${escHtml(r.notiz)}</div>` : '')}
@@ -314,12 +397,8 @@ function renderPruefDetail(e, r){
           <button type="button" class="${ort==='ausgepflanzt'?'aktiv':''}" data-pr="ort" data-pnr="${pnr}" data-ort="ausgepflanzt">Ausgepflanzt</button>
         </div>
       </div>
-      ${ort==='ausgepflanzt' ? `
-      <div class="pr-zeile">
-        <button type="button" class="btn secondary" data-pr="gps" data-pnr="${pnr}" ${pruefGpsLaeuft===e.pnr?'disabled':''}>
-          ${pruefGpsLaeuft===e.pnr ? 'GPS wird ermittelt …' : (gps ? 'GPS neu übernehmen' : 'GPS-Position übernehmen')}</button>
-        ${gps ? `<span class="pr-gps">${gps.lat.toFixed(6)}, ${gps.lng.toFixed(6)} · ±${gps.gpsAccuracy} m</span>` : ''}
-      </div>` : ''}
+      ${ort==='ausgepflanzt' ? renderPruefGps(e, gps) : ''}
+      ${renderPruefAngaben(e, r)}
       <div class="pr-zeile pr-notiz">
         <label for="pr-notiz-${pnr}" class="pr-zeile-label">Notiz</label>
         <input type="text" id="pr-notiz-${pnr}" list="pr-notizen" data-pr-notiz="${pnr}" value="${escAttr((r && r.notiz) || '')}"
@@ -332,6 +411,68 @@ function renderPruefDetail(e, r){
         ${e.fund ? `<button type="button" class="pr-link" data-pr="fund-loeschen" data-pnr="${pnr}">Fund löschen</button>` : ''}
       </div>
     </div>`;
+}
+
+function renderPruefGps(e, gps){
+  const pnr = escAttr(e.pnr);
+  const laeuft = pruefGpsLaeuft && pruefGpsLaeuft.pnr === e.pnr;
+  if(laeuft) return `
+      <div class="pr-zeile">
+        <span class="pr-gps-live" id="pr-gps-live">GPS wird gesucht …</span>
+        <button type="button" class="btn secondary" data-pr="gps-stopp">Abbrechen</button>
+      </div>`;
+  const grob = gps && gps.gpsAccuracy > PRUEF_GPS_STECKNADEL;
+  return `
+      <div class="pr-zeile">
+        <button type="button" class="btn secondary" data-pr="gps" data-pnr="${pnr}">${gps ? 'GPS neu aufnehmen' : 'GPS-Position aufnehmen'}</button>
+        ${gps ? `<span class="pr-gps${grob ? ' grob' : ''}">±${gps.gpsAccuracy} m${grob ? ' — zu ungenau für eine Stecknadel' : ''}</span>` : ''}
+      </div>`;
+}
+
+/* Jahr als Auswahl statt Freitext: Auf dem Feld tippt sich „2017“ schneller
+   als falsch. Ein Wert, der nicht in der Liste steht, bleibt wählbar. */
+function pruefJahrOptionen(wert, extras){
+  const werte = [''].concat(extras || [], PRUEF_JAHRE);
+  if(wert && !werte.includes(wert)) werte.splice(1, 0, wert);
+  return werte.map(v=> `<option value="${escAttr(v)}" ${v===wert?'selected':''}>${v ? escHtml(v) : '–'}</option>`).join('');
+}
+
+function renderPruefAngaben(e, r){
+  const pnr = escAttr(e.pnr);
+  const w = feld => pruefWert(e, r, feld);
+  const orig = feld => {
+    if(!pruefGeaendert(e, r, feld)) return '';
+    const o = pruefOriginal(e, feld);
+    return `<span class="pr-orig">Liste: ${o ? escHtml(o) : '–'}</span>`;
+  };
+  const text = (feld, label, liste, platzhalter) => `
+        <label class="pr-feld${pruefGeaendert(e, r, feld) ? ' geaendert' : ''}">${label}
+          <input type="text" list="${liste}" data-pr-korr="${feld}" data-pnr="${pnr}" value="${escAttr(w(feld))}"
+                 placeholder="${escAttr(platzhalter || '')}" autocomplete="off">${orig(feld)}</label>`;
+  /* Pflanzjahr: Jahr plus Jahreszeit — „2024 f“ aus der Tabelle heißt Frühjahr. */
+  const pj = w('ausgepflanzt');
+  const pjTeile = pj.match(/^(Frühjahr|Herbst)\s+(\d{4})$/);
+  const pjJahr = pjTeile ? pjTeile[2] : pj, pjZeit = pjTeile ? pjTeile[1] : '';
+  const anzahl = ['sorte','frucht','unterlage','veredelt','ausgepflanzt','standort'].filter(f=> pruefGeaendert(e, r, f)).length;
+  return `
+      <details class="pr-angaben"${anzahl ? ' open' : ''}>
+        <summary>Angaben korrigieren${anzahl ? ` <span class="pr-geaendert">${anzahl} geändert</span>` : ''}</summary>
+        <div class="pr-angaben-raster">
+          ${text('unterlage', 'Unterlage', 'pr-dl-unterlagen', 'z. B. MM106')}
+          <label class="pr-feld${pruefGeaendert(e, r, 'veredelt') ? ' geaendert' : ''}">Veredelt
+            <select data-pr-korr="veredelt" data-pnr="${pnr}">${pruefJahrOptionen(w('veredelt'), ['nicht veredelt', 'unbekannt'])}</select>${orig('veredelt')}</label>
+          <label class="pr-feld${pruefGeaendert(e, r, 'ausgepflanzt') ? ' geaendert' : ''}">Gepflanzt
+            <span class="pr-doppel">
+              <select data-pr-korr="ausgepflanzt" data-pr-teil="jahr" data-pnr="${pnr}">${pruefJahrOptionen(pjJahr)}</select>
+              <select data-pr-korr="ausgepflanzt" data-pr-teil="zeit" data-pnr="${pnr}">
+                ${['', 'Frühjahr', 'Herbst'].map(z=>`<option value="${z}" ${z===pjZeit?'selected':''}>${z || 'Jahreszeit'}</option>`).join('')}
+              </select>
+            </span>${orig('ausgepflanzt')}</label>
+          ${text('standort', 'Standort', 'pr-dl-standorte', 'z. B. Bösch2, Weg1 Oben')}
+          ${text('sorte', 'Sorte', 'pr-dl-sorten')}
+          ${text('frucht', 'Obstart', 'pr-dl-arten')}
+        </div>
+      </details>`;
 }
 
 function renderPruefFundForm(){
@@ -403,21 +544,65 @@ function pruefStatusSetzen(pnr, status){
   renderPruefung();
 }
 
+/* GPS: beobachten statt einmal fragen. iOS liefert zuerst oft eine alte,
+   grobe Position aus dem Zwischenspeicher — vier Bäume mit exakt demselben
+   Punkt (±59 m) waren die Folge. Jetzt läuft die Messung, bis sie besser als
+   PRUEF_GPS_GUT ist oder die Wartezeit um ist; Positionen von vor dem Start
+   zählen nicht. Ist das Beste danach gröber als PRUEF_GPS_STECKNADEL, wird
+   gefragt statt still übernommen. */
 function pruefGps(pnr){
   if(!navigator.geolocation){ showToast('Dieses Gerät kann keine GPS-Position ermitteln.', 'error', 5000); return; }
-  pruefGpsLaeuft = pnr;
+  pruefGpsStopp();
+  const lauf = { pnr, bestes:null, start:Date.now() };
+  pruefGpsLaeuft = lauf;
   renderPruefung();
-  navigator.geolocation.getCurrentPosition(pos=>{
-    const { latitude, longitude, accuracy } = pos.coords;
-    pruefGpsLaeuft = null;
-    pruefSetze(pnr, { gps:{ lat:latitude, lng:longitude, gpsAccuracy:Math.round(accuracy) }, ort:'ausgepflanzt' });
-    if(accuracy > 15) showToast(`Ungenau (±${Math.round(accuracy)} m) — einen Moment warten und neu übernehmen.`, 'info', 5000);
+  const anzeigen = text => { const el = document.getElementById('pr-gps-live'); if(el) el.textContent = text; };
+  const fertig = ()=>{
+    if(pruefGpsLaeuft !== lauf) return;
+    pruefGpsStopp();
+    const b = lauf.bestes;
+    if(!b){ showToast('Keine GPS-Position erhalten. Ortungsdienste für Safari prüfen.', 'error', 6000); renderPruefung(); return; }
+    const genau = Math.round(b.accuracy);
+    if(genau > PRUEF_GPS_STECKNADEL
+       && !confirm(`Nur ±${genau} m erreicht — für eine Stecknadel zu ungenau.\n\nTrotzdem speichern? (Im Kataster kommt der Baum dann ohne Stecknadel an.)`)){
+      renderPruefung(); return;
+    }
+    pruefSetze(pnr, { gps:{ lat:b.latitude, lng:b.longitude, gpsAccuracy:genau }, ort:'ausgepflanzt' });
+    showToast(`GPS übernommen (±${genau} m).`, genau <= PRUEF_GPS_STECKNADEL ? 'success' : 'info', 3000);
     renderPruefung();
+  };
+  lauf.watch = navigator.geolocation.watchPosition(pos=>{
+    if(pruefGpsLaeuft !== lauf) return;
+    if(pos.timestamp && pos.timestamp < lauf.start - 1000) return;   /* alte Position aus dem Speicher */
+    if(!lauf.bestes || pos.coords.accuracy < lauf.bestes.accuracy) lauf.bestes = pos.coords;
+    const sek = Math.max(0, PRUEF_GPS_WARTEN_S - Math.round((Date.now() - lauf.start) / 1000));
+    anzeigen(`±${Math.round(pos.coords.accuracy)} m (bestes ±${Math.round(lauf.bestes.accuracy)} m) — warte auf ±${PRUEF_GPS_GUT} m, noch ${sek} s`);
+    if(lauf.bestes.accuracy <= PRUEF_GPS_GUT) fertig();
   }, err=>{
-    pruefGpsLaeuft = null;
+    if(pruefGpsLaeuft !== lauf) return;
+    pruefGpsStopp();
     showToast(`GPS nicht verfügbar: ${err.message}`, 'error', 6000);
     renderPruefung();
-  }, { enableHighAccuracy:true, timeout:25000, maximumAge:0 });
+  }, { enableHighAccuracy:true, maximumAge:0, timeout:PRUEF_GPS_WARTEN_S * 1000 });
+  lauf.timer = setTimeout(fertig, PRUEF_GPS_WARTEN_S * 1000);
+}
+function pruefGpsStopp(){
+  const lauf = pruefGpsLaeuft;
+  if(!lauf) return;
+  if(lauf.watch != null) navigator.geolocation.clearWatch(lauf.watch);
+  clearTimeout(lauf.timer);
+  pruefGpsLaeuft = null;
+}
+
+/* Korrektur eines Feldes. Gleich dem Original → Korrektur entfällt wieder. */
+function pruefKorrektur(pnr, feld, wert){
+  const e = pruefEintrag(pnr);
+  if(!e) return;
+  const r = pruefErgebnis(e) || {};
+  const korrektur = Object.assign({}, r.korrektur || {});
+  const v = feld === 'unterlage' ? pruefUnterlageNorm(wert) : String(wert || '').trim();
+  if(v === pruefOriginal(e, feld)) delete korrektur[feld]; else korrektur[feld] = v;
+  pruefSetze(pnr, { korrektur });
 }
 
 function pruefNaechster(){
@@ -492,21 +677,147 @@ function pruefListeWaehlen(){
   input.click();
 }
 
+/* ---------- Übernahme ins Kataster ---------- */
+const PRUEF_UEBERNAHME_STATUS = ['stimmt', 'abweichend', 'ohneEtikett'];
+
+function pruefUebernahmeBereit(){
+  return pruefAlleEintraege().filter(e=>{
+    const r = pruefErgebnis(e);
+    return r && PRUEF_UEBERNAHME_STATUS.includes(r.status) && r.ort === 'ausgepflanzt' && !r.uebernommen;
+  });
+}
+/* ID-Vorschlag: die Etikettnummer, denn die hängt am Baum. Ist sie vergeben —
+   im Kataster oder schon in dieser Übernahme —, kommt ein Zusatz dazu. Ohne
+   Nummer (Zukauf 2015) gibt es eine NEU-Nummer wie bei jeder Neuanlage. */
+function pruefIdVorschlag(e, vergeben){
+  let basis = pruefNummer(e.alt_id || '').replace(/\s+/g, '');
+  if(!basis || basis === '0' || !/^[0-9A-Z-]+$/.test(basis)){
+    let n = 1;
+    while(vergeben.has(`NEU-${n}`)) n++;
+    vergeben.add(`NEU-${n}`);
+    return `NEU-${n}`;
+  }
+  let id = basis, n = 2;
+  while(vergeben.has(id)) id = `${basis}-${n++}`;
+  vergeben.add(id);
+  return id;
+}
+
+function pruefUebernahmeOeffnen(){
+  if(!isAdmin()){ showToast('Übernehmen darf nur der Admin.', 'error', 4000); return; }
+  const bereit = pruefUebernahmeBereit();
+  if(!bereit.length){ showToast('Nichts zu übernehmen — es fehlen bestätigte, ausgepflanzte Bäume.', 'info', 4000); return; }
+  const vergeben = new Set(getAllTrees().map(t=> t.id));
+  const zeilen = bereit.map(e=>{
+    const r = pruefErgebnis(e);
+    const w = feld => pruefWert(e, r, feld);
+    const id = pruefIdVorschlag(e, vergeben);
+    const gps = r.gps;
+    const nadel = gps && gps.gpsAccuracy <= PRUEF_GPS_STECKNADEL;
+    const angaben = [w('frucht'), w('unterlage'), w('veredelt') && `veredelt ${w('veredelt')}`,
+      w('ausgepflanzt') && `gepflanzt ${w('ausgepflanzt')}`, w('standort')].filter(Boolean).map(escHtml).join(' · ');
+    const hinweise = [r.status !== 'stimmt' ? (pruefStatus(r.status) || {}).label : '', r.notiz]
+      .concat(e.warnungen || []).filter(Boolean).map(escHtml).join(' · ');
+    return `
+      <div class="pu-zeile">
+        <label class="pu-wahl"><input type="checkbox" data-pu-pnr="${escAttr(e.pnr)}" checked> übernehmen</label>
+        <div class="pu-kopf">
+          <input type="text" class="pu-id" data-pu-id="${escAttr(e.pnr)}" value="${escAttr(id)}" aria-label="ID im Kataster" autocapitalize="characters">
+          <span class="pu-sorte">${w('sorte') ? escHtml(w('sorte')) : '<i>Sorte fehlt</i>'}</span>
+        </div>
+        <div class="pu-angaben">${angaben || '<i>keine Angaben</i>'}</div>
+        <div class="pu-nadel${nadel ? '' : ' fehlt'}">${nadel ? `Stecknadel aus GPS (±${gps.gpsAccuracy} m)` : (gps ? `GPS ±${gps.gpsAccuracy} m zu ungenau — ohne Stecknadel` : 'kein GPS — ohne Stecknadel')}</div>
+        ${hinweise ? `<div class="pu-hinweis">${hinweise}</div>` : ''}
+      </div>`;
+  }).join('');
+  const html = `
+    <button class="close" onclick="closeModal()">&times;</button>
+    <h2>Ins Kataster übernehmen</h2>
+    <p class="snippet">${bereit.length === 1 ? 'Ein bestätigter, ausgepflanzter Baum' : `${bereit.length} bestätigte, ausgepflanzte Bäume`}.
+      Die ID ist die Etikettnummer und lässt sich hier noch ändern. Angaben korrigierst du vorher in der Prüfkarte.</p>
+    <div class="pu-liste">${zeilen}</div>
+    <div id="pu-fehler" class="login-meldung fehler" style="display:none;"></div>
+    <div class="pu-fuss">
+      <button type="button" class="btn" onclick="pruefUebernahmeAusfuehren()">Übernehmen</button>
+      <button type="button" class="btn secondary" onclick="closeModal()">Abbrechen</button>
+    </div>`;
+  const modal = document.getElementById('modal-content');
+  modal.innerHTML = html;
+  modal.dataset.modalType = 'uebernahme';
+  document.getElementById('overlay').classList.add('open');
+}
+
+function pruefUebernahmeAusfuehren(){
+  const fehler = text => { const el = document.getElementById('pu-fehler'); el.textContent = text; el.style.display = 'block'; };
+  const gewaehlt = Array.from(document.querySelectorAll('[data-pu-pnr]')).filter(c=> c.checked).map(c=> c.dataset.puPnr);
+  if(!gewaehlt.length){ fehler('Kein Baum ausgewählt.'); return; }
+  const vorhanden = new Set(getAllTrees().map(t=> t.id));
+  const neueIds = new Set();
+  const plan = [];
+  for(const pnr of gewaehlt){
+    const feld = document.querySelector(`[data-pu-id="${CSS.escape(pnr)}"]`);
+    const id = (feld ? feld.value : '').trim().toUpperCase();
+    if(!id){ fehler('Jeder Baum braucht eine ID.'); return; }
+    if(vorhanden.has(id) || neueIds.has(id)){ fehler(`Die ID ${id} ist schon vergeben.`); return; }
+    neueIds.add(id);
+    plan.push({ pnr, id });
+  }
+  if(!confirm(`${plan.length} Baum/Bäume ins Kataster übernehmen?\n\n${plan.map(x=> x.id).join(', ')}`)) return;
+
+  if(!state.customTrees) state.customTrees = [];
+  if(!state.satPositions) state.satPositions = {};
+  const jetzt = pruefJetzt();
+  let mitNadel = 0;
+  plan.forEach(({ pnr, id })=>{
+    const e = pruefEintrag(pnr);
+    const r = pruefErgebnis(e);
+    const w = feld => pruefWert(e, r, feld);
+    const veredelt = w('veredelt');
+    state.customTrees.push({
+      id, sorte:w('sorte'), frucht:w('frucht'), unterlage:w('unterlage'),
+      veredelt: veredelt === 'unbekannt' ? '' : veredelt,
+      ausgepflanzt:w('ausgepflanzt'), standort_zeile:w('standort'),
+      sukzession:[], ernten:[], position:null,
+      quelle:'pruefung', pruefung:{ pnr, etikett:e.alt_id || '', datum:jetzt.slice(0, 10) }
+    });
+    const gps = r.gps;
+    const nadel = !!(gps && gps.gpsAccuracy <= PRUEF_GPS_STECKNADEL);
+    if(nadel){
+      state.satPositions[id] = { lat:gps.lat, lng:gps.lng, gpsAccuracy:gps.gpsAccuracy };
+      if(state.deletedSatPositions) delete state.deletedSatPositions[id];
+      mitNadel++;
+    }
+    pruefSetze(pnr, { uebernommen:{ id, zeit:jetzt, stecknadel:nadel } });
+  });
+  invalidateTreeCache();
+  saveState();
+  closeModal();
+  refreshFilterOptions();
+  renderBaumTable();
+  if(typeof renderSatMarkers === 'function') renderSatMarkers();
+  renderPruefung();
+  const ohne = plan.length - mitNadel;
+  showToast(`${plan.length} Baum/Bäume im Kataster${ohne ? ` — ${ohne} ohne Stecknadel, bitte im Lageplan setzen` : ''}.`, 'success', 6000);
+}
+
 /* ---------- Export ---------- */
 function pruefExport(){
   if(typeof XLSX === 'undefined'){ showToast('Excel-Export braucht Internet (SheetJS wird nachgeladen).', 'error', 5000); return; }
   const status = id => (pruefStatus(id) || {}).label || '';
   const zeile = (e, r) => ({
-    'P-Nr': e.fund ? '' : e.pnr, 'Fund-Id': e.fund ? e.pnr : '', 'Etikett-Nr.': e.alt_id || '', 'Sorte': e.sorte || '',
-    'Obstart': e.frucht || '', 'Unterlage': e.unterlage || '', 'Veredelt': e.veredelt || '', 'Suchgebiet': e.gebiet || '',
+    'P-Nr': e.fund ? '' : e.pnr, 'Fund-Id': e.fund ? e.pnr : '', 'Etikett-Nr.': e.alt_id || '', 'Sorte': pruefWert(e, r, 'sorte'),
+    'Obstart': pruefWert(e, r, 'frucht'), 'Unterlage': pruefWert(e, r, 'unterlage'), 'Veredelt': pruefWert(e, r, 'veredelt'),
+    'Gepflanzt': pruefWert(e, r, 'ausgepflanzt'), 'Standort': pruefWert(e, r, 'standort'),
+    'Korrigiert': Object.keys((r && r.korrektur) || {}).join(', '), 'Suchgebiet': e.gebiet || '',
     'Status': r ? status(r.status) : '', 'Durchgänge': r && r.status==='fehlt' ? (r.durchgaenge||1) : '',
     'Wo': r && r.status ? (r.ort==='beet' ? 'Baumschulbeet' : 'ausgepflanzt') : '', 'Notiz': (r && r.notiz) || '',
     'Breite': r && r.gps ? r.gps.lat : '', 'Länge': r && r.gps ? r.gps.lng : '', 'Genauigkeit (m)': r && r.gps ? r.gps.gpsAccuracy : '',
-    'Geprüft am': r && r.status ? pruefDatum(r.zeit) : '', 'Warnzeichen': (e.warnungen||[]).join('; '), 'Tabellenblatt': e.blatt || ''
+    'Geprüft am': r && r.status ? pruefDatum(r.zeit) : '', 'Im Kataster als': r && r.uebernommen ? r.uebernommen.id : '',
+    'Warnzeichen': (e.warnungen||[]).join('; '), 'Tabellenblatt': e.blatt || ''
   });
   const zeilen = pruefAlleEintraege().map(e=> zeile(e, pruefErgebnis(e)));
   Object.keys(pruefung.ergebnisse).filter(p=> !pruefung.liste[p]).forEach(p=>{
-    zeilen.push(zeile({ pnr:p, sorte:'(nicht mehr in der Liste)', warnungen:[] }, pruefung.ergebnisse[p]));
+    zeilen.push(zeile({ pnr:p, sorte:'(nicht mehr in der Liste)', warnungen:[] }, Object.assign({}, pruefung.ergebnisse[p], { korrektur:null })));
   });
   const mappe = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(mappe, XLSX.utils.json_to_sheet(zeilen), 'Prüfung');
@@ -526,6 +837,8 @@ function pruefExport(){
       case 'status': pruefStatusSetzen(pnr, el.dataset.status); break;
       case 'ort': pruefSetze(pnr, { ort:el.dataset.ort }); renderPruefung(); break;
       case 'gps': pruefGps(pnr); break;
+      case 'gps-stopp': pruefGpsStopp(); renderPruefung(); break;
+      case 'uebernahme': pruefUebernahmeOeffnen(); break;
       case 'naechster': pruefNaechster(); break;
       case 'zuruecksetzen':
         if(confirm('Ergebnis für diesen Baum löschen?')){ delete pruefung.ergebnisse[pnr]; pruefungSpeichern(); renderPruefung(); }
@@ -554,6 +867,20 @@ function pruefExport(){
     const t = ev.target;
     if(t.id === 'pr-gebiet'){ pruefFilterSetzen({ gebiet:t.value }); pruefSichtbar = PRUEF_SEITE; pruefOffen = null; renderPruefung(); }
     else if(t.id === 'pr-status-filter'){ pruefFilterSetzen({ status:t.value }); pruefSichtbar = PRUEF_SEITE; pruefOffen = null; renderPruefung(); }
+    else if(t.dataset.prKorr === 'ausgepflanzt'){
+      /* Pflanzjahr aus zwei Auswahlfeldern: Jahr und Jahreszeit */
+      const block = t.closest('.pr-doppel');
+      const jahr = block.querySelector('[data-pr-teil="jahr"]').value;
+      const zeit = block.querySelector('[data-pr-teil="zeit"]').value;
+      pruefKorrektur(t.dataset.pnr, 'ausgepflanzt', jahr && zeit ? `${zeit} ${jahr}` : jahr);
+      renderPruefung();
+    }
+    else if(t.dataset.prKorr){
+      /* Auswahlfelder zeichnen neu (Kennzeichnung „geändert“), Textfelder nicht —
+         sonst wäre der Fokus weg, bevor man ins nächste Feld tippt. */
+      pruefKorrektur(t.dataset.pnr, t.dataset.prKorr, t.value);
+      if(t.tagName === 'SELECT') renderPruefung();
+    }
     else if(t.dataset.prNotiz){
       /* Notiz ohne Neuzeichnen speichern, sonst springt der Fokus weg. */
       pruefSetze(t.dataset.prNotiz, { notiz:t.value.trim() });

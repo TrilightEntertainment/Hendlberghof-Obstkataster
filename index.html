@@ -669,9 +669,36 @@
 #tab-pruefung .pr-fund-raster{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:10px 0 12px;}
 #tab-pruefung .pr-fund-raster label{display:flex;flex-direction:column;gap:4px;font-size:.75rem;color:var(--muted);}
 #tab-pruefung .pr-fund-raster input,#tab-pruefung .pr-fund-raster select{width:100%;min-width:0;}
+#tab-pruefung .pr-geaendert{display:inline-block;font-size:.68rem;font-weight:600;color:#8a6d1f;border:1px solid var(--stroh);border-radius:20px;padding:0 7px;margin-left:4px;vertical-align:1px;}
+#tab-pruefung .pr-kataster{font-size:.76rem;color:var(--waldrand);font-weight:600;margin-top:3px;}
+#tab-pruefung .pr-gps.grob{color:var(--dachziegel);}
+#tab-pruefung .pr-gps-live{flex:1;min-width:0;font-size:.8rem;color:var(--waldrand);font-variant-numeric:tabular-nums;}
+#tab-pruefung .pr-angaben{border:1px solid var(--border);border-radius:var(--radius);padding:0 12px;}
+#tab-pruefung .pr-angaben summary{cursor:pointer;padding:11px 0;font-size:.85rem;font-weight:600;color:var(--waldrand);}
+#tab-pruefung .pr-angaben[open] summary{border-bottom:1px solid var(--border);margin-bottom:10px;}
+#tab-pruefung .pr-angaben-raster{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding-bottom:12px;}
+#tab-pruefung .pr-feld{display:flex;flex-direction:column;gap:4px;font-size:.72rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;min-width:0;}
+#tab-pruefung .pr-feld input,#tab-pruefung .pr-feld select{width:100%;min-width:0;text-transform:none;letter-spacing:0;font-weight:400;background:var(--card-bg);}
+#tab-pruefung .pr-feld.geaendert input,#tab-pruefung .pr-feld.geaendert select{border-color:var(--stroh);}
+#tab-pruefung .pr-doppel{display:flex;gap:6px;}
+#tab-pruefung .pr-doppel select{flex:1;padding-left:8px;padding-right:8px;}
+#tab-pruefung .pr-orig{font-size:.7rem;font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted);}
+/* Vorschau „Ins Kataster übernehmen“ (im Modal, daher nicht unter #tab-pruefung) */
+.pu-liste{display:flex;flex-direction:column;gap:10px;margin:14px 0;}
+.pu-zeile{border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px;font-size:.85rem;}
+.pu-wahl{display:flex;align-items:center;gap:6px;font-size:.75rem;color:var(--muted);margin-bottom:6px;}
+.pu-kopf{display:flex;align-items:center;gap:10px;}
+.pu-id{width:6.5em;flex-shrink:0;padding:6px 8px !important;font-weight:700;font-size:16px;}
+.pu-sorte{font-family:Georgia,serif;font-size:1.05rem;color:var(--ackerde);}
+.pu-angaben{color:var(--muted);font-size:.78rem;margin-top:6px;}
+.pu-nadel{font-size:.78rem;color:var(--waldrand);margin-top:3px;}
+.pu-nadel.fehlt{color:var(--dachziegel);}
+.pu-hinweis{font-size:.76rem;color:#92400e;margin-top:3px;}
+.pu-fuss{display:flex;gap:10px;flex-wrap:wrap;}
 @media (max-width:420px){
   #tab-pruefung .pr-status-raster{grid-template-columns:1fr 1fr;}
   #tab-pruefung .pr-fund-raster{grid-template-columns:1fr;}
+  #tab-pruefung .pr-angaben-raster{grid-template-columns:1fr;}
   #tab-pruefung .pr-fuss .btn{flex:1 1 100%;}
 }
 </style>
@@ -1174,10 +1201,10 @@
 
 <!-- Aus einem einzelnen Script-Block herausgeloest (F6). Reihenfolge ist
      bindend: Ueber Dateigrenzen hinweg gibt es kein Hoisting mehr. -->
-<script src="js/kern.js?v=112"></script>
-<script src="js/kataster.js?v=112"></script>
-<script src="js/lageplan.js?v=112"></script>
-<script src="js/start.js?v=112"></script>
+<script src="js/kern.js?v=113"></script>
+<script src="js/kataster.js?v=113"></script>
+<script src="js/lageplan.js?v=113"></script>
+<script src="js/start.js?v=113"></script>
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-app.js";
@@ -1344,9 +1371,9 @@
     });
   }
 </script>
-<script src="js/berater.js?v=112"></script>
-<script src="js/shop.js?v=112"></script>
-<script src="js/konfigurator.js?v=112"></script>
-<script src="js/pruefung.js?v=112"></script>
+<script src="js/berater.js?v=113"></script>
+<script src="js/shop.js?v=113"></script>
+<script src="js/konfigurator.js?v=113"></script>
+<script src="js/pruefung.js?v=113"></script>
 </body>
 </html>
