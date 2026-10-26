@@ -340,8 +340,17 @@
   .ka-kopf{display:flex;justify-content:space-between;align-items:center;gap:10px;}
   .ka-titel{font-weight:600;color:var(--waldrand);font-size:.95rem;}
   .ka-info{display:inline-flex;align-items:center;gap:6px;font-size:.8rem;color:var(--muted);text-align:right;}
-  .ka-pfeil{flex-shrink:0;transition:transform .15s;}
-  details[open]>summary .ka-pfeil{transform:rotate(90deg);}
+  /* Zuklappen deutlich (v117): Pfeil nach unten; offen zeigt er nach oben
+     in einem kleinen goldenen Kreis. Kein Text (Volkmar 26.10.2026). */
+  .ka-pfeil{flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border:1px solid transparent;border-radius:50%;color:var(--muted);}
+  .ka-pfeil svg{transition:transform .15s;}
+  details[open]>summary .ka-pfeil{border-color:var(--stroh);color:var(--waldrand);}
+  details[open]>summary .ka-pfeil svg{transform:rotate(180deg);}
+  /* Offene Kopfzeile bleibt beim Scrollen stehen, solange man im Abschnitt ist. */
+  #modal-content details.karte-abschnitt[open]>summary{position:sticky;top:0;z-index:3;background:#fff;box-shadow:0 -28px 0 0 #fff;}
+  details.karte-abschnitt[open]>.ka-inhalt{border-left:1px solid var(--stroh);padding-left:12px;margin-left:2px;}
+  .lageplan-zurueck{display:flex;align-items:center;gap:8px;width:100%;min-height:44px;margin:0 0 10px;padding:8px 12px;background:#fff;border:1px solid var(--stroh);border-radius:10px;font:inherit;font-size:.9rem;color:var(--waldrand);text-align:left;cursor:pointer;}
+  .lageplan-zurueck .lz-sorte{font-family:Georgia,serif;}
   .ka-vorschau{display:block;font-size:.85rem;color:var(--muted);margin-top:3px;line-height:1.4;}
   details[open]>summary .ka-vorschau{display:none;}
   .ka-inhalt{padding:0 0 14px;}
@@ -389,7 +398,7 @@
     animation:pin-blink 1.8s ease-in-out 1 forwards;
     z-index:6;outline-style:solid;outline-color:var(--muted);
   }
-  .pin.selected{transform:translate(-50%,-50%) scale(1.6);z-index:6;outline:3px solid var(--muted);}
+  .pin.selected{transform:translate(-50%,-50%) scale(1.6);z-index:6;outline:3px solid var(--stroh);}
   @keyframes pin-blink{
     0%   {transform:translate(-50%,-50%) scale(1);   outline-width:0;}
     16.6%{transform:translate(-50%,-50%) scale(1.6); outline-width:3px;}
@@ -1029,7 +1038,7 @@
 </div>
 
 <details class="karte-abschnitt phaeno-box" id="phaeno-box" data-merk="phaeno" hidden>
-  <summary><span class="ka-kopf"><span class="ka-titel">Phänologie</span><span class="ka-info">für die Vorhersage<svg class="ka-pfeil" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><polyline points="9 6 15 12 9 18"/></svg></span></span></summary>
+  <summary><span class="ka-kopf"><span class="ka-titel">Phänologie</span><span class="ka-info">für die Vorhersage<span class="ka-pfeil"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><polyline points="6 9 12 15 18 9"/></svg></span></span></span></summary>
   <div class="ka-inhalt"></div>
 </details>
 <div id="sb-count" style="font-family:'DM Sans',sans-serif;font-size:12px;color:var(--text-leicht);margin-bottom:12px"></div>
@@ -1265,10 +1274,10 @@
 
 <!-- Aus einem einzelnen Script-Block herausgeloest (F6). Reihenfolge ist
      bindend: Ueber Dateigrenzen hinweg gibt es kein Hoisting mehr. -->
-<script src="js/kern.js?v=116"></script>
-<script src="js/kataster.js?v=116"></script>
-<script src="js/lageplan.js?v=116"></script>
-<script src="js/start.js?v=116"></script>
+<script src="js/kern.js?v=117"></script>
+<script src="js/kataster.js?v=117"></script>
+<script src="js/lageplan.js?v=117"></script>
+<script src="js/start.js?v=117"></script>
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-app.js";
@@ -1435,9 +1444,9 @@
     });
   }
 </script>
-<script src="js/berater.js?v=116"></script>
-<script src="js/shop.js?v=116"></script>
-<script src="js/konfigurator.js?v=116"></script>
-<script src="js/pruefung.js?v=116"></script>
+<script src="js/berater.js?v=117"></script>
+<script src="js/shop.js?v=117"></script>
+<script src="js/konfigurator.js?v=117"></script>
+<script src="js/pruefung.js?v=117"></script>
 </body>
 </html>

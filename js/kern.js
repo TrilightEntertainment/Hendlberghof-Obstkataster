@@ -467,7 +467,13 @@ function getAllTrees(){
 function getTree(id){ return getTreeMap().get(id); }
 
 /* ---------- Tabs ---------- */
+/* Rückweg vom Lageplan in die Baumkarte (v117): Wer in der Karte „Im
+   Lageplan“ tippt, bekommt oben im Lageplan eine Leiste „Zurück zu …“. Sie
+   öffnet die Karte wieder und kehrt in den Reiter zurück, aus dem man kam.
+   Wer selbst einen anderen Reiter wählt, braucht sie nicht mehr. */
+let _lageplanZurueck = null;   /* null oder { id, tab } */
 function activateTab(tabName){
+  if(tabName!=='lageplan' && _lageplanZurueck){ _lageplanZurueck = null; renderLageplanZurueck(); }
   if(tabName==='daten' && !isAdmin()) return;
   if(tabName==='pruefung' && !isEditMode()) return;
   document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active', b.dataset.tab===tabName));
@@ -497,9 +503,13 @@ document.querySelectorAll('.tab-btn[data-tab]').forEach(btn=>{
   btn.addEventListener('click', ()=> activateTab(btn.dataset.tab));
 });
 
-function showOnLageplan(id){
+function showOnLageplan(id, vonKarte){
+  const aktiv = document.querySelector('.tab-btn.active');
+  const vorher = aktiv && aktiv.dataset.tab !== 'lageplan' ? aktiv.dataset.tab : null;
   closeModal();
   activateTab('lageplan');
+  _lageplanZurueck = vonKarte ? {id, tab: vorher} : null;
+  renderLageplanZurueck();
   if(typeof mapLayer!=='undefined' && mapLayer==='sat') setMapLayer('foto');
   document.querySelectorAll('.pin.selected').forEach(p=>p.classList.remove('selected'));
   const pin = document.querySelector(`.pin[data-id="${id}"]`);
@@ -511,6 +521,31 @@ function showOnLageplan(id){
       pin.classList.add('selected');
     }, {once:true});
   }
+}
+
+function renderLageplanZurueck(){
+  const sec = document.getElementById('tab-lageplan');
+  let leiste = document.getElementById('lageplan-zurueck');
+  if(!_lageplanZurueck || !sec){ if(leiste) leiste.remove(); return; }
+  if(!leiste){
+    leiste = document.createElement('button');
+    leiste.type = 'button';
+    leiste.id = 'lageplan-zurueck';
+    leiste.className = 'lageplan-zurueck';
+    leiste.addEventListener('click', lageplanZurueck);
+    sec.insertBefore(leiste, sec.firstChild);
+  }
+  const t = getTree(_lageplanZurueck.id);
+  leiste.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><polyline points="15 6 9 12 15 18"/></svg>
+    <span>Zurück zu <span class="lz-sorte">${escHtml((t && t.sorte) || 'Baum')}</span> · ${escHtml(String(_lageplanZurueck.id))}</span>`;
+}
+function lageplanZurueck(){
+  const z = _lageplanZurueck;
+  if(!z) return;
+  _lageplanZurueck = null;
+  renderLageplanZurueck();
+  if(z.tab) activateTab(z.tab);
+  openBaumModal(z.id);
 }
 
 /* ---------- Filter-Optionen füllen ---------- */

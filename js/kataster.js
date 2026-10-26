@@ -1361,6 +1361,7 @@ function reopenModalFor(sorteName){
    Welche Abschnitte offen sind, merkt sich das Gerät (für alle Bäume gleich).
    Die Phänologie gilt für den ganzen Hof und steht im Sortenberater. */
 const KARTE_OFFEN_KEY = 'hendlberghof_karte_offen';
+let _karteGezeichnet = 0;
 function karteOffen(name){
   try { return !!JSON.parse(localStorage.getItem(KARTE_OFFEN_KEY) || '{}')[name]; }
   catch(e){ return false; }
@@ -1371,6 +1372,14 @@ function karteOffen(name){
 document.addEventListener('toggle', e => {
   const d = e.target;
   if(!d || !d.dataset || !d.dataset.merk) return;
+  /* In der Baumkarte ist immer nur ein Abschnitt offen (Volkmar 26.10.2026). */
+  const karte = d.closest('#modal-content');
+  /* Beim Zeichnen der Karte feuern offene Abschnitte ebenfalls „toggle“ —
+     dann nicht scrollen, sonst springt die Karte gleich nach unten. */
+  if(karte && d.open && Date.now() - _karteGezeichnet > 500){
+    karte.querySelectorAll('details.karte-abschnitt[open]').forEach(x => { if(x !== d) x.open = false; });
+    requestAnimationFrame(() => d.querySelector('summary').scrollIntoView({block:'nearest'}));
+  }
   try {
     const m = JSON.parse(localStorage.getItem(KARTE_OFFEN_KEY) || '{}');
     m[d.dataset.merk] = d.open;
@@ -1378,7 +1387,7 @@ document.addEventListener('toggle', e => {
   } catch(err){ /* privater Modus: dann eben nicht merken */ }
 }, true);
 
-const SVG_PFEIL = `<svg class="ka-pfeil" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><polyline points="9 6 15 12 9 18"/></svg>`;
+const SVG_PFEIL = `<span class="ka-pfeil"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><polyline points="6 9 12 15 18 9"/></svg></span>`;
 const SVG_NADEL = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 21s-7-6.5-7-11a7 7 0 0 1 14 0c0 4.5-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>`;
 
 function karteAbschnitt(merk, titel, info, inhalt, vorschau){
@@ -1526,7 +1535,7 @@ function openBaumModal(id){
 
   const lageZeile = `<div class="karte-lage">
       <span class="kl-ort">${SVG_NADEL}${standort ? escHtml(standort) : '<span class="empty">Standort nicht eingetragen</span>'}</span>
-      ${hatNadel ? `<button class="ka-link" onclick="showOnLageplan('${ti}')">Im Lageplan</button>` : '<span class="ka-info">keine Stecknadel</span>'}
+      ${hatNadel ? `<button class="ka-link" onclick="showOnLageplan('${ti}', true)">Im Lageplan</button>` : '<span class="ka-info">keine Stecknadel</span>'}
     </div>
     ${angemeldet && isAdmin() && hatNadel ? `<button class="ka-link warn" onclick="removePosition('${ti}')">Stecknadel entfernen</button>` : ''}`;
 
@@ -1587,7 +1596,9 @@ function openBaumModal(id){
       ${karteGilden(merged)}`;
   }
   const mc = document.getElementById('modal-content');
+  _karteGezeichnet = Date.now();
   mc.innerHTML = html;
+  mc.querySelectorAll('details.karte-abschnitt[open]').forEach((d, i) => { if(i > 0) d.removeAttribute('open'); });
   mc.dataset.modalType = 'baum';
   mc.dataset.modalId = id;
   document.getElementById('overlay').classList.add('open');
