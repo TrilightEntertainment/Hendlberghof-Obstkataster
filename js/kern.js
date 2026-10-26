@@ -468,7 +468,7 @@ function getTree(id){ return getTreeMap().get(id); }
 
 /* ---------- Tabs ---------- */
 /* Rückweg vom Lageplan in die Baumkarte (v117): Wer in der Karte „Im
-   Lageplan“ tippt, bekommt oben im Lageplan eine Leiste „Zurück zu …“. Sie
+   Lageplan“ tippt, bekommt unter der Karte eine Leiste „Zurück zu …“. Sie
    öffnet die Karte wieder und kehrt in den Reiter zurück, aus dem man kam.
    Wer selbst einen anderen Reiter wählt, braucht sie nicht mehr. */
 let _lageplanZurueck = null;   /* null oder { id, tab } */
@@ -533,7 +533,7 @@ function renderLageplanZurueck(){
     leiste.id = 'lageplan-zurueck';
     leiste.className = 'lageplan-zurueck';
     leiste.addEventListener('click', lageplanZurueck);
-    sec.insertBefore(leiste, sec.firstChild);
+    sec.appendChild(leiste);   /* unter der Karte (Volkmar 26.10.2026) */
   }
   const t = getTree(_lageplanZurueck.id);
   leiste.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><polyline points="15 6 9 12 15 18"/></svg>

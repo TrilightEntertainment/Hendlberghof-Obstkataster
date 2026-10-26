@@ -351,7 +351,7 @@
   details[open]>summary .ka-pfeil svg{transform:rotate(180deg);}
   /* Offene Kopfzeile bleibt beim Scrollen stehen, solange man im Abschnitt ist. */
   #modal-content details.karte-abschnitt[open]>summary{position:sticky;top:0;z-index:3;background:#fff;box-shadow:0 -28px 0 0 #fff;}
-  .lageplan-zurueck{display:flex;align-items:center;gap:8px;width:100%;min-height:44px;margin:0 0 10px;padding:8px 12px;background:#fff;border:1px solid var(--stroh);border-radius:10px;font:inherit;font-size:.9rem;color:var(--waldrand);text-align:left;cursor:pointer;}
+  .lageplan-zurueck{display:flex;align-items:center;gap:8px;width:100%;min-height:44px;margin:10px 0 0;padding:8px 12px;background:#fff;border:1px solid var(--stroh);border-radius:10px;font:inherit;font-size:.9rem;color:var(--waldrand);text-align:left;cursor:pointer;}
   .lageplan-zurueck .lz-sorte{font-family:Georgia,serif;}
   .ka-vorschau{display:block;font-size:.85rem;color:var(--muted);margin-top:3px;line-height:1.4;}
   details[open]>summary .ka-vorschau{display:none;}
@@ -1276,10 +1276,10 @@
 
 <!-- Aus einem einzelnen Script-Block herausgeloest (F6). Reihenfolge ist
      bindend: Ueber Dateigrenzen hinweg gibt es kein Hoisting mehr. -->
-<script src="js/kern.js?v=120"></script>
-<script src="js/kataster.js?v=120"></script>
-<script src="js/lageplan.js?v=120"></script>
-<script src="js/start.js?v=120"></script>
+<script src="js/kern.js?v=121"></script>
+<script src="js/kataster.js?v=121"></script>
+<script src="js/lageplan.js?v=121"></script>
+<script src="js/start.js?v=121"></script>
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-app.js";
@@ -1446,9 +1446,9 @@
     });
   }
 </script>
-<script src="js/berater.js?v=120"></script>
-<script src="js/shop.js?v=120"></script>
-<script src="js/konfigurator.js?v=120"></script>
-<script src="js/pruefung.js?v=120"></script>
+<script src="js/berater.js?v=121"></script>
+<script src="js/shop.js?v=121"></script>
+<script src="js/konfigurator.js?v=121"></script>
+<script src="js/pruefung.js?v=121"></script>
 </body>
 </html>
