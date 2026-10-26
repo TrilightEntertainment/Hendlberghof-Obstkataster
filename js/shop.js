@@ -102,7 +102,7 @@ function renderBestellModalContent() {
   });
   const today = new Date().toLocaleDateString('de-AT',{day:'2-digit',month:'2-digit',year:'numeric'});
   let html = '<div style="max-width:560px;">';
-  html += '<button class="close" onclick="closeModal()">&times;</button>';
+  html += '<button class="close" onclick="closeModal()" aria-label="Schließen"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true" focusable="false"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg></button>';
   html += '<h2 style="font-family:var(--font-heading);color:var(--dark);margin:0 0 12px;">Meine Listen &mdash; '+today+'</h2>';
 
   html += '<div class="section-title">Kontakt</div>';
@@ -653,7 +653,7 @@ function showBestellDetails(orderId) {
   if(!o) return;
   const d = new Date(o.datum).toLocaleDateString('de-AT',{day:'2-digit',month:'2-digit',year:'numeric'});
   let html = '<div style="max-width:480px;">';
-  html += '<button class="close" onclick="closeModal()">&times;</button>';
+  html += '<button class="close" onclick="closeModal()" aria-label="Schließen"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true" focusable="false"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg></button>';
   html += '<h2 style="font-family:var(--font-heading);margin:0 0 10px;">Bestellung '+d+'</h2>';
   html += '<div class="section-title">Kontakt</div>';
   html += '<div style="font-size:.85rem;margin-bottom:10px;">';

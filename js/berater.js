@@ -410,7 +410,7 @@ function showUnterlageInfo(sorteName) {
   const mc = document.getElementById('modal-content');
   mc.dataset.prevHtml = mc.innerHTML;
 
-  let html = '<div style="max-width:520px;"><button class="close" onclick="hideUnterlageInfo()">&times;</button>';
+  let html = '<div style="max-width:520px;"><button class="close" onclick="hideUnterlageInfo()" aria-label="Schließen"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true" focusable="false"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg></button>';
   html += '<h3 style="font-family:var(--font-heading);color:var(--dark);margin:0 0 12px;">Unterlagen (Rootstock)</h3>';
 
   if(info) {
@@ -568,7 +568,7 @@ function renderVerwendung(){
 function tagCls(t){const tl=t.toLowerCase();if(['sommerapfel','sommerbirne','herbstapfel','herbstbirne','winterapfel','winterbirne','frühsorte','lager'].some(k=>tl===k))return 'tr';if(['pilzresistent','robust','winterhart','resistent','feuerbrand','scharka','bio','schorfresistent'].some(k=>tl.includes(k)))return 'tg';if(['most','cider','einkochen','schnaps','destillat','saft','tafelobst'].some(k=>tl.includes(k)))return 'ta';if(['bestäuber','wildtier','streuobst','historisch','österreichisch','rarität'].some(k=>tl.includes(k)))return 'tp';return 'tb';}
 function tagSortKey(t){const c=tagCls(t);return c==='tr'?0:c==='ta'?1:2;}
 function formatGenuss(von,bis,reife,genuss){
-  if(von&&bis){const n=['','Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];return n[parseInt(von)]+' bis '+n[parseInt(bis)];}
+  if(von&&bis){const n=['','Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];return String(von)===String(bis) ? n[parseInt(von)] : `${n[parseInt(von)]} bis ${n[parseInt(bis)]}`;}
   const val=reife||genuss;
   if(val){const ABV={Jan:'Januar',Feb:'Februar',Mär:'März',März:'März',Apr:'April',Mai:'Mai',Jun:'Juni',Jul:'Juli',Aug:'August',Sep:'September',Okt:'Oktober',Nov:'November',Dez:'Dezember'};const p=val.split(/[–\-]+/);if(p.length===2)return(ABV[p[0].trim()]||p[0].trim())+' bis '+(ABV[p[1].trim()]||p[1].trim());return val;}
   return '';
@@ -1395,7 +1395,7 @@ function applyLastTemplateMapping(){
 
 function showSaveTemplateDialog(){
   closeImportModal();
-  const html='<button class="close" onclick="closeModal()">&times;</button>'+
+  const html='<button class="close" onclick="closeModal()" aria-label="Schließen"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true" focusable="false"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg></button>'+
     '<h2>Mapping speichern?</h2>'+
     '<p style="font-size:.88rem;color:var(--muted);margin:8px 0 16px;">Dieses Mapping als Vorlage speichern? Beim nächsten Import gleicher Datei wird die Zuordnung automatisch übernommen.</p>'+
     '<input type="text" id="tpl-name-input" placeholder="Name der Vorlage…" style="width:100%;margin-bottom:16px;" value="Meine Vorlage">'+
@@ -1684,7 +1684,7 @@ const PREIS_CSV_FIELDS = [
 function openPreisImport(qid) {
   preisImportState = { qid, rows: [], headers: [], mapping: {}, preview: [] };
   const html = `
-    <button class="close" onclick="closeModal()">&times;</button>
+    <button class="close" onclick="closeModal()" aria-label="Schließen"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true" focusable="false"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg></button>
     <h2 style="font-family:var(--font-heading);color:var(--dark);margin:0 0 12px;">Preisliste importieren</h2>
     <p style="font-size:.85rem;color:var(--muted);margin-bottom:12px;">Quelle: <b>${(state.preislisten[qid]?.name||qid)}</b></p>
     <div id="preis-import-step1">

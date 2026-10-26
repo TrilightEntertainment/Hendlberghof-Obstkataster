@@ -70,7 +70,20 @@ function getFilteredBaumRows(){
   return sortRows(rows, baumSort);
 }
 
-function baumMerged(t){ return Object.assign({}, getSorte(t.sorte)||{}, t); }
+/* Baum vor Sorte – aber nur, wo der Baum wirklich etwas eingetragen hat.
+   Die Baumdatensätze tragen viele Felder leer (""); früher überdeckten diese
+   die Sortenangaben, und Genussreife, Geschmack usw. fehlten auf der
+   Baumkarte, obwohl die Sorte sie kannte (217 Felder, gefunden 26.10.2026). */
+function mitSorte(sorteInfo, t){
+  const m = Object.assign({}, sorteInfo||{});
+  Object.keys(t||{}).forEach(k => {
+    const v = t[k];
+    if(v === '' || v === null || v === undefined || (Array.isArray(v) && !v.length)) return;
+    m[k] = v;
+  });
+  return m;
+}
+function baumMerged(t){ return mitSorte(getSorte(t.sorte), t); }
 
 function getFilteredSortenExportRows(){
   let pool = getAllSorten();
@@ -155,7 +168,7 @@ function openExportDialog(typ, format){
     </label>`;
   }).join('');
   const html = `
-    <button class="close" onclick="closeModal()">&times;</button>
+    <button class="close" onclick="closeModal()" aria-label="Schließen"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true" focusable="false"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg></button>
     <h2>Spalten für ${format==='excel'?'Excel':'PDF'}-Export</h2>
     <p style="font-size:.82rem;color:var(--muted);">Exportiert wird die aktuell gefilterte Auswahl. Die Spaltenauswahl wird für das nächste Mal gemerkt.</p>
     <div style="columns:2;column-gap:24px;margin:14px 0;">${boxes}</div>
@@ -329,7 +342,7 @@ function exportBaumKartePDF(id){
   const t = getTree(id);
   if(!t) return;
   const sorteInfo = getSorte(t.sorte);
-  const merged = Object.assign({}, sorteInfo||{}, t);
+  const merged = mitSorte(sorteInfo, t);
   const k = neuePdfKarte();
   const {doc} = k;
   const feldPaar = k.feldPaar, feldDrei = k.feldDrei, abschnitt = k.abschnitt, absatz = k.absatz;
@@ -369,7 +382,7 @@ function exportBaumKartePDF(id){
 
   const sukz = (state.sukzession[id]||[]).slice().sort((a,b)=>b.jahr-a.jahr);
   if(sukz.length){
-    abschnitt('Sukzessions-Dokumentation');
+    abschnitt('Beobachtungen');
     sukz.forEach(it=> absatz(`${it.jahr} — ${it.text}`, true));
     k.y += 2;
   }
@@ -1404,17 +1417,27 @@ function kartenZeilen(paare){
 }
 function kartePflueckText(wert){
   if(!wert) return '';
+  /* Manche Sorten tragen nur den Monat („10“) statt „10,5“ – dann den
+     Monatsnamen zeigen, nicht die nackte Zahl. */
+  if(/^\d{1,2}$/.test(String(wert).trim()) && typeof _MONAT_NAMEN !== 'undefined') return _MONAT_NAMEN[parseInt(wert)] || String(wert);
   return pfluckWertToText(wert) || String(wert);
 }
 function karteGenussKurz(m){
-  const n = ['','Jan','Feb','März','Apr','Mai','Juni','Juli','Aug','Sep','Okt','Nov','Dez'];
-  if(m.genuss_von && m.genuss_bis) return `${n[parseInt(m.genuss_von)]||m.genuss_von} – ${n[parseInt(m.genuss_bis)]||m.genuss_bis}`;
+  /* Gleiche Schreibweise wie in der Sortenbeschreibung (ausgeschrieben). */
   return formatGenuss(m.genuss_von, m.genuss_bis, m.genussreife, m.genuss);
 }
 /* Katalogtexte beginnen oft klein („mürbe, saftig …“). */
 function karteSatz(text){
   const s = String(text||'').trim();
   return s ? s.charAt(0).toUpperCase() + s.slice(1) : '';
+}
+/* Hinweise oben in der Besucherkarte bleiben kurz: Klammerzusätze und alles
+   nach dem ersten Komma fallen weg, der volle Text steht in der
+   Sortenbeschreibung. */
+function karteKurzHinweis(t){
+  let k = String(t||'').replace(/\s*\x28[^\x29]*\x29/g, '').trim();   /* \x28/\x29 = runde Klammern; so stört der Ausdruck die Klammerprüfung nicht */
+  if(k.length > 32 && k.includes(',')) k = k.slice(0, k.indexOf(',')).trim();
+  return k;
 }
 function karteKmenge(kg){
   return kg >= 1 ? `${kg.toLocaleString('de-AT',{maximumFractionDigits:1})} kg` : `${Math.round(kg*1000)} g`;
@@ -1500,7 +1523,7 @@ function karteTeilen(id){
 function karteErnteInfo(id){
   const t = getTree(id);
   if(!t) return '';
-  const m = Object.assign({}, getSorte(t.sorte)||{}, t);
+  const m = mitSorte(getSorte(t.sorte), t);
   const mittel = t.sorte ? calcPfluckMittel(t.sorte) : null;
   const prediction = t.sorte ? predictErnte(t.sorte) : null;
   const reif = mittel ? pfluckWertToText(mittel.wert) : prediction ? pfluckWertToText(prediction.wert) : kartePflueckText(m.pflueckzeitpunkt||m.pflueck_reifezeit);
@@ -1514,7 +1537,7 @@ function openBaumModal(id){
   const t = getTree(id);
   if(!t) return;
   const sorteInfo = getSorte(t.sorte);
-  const merged = Object.assign({}, sorteInfo||{}, t); // Baum-eigene Werte haben Vorrang, sonst Sorten-Fallback
+  const merged = mitSorte(sorteInfo, t); // Baum-eigene Werte haben Vorrang, sonst Sorten-Fallback
   const angemeldet = isEditMode();
   const ti = escAttr(id);
   const standort = karteStandort(t, merged);
@@ -1584,7 +1607,7 @@ function openBaumModal(id){
       pflueck ? `Pflücken ${pflueck}` : '',
       genuss ? `Genuss ${genuss}` : '',
       (merged.verwendung||[]).join(', ')
-    ].filter(Boolean).map(c => `<span class="chip">${escHtml(c)}</span>`).join('');
+    ].filter(Boolean).map(c => `<span class="chip">${escHtml(karteKurzHinweis(c))}</span>`).join('');
     html = `${kopfzeile}
       <h2>${escHtml(t.sorte||'Unbekannte Sorte')}</h2>
       <div class="karte-unterzeile">${escHtml(t.frucht||'')}${merged.herkunft_jahr ? ` · ${escHtml(String(merged.herkunft_jahr))}` : ''}</div>
@@ -2044,7 +2067,7 @@ function openSortenModal(sorteName){
     predictionHtml = `<div style="margin-top:4px;font-size:.82rem;"><b>📊 Vorhersage ${new Date().getFullYear()}:</b> <b style="color:var(--waldrand);">${prediction.wert}</b> ${pfluckWertToText(prediction.wert)} <span style="color:var(--text-mid,#6B7280);font-size:.75rem;">(${sign}${prediction.abweichungTage} Tage vs. Standard)</span></div>`;
   }
   const html = `
-    <button class="close" onclick="closeModal()">&times;</button>
+    <button class="close" onclick="closeModal()" aria-label="Schließen"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true" focusable="false"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg></button>
     <button class="close" style="right:44px;" title="Bearbeiten" onclick="editSorteWithLogin('${safeName}')">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" focusable="false" style="vertical-align:middle;">
         <line x1="4" y1="7" x2="20" y2="7"/>

@@ -288,7 +288,8 @@
     /* Am iPhone als Startbildschirm-App liegt sonst die Statusleiste über der Leiste. */
     .pdf-bar{padding-top:calc(10px + env(safe-area-inset-top));}
   }
-  .modal .close{position:absolute;top:14px;right:16px;background:none;border:none;font-size:1.4rem;cursor:pointer;color:var(--muted);}
+  .modal .close{position:absolute;top:14px;right:16px;background:none;border:none;font-size:1.4rem;cursor:pointer;color:var(--muted);width:32px;height:32px;padding:0;display:inline-flex;align-items:center;justify-content:center;}
+  .modal .close:hover{color:var(--waldrand);}
   .modal h2{font-family:'Cormorant Garamond',serif;color:var(--ackerde);margin-top:0;font-size:1.7rem;}
   .modal .idbadge{
     display:inline-block;background:transparent;color:var(--ackerde);
@@ -913,7 +914,7 @@
     </div>
     <div class="card" style="max-width:640px;margin-top:16px;">
       <h3>Daten exportieren</h3>
-      <p class="snippet">Lädt eine Sicherungskopie (JSON) aller Positionen, Sukzessions- und Ernteeinträge herunter.
+      <p class="snippet">Lädt eine Sicherungskopie (JSON) aller Positionen, Beobachtungen und Ernteeinträge herunter.
       Alle Geräte sind bereits automatisch über die Cloud synchronisiert – dieser Export dient als unabhängiges Backup, falls damit einmal etwas schiefgehen sollte.</p>
       <button class="btn" id="btn-export">⬇ Daten exportieren (JSON)</button>
     </div>
@@ -1275,10 +1276,10 @@
 
 <!-- Aus einem einzelnen Script-Block herausgeloest (F6). Reihenfolge ist
      bindend: Ueber Dateigrenzen hinweg gibt es kein Hoisting mehr. -->
-<script src="js/kern.js?v=118"></script>
-<script src="js/kataster.js?v=118"></script>
-<script src="js/lageplan.js?v=118"></script>
-<script src="js/start.js?v=118"></script>
+<script src="js/kern.js?v=119"></script>
+<script src="js/kataster.js?v=119"></script>
+<script src="js/lageplan.js?v=119"></script>
+<script src="js/start.js?v=119"></script>
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-app.js";
@@ -1445,9 +1446,9 @@
     });
   }
 </script>
-<script src="js/berater.js?v=118"></script>
-<script src="js/shop.js?v=118"></script>
-<script src="js/konfigurator.js?v=118"></script>
-<script src="js/pruefung.js?v=118"></script>
+<script src="js/berater.js?v=119"></script>
+<script src="js/shop.js?v=119"></script>
+<script src="js/konfigurator.js?v=119"></script>
+<script src="js/pruefung.js?v=119"></script>
 </body>
 </html>

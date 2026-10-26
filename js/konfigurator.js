@@ -381,7 +381,7 @@ function renderKonfigurator(){
 
   const html = `
     <div style="max-width:560px;">
-      <button class="close" onclick="konfigAbbrechen()">&times;</button>
+      <button class="close" onclick="konfigAbbrechen()" aria-label="Schließen"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true" focusable="false"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg></button>
       <h2 style="font-family:var(--font-heading);color:var(--dark);margin:0 0 4px;">Baum zusammenstellen</h2>
       <p class="kf-unter">${escHtml(_konfig.frucht)} · Lieferung Herbst ${konfigLieferjahr()}</p>
 

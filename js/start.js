@@ -119,7 +119,7 @@ function handleLoginToggle(){
 
 function showLoginDialog(){
   const html = `
-    <button class="close" onclick="closeModal()">&times;</button>
+    <button class="close" onclick="closeModal()" aria-label="Schließen"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true" focusable="false"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg></button>
     <h2>Anmeldung</h2>
     <p style="margin:12px 0 16px;color:var(--muted);font-size:.9rem;">Rolle wählen:</p>
     <div style="display:flex;flex-direction:column;gap:10px;max-width:280px;">
@@ -127,7 +127,7 @@ function showLoginDialog(){
         <b>Admin</b><br><span style="font-size:.82rem;color:var(--muted);">Voller Zugriff auf alle Funktionen</span>
       </button>
       <button class="btn" onclick="loginAsRole('mitarbeiter')" style="text-align:left;padding:14px 18px;">
-        <b>Mitarbeiter:in</b><br><span style="font-size:.82rem;color:var(--muted);">Ernte- und Sukzessionsdokumentation, Phänologie</span>
+        <b>Mitarbeiter:in</b><br><span style="font-size:.82rem;color:var(--muted);">Ernte, Beobachtungen, Phänologie</span>
       </button>
     </div>`;
   document.getElementById('modal-content').innerHTML = html;
@@ -143,7 +143,7 @@ function loginAsRole(role){
   const email = LOGIN_ACCOUNTS[role];
   closeModal();
   const html = `
-    <button class="close" onclick="closeModal()">&times;</button>
+    <button class="close" onclick="closeModal()" aria-label="Schließen"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true" focusable="false"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg></button>
     <h2>Anmeldung — ${role==='admin'?'Admin':'Mitarbeiter:in'}</h2>
     <form id="login-form" class="login-form" autocomplete="on" onsubmit="event.preventDefault();submitLogin();">
       <label for="login-email">Konto</label>
@@ -303,7 +303,7 @@ function openBaumEditForm(id){
   if(!t) return;
   const tForForm = Object.assign({}, t, { verwendung: getVerwendung(t) });
   const html = `
-    <button class="close" onclick="closeModal()">&times;</button>
+    <button class="close" onclick="closeModal()" aria-label="Schließen"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true" focusable="false"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg></button>
     <h2>✏️ Baum bearbeiten <span class="idbadge">${t.id_placeholder? 'ID noch offen' : 'ID '+t.id}</span></h2>
     <p style="font-size:.82rem;color:var(--muted);">Änderungen werden lokal gespeichert — Original-Importdaten bleiben erhalten.</p>
     <form id="baum-edit-form">${buildEditForm(tForForm, false)}</form>
@@ -318,7 +318,7 @@ function openBaumEditForm(id){
 
 function openBaumAddForm(){
   const html = `
-    <button class="close" onclick="closeModal()">&times;</button>
+    <button class="close" onclick="closeModal()" aria-label="Schließen"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true" focusable="false"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg></button>
     <h2><img src="icons/seedling.svg" width="20" height="20" style="vertical-align:-4px;margin-right:4px;" alt="">Neuen Baum hinzufügen</h2>
     <p style="font-size:.82rem;color:var(--muted);">Der neue Baum wird lokal gespeichert und erscheint sofort im Kataster. Bei Eingabe einer bekannten Sorte werden die Felder automatisch ausgefüllt.</p>
     <form id="baum-edit-form">${buildEditForm(null, true)}</form>
@@ -337,7 +337,7 @@ function openSortenEditForm(sorteName){
   if(!s) return;
   const editData = Object.assign({}, s, state.sortenEdits[sorteName]||{});
   const html = `
-    <button class="close" onclick="closeModal()">&times;</button>
+    <button class="close" onclick="closeModal()" aria-label="Schließen"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true" focusable="false"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg></button>
     <h2>✏️ Sorte bearbeiten <span style="font-size:.82rem;color:var(--muted);font-weight:400;">${escHtml(sorteName)}</span></h2>
     <p style="font-size:.82rem;color:var(--muted);">Änderungen werden lokal gespeichert — Original-Importdaten bleiben erhalten.</p>
     <form id="sorten-edit-form">${buildEditForm(editData, false, true)}</form>

@@ -731,7 +731,7 @@ function pruefUebernahmeOeffnen(){
       </div>`;
   }).join('');
   const html = `
-    <button class="close" onclick="closeModal()">&times;</button>
+    <button class="close" onclick="closeModal()" aria-label="Schließen"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true" focusable="false"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg></button>
     <h2>Ins Kataster übernehmen</h2>
     <p class="snippet">${bereit.length === 1 ? 'Ein bestätigter, ausgepflanzter Baum' : `${bereit.length} bestätigte, ausgepflanzte Bäume`}.
       Die ID ist die Etikettnummer und lässt sich hier noch ändern. Angaben korrigierst du vorher in der Prüfkarte.</p>
