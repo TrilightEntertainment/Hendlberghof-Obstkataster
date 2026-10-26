@@ -1351,131 +1351,248 @@ function reopenModalFor(sorteName){
   else openSortenModal(sorteName);
 }
 
+/* ---------- Baumkarte (v116) ----------
+   Zwei Ansichten, beschlossen mit Volkmar am 26.10.2026:
+   - angemeldet (Hof, Helfer): Lage → Sorte (zu) → Ernte (zu) → Beobachtungen (zu)
+     → Begleitpflanzungen. Wer am Baum steht, sucht ihn oder trägt ein.
+   - Besucher (QR-Code oder Suche): Kurzbeschreibung mit Pflücken, Genuss,
+     Verwendung → Sortenbeschreibung → Wo steht er? → Bestellen →
+     Begleitpflanzungen. Keine Erntemengen: das sind Betriebsdaten.
+   Welche Abschnitte offen sind, merkt sich das Gerät (für alle Bäume gleich).
+   Die Phänologie gilt für den ganzen Hof und steht im Sortenberater. */
+const KARTE_OFFEN_KEY = 'hendlberghof_karte_offen';
+function karteOffen(name){
+  try { return !!JSON.parse(localStorage.getItem(KARTE_OFFEN_KEY) || '{}')[name]; }
+  catch(e){ return false; }
+}
+/* toggle steigt nicht auf — deshalb in der Einfangphase am document. Nur
+   Abschnitte mit data-merk zählen; programmatisches Öffnen anderer
+   <details> (z. B. „Frühere Jahre“) bleibt unberührt. */
+document.addEventListener('toggle', e => {
+  const d = e.target;
+  if(!d || !d.dataset || !d.dataset.merk) return;
+  try {
+    const m = JSON.parse(localStorage.getItem(KARTE_OFFEN_KEY) || '{}');
+    m[d.dataset.merk] = d.open;
+    localStorage.setItem(KARTE_OFFEN_KEY, JSON.stringify(m));
+  } catch(err){ /* privater Modus: dann eben nicht merken */ }
+}, true);
+
+const SVG_PFEIL = `<svg class="ka-pfeil" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><polyline points="9 6 15 12 9 18"/></svg>`;
+const SVG_NADEL = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 21s-7-6.5-7-11a7 7 0 0 1 14 0c0 4.5-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>`;
+
+function karteAbschnitt(merk, titel, info, inhalt, vorschau){
+  return `<details class="karte-abschnitt" data-merk="${merk}"${karteOffen(merk) ? ' open' : ''}>
+    <summary><span class="ka-kopf"><span class="ka-titel">${titel}</span><span class="ka-info">${info||''}${SVG_PFEIL}</span></span>${vorschau ? `<span class="ka-vorschau">${vorschau}</span>` : ''}</summary>
+    <div class="ka-inhalt">${inhalt}</div>
+  </details>`;
+}
+/* Beschriftete Zeilen mit feiner Linie statt der engen Raster von früher. */
+function kartenZeilen(paare){
+  const da = paare.filter(([,v]) => v !== undefined && v !== null && v !== '' && !(Array.isArray(v) && !v.length));
+  if(!da.length) return '';
+  return `<dl class="kz">${da.map(([l,v]) => `<div><dt>${l}</dt><dd>${Array.isArray(v) ? escHtml(v.join(', ')) : escHtml(String(v))}</dd></div>`).join('')}</dl>`;
+}
+function kartePflueckText(wert){
+  if(!wert) return '';
+  return pfluckWertToText(wert) || String(wert);
+}
+function karteGenussKurz(m){
+  const n = ['','Jan','Feb','März','Apr','Mai','Juni','Juli','Aug','Sep','Okt','Nov','Dez'];
+  if(m.genuss_von && m.genuss_bis) return `${n[parseInt(m.genuss_von)]||m.genuss_von} – ${n[parseInt(m.genuss_bis)]||m.genuss_bis}`;
+  return formatGenuss(m.genuss_von, m.genuss_bis, m.genussreife, m.genuss);
+}
+/* Katalogtexte beginnen oft klein („mürbe, saftig …“). */
+function karteSatz(text){
+  const s = String(text||'').trim();
+  return s ? s.charAt(0).toUpperCase() + s.slice(1) : '';
+}
+function karteKmenge(kg){
+  return kg >= 1 ? `${kg.toLocaleString('de-AT',{maximumFractionDigits:1})} kg` : `${Math.round(kg*1000)} g`;
+}
+/* Sortenangaben: gemeinsam für beide Ansichten. */
+function karteSorteInhalt(t, merged, sorteInfo){
+  const ausSorte = sorteInfo && sorteInfo.recherchiert;
+  const sn = escAttr(t.sorte||'');
+  const ti = escAttr(t.id);
+  const pruefen = !isEditMode() ? ''
+    : ausSorte ? `<div class="badge-recherche">Sortenangaben web-recherchiert – bitte prüfen</div>
+        <button class="btn-verify" onclick="toggleVerifiziert('${sn}', {baumId:'${ti}'})">Als verifiziert markieren</button>`
+    : state.verifiziert[t.sorte] ? `<div class="badge-verifiziert">Verifiziert am ${escHtml(state.verifiziert[t.sorte])}</div>
+        <button class="btn-verify done" onclick="toggleVerifiziert('${sn}', {baumId:'${ti}'})">Verifizierung zurücknehmen</button>` : '';
+  return `${pruefen}
+    ${archeNoahLink(merged)}
+    ${kartenZeilen([
+      ['Geschmack', merged.geschmack],
+      ['Frucht', merged.frucht_beschreibung],
+      ['Verwendung', merged.verwendung],
+      ['Pflückreife', kartePflueckText(merged.pflueckzeitpunkt||merged.pflueck_reifezeit)],
+      ['Genussreife', formatGenuss(merged.genuss_von,merged.genuss_bis,merged.genussreife,merged.genuss)],
+      ['Lagerfähigkeit', merged.lagerfaehig],
+      ['Ertrag', merged.ertrag],
+      ['Befruchtung', merged.befruchtungspartner],
+      ['Erstmals tragend', t.erstmals_tragend],
+      ['Herkunft', merged.herkunft_jahr||merged.herkunft],
+      ['Eigenschaften', [merged.eigenschaften, merged.standort_anspruch].filter(Boolean).join(' ')]
+    ])}
+    ${ausSorte ? `<div class="quelle-hinweis"><b>Quelle(n):</b> ${sorteInfo.quelle}<br>Sortenangaben aus Web-Recherche, nicht aus deiner Numbers-Tabelle – bitte am Baum verifizieren.</div>` : ''}`;
+}
+function karteGilden(merged){
+  if(!merged.frucht) return '';
+  return karteAbschnitt('gilden', 'Begleitpflanzungen', '',
+    `${renderGuildSection(merged.frucht)}<button class="ka-link" onclick="showGuildQuellen()">Quellen</button>`);
+}
+function karteStandort(t, merged){
+  return t.standort_zeile || merged.standort_zeile || (typeof merged.standort === 'string' ? merged.standort : '') || '';
+}
+function karteGemerkt(sorte){
+  if(!sorte || typeof getMerkliste !== 'function') return null;
+  return getMerkliste(MERKLISTE_EIGEN).konfigurationen.find(k => k.sorte === sorte && !k.konfiguriert) || null;
+}
+function karteMerken(id){
+  const t = getTree(id);
+  if(!t || !t.sorte) return;
+  const da = karteGemerkt(t.sorte);
+  /* Nicht über merkEigenEntfernen(): Das zeichnet „Meine Listen“ ins selbe
+     Fenster und verdrängt die Baumkarte. */
+  if(da){
+    const liste = getMerkliste(MERKLISTE_EIGEN);
+    liste.konfigurationen.splice(liste.konfigurationen.indexOf(da), 1);
+    liste.geaendert = new Date().toISOString();
+    merkSpeichern();
+    updateCartBadge();
+    showToast(`„${t.sorte}" von deiner Liste genommen.`, 'info');
+  }
+  else merkEigenHinzu(t.sorte);
+  const knopf = document.getElementById('karte-merken');
+  if(knopf){
+    const jetzt = !!karteGemerkt(t.sorte);
+    knopf.classList.toggle('gemerkt', jetzt);
+    knopf.setAttribute('aria-pressed', jetzt ? 'true' : 'false');
+  }
+}
+/* Teilt einen Link, der genau diese Baumkarte öffnet (?baum=…, siehe start.js). */
+function karteTeilen(id){
+  const t = getTree(id);
+  if(!t) return;
+  const url = `${location.origin}${location.pathname}?baum=${encodeURIComponent(t.id)}`;
+  const titel = `${t.sorte||'Baum'} – Hendlberghof`;
+  if(navigator.share){
+    navigator.share({title: titel, text: `${t.sorte||'Baum'} am Hendlberghof`, url}).catch(()=>{});
+  } else if(navigator.clipboard){
+    navigator.clipboard.writeText(url).then(()=>showToast('Link kopiert.', 'success'), ()=>showToast(url, 'info', 8000));
+  } else {
+    showToast(url, 'info', 8000);
+  }
+}
+
+/* Kopfzeile des Ernte-Abschnitts: Reife (eigene Ernten → Vorhersage →
+   Beschreibung) und die Menge des laufenden Jahres. */
+function karteErnteInfo(id){
+  const t = getTree(id);
+  if(!t) return '';
+  const m = Object.assign({}, getSorte(t.sorte)||{}, t);
+  const mittel = t.sorte ? calcPfluckMittel(t.sorte) : null;
+  const prediction = t.sorte ? predictErnte(t.sorte) : null;
+  const reif = mittel ? pfluckWertToText(mittel.wert) : prediction ? pfluckWertToText(prediction.wert) : kartePflueckText(m.pflueckzeitpunkt||m.pflueck_reifezeit);
+  const jahr = String(new Date().getFullYear());
+  const kg = (state.ernten[id]||[]).filter(e => String(e.datum||'').startsWith(jahr))
+    .reduce((s,e) => s + (parseFloat(e.menge) || 0), 0);
+  return [reif ? `reif ${reif}` : '', kg > 0 ? `${jahr}: ${karteKmenge(kg)}` : ''].filter(Boolean).join(' · ');
+}
+
 function openBaumModal(id){
   const t = getTree(id);
   if(!t) return;
   const sorteInfo = getSorte(t.sorte);
   const merged = Object.assign({}, sorteInfo||{}, t); // Baum-eigene Werte haben Vorrang, sonst Sorten-Fallback
-  const ausSorte = sorteInfo && sorteInfo.recherchiert;
-  const sukz = state.sukzession[id] || [];
-  const ernten = state.ernten[id] || [];
-  const originalPW = merged.pflueckzeitpunkt||merged.pflueck_reifezeit||'';
-  const mittel = t.sorte ? calcPfluckMittel(t.sorte) : null;
-  const prediction = t.sorte ? predictErnte(t.sorte) : null;
-  const mittelText = mittel ? `<b style="color:var(--gruen);">→ ${mittel.wert}</b> <span style="font-size:.75rem;color:var(--text-mid,#6B7280);">(${mittel.anzahl} Ernten, ${mittel.jahre.join(', ')})</span>` : '';
-  let predictionHtml = '';
-  if(prediction){
-    const sign = prediction.abweichungTage>0 ? '+' : '';
-    predictionHtml = `<div style="margin-top:4px;font-size:.82rem;"><b>📊 Vorhersage ${new Date().getFullYear()}:</b> <b style="color:var(--waldrand);">${prediction.wert}</b> ${pfluckWertToText(prediction.wert)} <span style="color:var(--text-mid,#6B7280);font-size:.75rem;">(${sign}${prediction.abweichungTage} Tage vs. Standard)</span></div>`;
-  }
-  const html = `
-    <button class="close" onclick="closeModal()">&times;</button>
-    <button class="close" style="right:44px;" title="Bearbeiten" onclick="editBaumWithLogin('${id}')">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" focusable="false" style="vertical-align:middle;">
-        <line x1="4" y1="7" x2="20" y2="7"/>
-        <circle cx="14" cy="7" r="2.3"/>
-        <line x1="4" y1="14" x2="20" y2="14"/>
-        <circle cx="9" cy="14" r="2.3"/>
-        <line x1="4" y1="21" x2="20" y2="21"/>
-        <circle cx="16" cy="21" r="2.3"/>
-      </svg>
-    </button>
-    <button class="close" style="right:76px;" title="Als PDF speichern" onclick="exportBaumKartePDF('${id}')">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false" style="vertical-align:middle;">
-        <path d="M6 9V3h12v6"/>
-        <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
-        <rect x="6" y="14" width="12" height="7"/>
-      </svg>
-    </button>
-    ${ausSorte? `<div class="badge-recherche">🔍 Sortenangaben web-recherchiert – bitte prüfen</div>
-      <button class="btn-verify" onclick="toggleVerifiziert('${escAttr(t.sorte)}', {baumId:'${escAttr(t.id)}'})">✓ Als verifiziert markieren</button>`
-      : (state.verifiziert[t.sorte]? `<div class="badge-verifiziert">✓ Verifiziert am ${state.verifiziert[t.sorte]}</div>
-      <button class="btn-verify done" onclick="toggleVerifiziert('${escAttr(t.sorte)}', {baumId:'${escAttr(t.id)}'})">Verifizierung zurücknehmen</button>` : '')}
-    <h2>${t.sorte||'Unbekannte Sorte'} <span class="idbadge">${t.id_placeholder? 'ID noch offen' : 'ID '+t.id}</span></h2>
-    ${archeNoahLink(merged)}
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:0;border:1px solid var(--rand);border-radius:10px;overflow:hidden;margin-bottom:8px;">
-      <div class="field"><b>Obstart</b>${escHtml(t.frucht||'')}</div>
-      <div class="field"><b>Pflückreife lt. Beschreibung</b>${escHtml(originalPW||'')}</div>
-      <div class="field"><b>Pflückreife ermittelt</b>${mittelText||predictionHtml||'–'}</div>
+  const angemeldet = isEditMode();
+  const ti = escAttr(id);
+  const standort = karteStandort(t, merged);
+  const hatNadel = !!state.positions[id];
+  const pflueck = kartePflueckText(merged.pflueckzeitpunkt||merged.pflueck_reifezeit);
+  const bestellbar = t.sorte && getBestellbarkeit(t.sorte, {frucht: t.frucht}).zustand !== 'nur_beratung';
+  const gemerkt = !angemeldet && !!karteGemerkt(t.sorte);
+
+  const symbol = (titel, onclick, svg, extra) =>
+    `<button type="button" class="karte-symbol${extra||''}" title="${titel}" aria-label="${titel}" onclick="${onclick}">${svg}</button>`;
+  const kopfzeile = `<div class="karte-kopfzeile">
+    ${!angemeldet && bestellbar ? `<button type="button" id="karte-merken" class="karte-symbol${gemerkt ? ' gemerkt' : ''}" title="Merken" aria-label="Merken" aria-pressed="${gemerkt}" onclick="karteMerken('${ti}')"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M6 3h12v18l-6-4-6 4z"/></svg></button>` : ''}
+    ${!angemeldet ? symbol('Teilen', `karteTeilen('${ti}')`, `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 15V3"/><polyline points="7 8 12 3 17 8"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg>`) : ''}
+    ${symbol('Als PDF speichern', `exportBaumKartePDF('${ti}')`, `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M6 9V3h12v6"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="7"/></svg>`, ' nur-rechner')}
+    ${angemeldet ? symbol('Bearbeiten', `editBaumWithLogin('${ti}')`, `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true" focusable="false"><line x1="4" y1="7" x2="20" y2="7"/><circle cx="14" cy="7" r="2.3"/><line x1="4" y1="14" x2="20" y2="14"/><circle cx="9" cy="14" r="2.3"/><line x1="4" y1="21" x2="20" y2="21"/><circle cx="16" cy="21" r="2.3"/></svg>`) : ''}
+    ${symbol('Schließen', 'closeModal()', `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true" focusable="false"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>`)}
+  </div>`;
+
+  const lageZeile = `<div class="karte-lage">
+      <span class="kl-ort">${SVG_NADEL}${standort ? escHtml(standort) : '<span class="empty">Standort nicht eingetragen</span>'}</span>
+      ${hatNadel ? `<button class="ka-link" onclick="showOnLageplan('${ti}')">Im Lageplan</button>` : '<span class="ka-info">keine Stecknadel</span>'}
     </div>
-    ${fieldGrid([
-      ['Verwendung', (merged.verwendung||[]).join(', ')],
-      ['Genussreife', formatGenuss(merged.genuss_von,merged.genuss_bis,merged.genussreife,merged.genuss)]
-    ])}
-    ${fieldGrid([
-      ['Gepflanzt', t.ausgepflanzt],
-      ['Veredelt', t.veredelt]
-    ])}
-    ${t.unterlage ? '<div style="display:flex;align-items:center;gap:6px;padding:8px 12px;border:1px solid var(--rand);border-radius:10px;margin-bottom:8px;font-size:.88rem;"><b>Unterlage</b> '+escHtml(t.unterlage)+' <a href="#" onclick="event.preventDefault();event.stopPropagation();showUnterlageInfo(\''+escAttr(t.sorte)+'\')" style="font-size:.78rem;color:var(--waldrand);text-decoration:underline;cursor:pointer;white-space:nowrap;">Info</a></div>' : ''}
-    ${fieldGrid([
-      ['Ertrag', merged.ertrag],
-      ['Befruchtungspartner', merged.befruchtungspartner]
-    ])}
-    ${fieldGrid([
-      ['Erstmals tragend', t.erstmals_tragend],
-      ['Lagerfähigkeit', merged.lagerfaehig],
-      ['Herkunft', merged.herkunft_jahr||merged.herkunft]
-    ])}
-    ${merged.geschmack? `<div class="section-title">Geschmack / Nutzung</div><div class="field">${escHtml(merged.geschmack)}</div>`:''}
-    ${merged.frucht_beschreibung? `<div class="section-title">Frucht</div><div class="field">${escHtml(merged.frucht_beschreibung)}</div>`:''}
-    ${merged.eigenschaften? `<div class="section-title">Eigenschaften / Standortansprüche</div><div class="field">${escHtml(merged.eigenschaften)} ${merged.standort_anspruch? escHtml(merged.standort_anspruch):''}</div>`:''}
-    ${merged.frucht ? `<div class="section-title" style="cursor:pointer;color:var(--gruen);text-decoration:underline;text-decoration-style:dotted;text-underline-offset:3px;" onclick="showGuildQuellen()">Begleitpflanzungen & Gilden</div><div class="field">${renderGuildSection(merged.frucht)}</div>`:''}
-    ${ausSorte? `<div class="quelle-hinweis"><b>Quelle(n):</b> ${sorteInfo.quelle}<br>Sortenangaben aus Web-Recherche, nicht aus deiner Numbers-Tabelle – bitte am Baum verifizieren.</div>`:''}
+    ${angemeldet && isAdmin() && hatNadel ? `<button class="ka-link warn" onclick="removePosition('${ti}')">Stecknadel entfernen</button>` : ''}`;
 
-    <div class="section-title">Lageplan</div>
-    ${state.positions[id]
-      ? `<div class="field">
-          <button class="btn-verify" onclick="showOnLageplan('${id}')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false" style="vertical-align:-2px;margin-right:4px;"><path d="M12 21s-7-6.5-7-11a7 7 0 0 1 14 0c0 4.5-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>Im Lageplan anzeigen</button>
-          ${isAdmin()? `<button class="btn-verify" style="border-color:var(--dachziegel);color:var(--dachziegel);" onclick="removePosition('${id}')">Stecknadel entfernen</button>`:''}
-        </div>`
-      : `<div class="field empty">Noch keine Position im Lageplan gesetzt.</div>`}
-    <div class="section-title">Sukzessions-Dokumentation</div>
-    <ul class="log-list" id="sukz-list"></ul>
-    ${isEditMode()? `<div class="addlog" id="sukz-form">
-      <input type="date" id="sukz-datum" value="${heuteISO()}">
-      <input type="text" class="txt" id="sukz-text" placeholder="Beobachtung / Ereignis" list="sukz-vorschlaege">
-      <datalist id="sukz-vorschlaege"></datalist>
-      <div class="addlog-knoepfe" id="sukz-knoepfe"></div>
-    </div>` : ''}
-
-    <div class="section-title">Ernte-Dokumentation</div>
-    ${isEditMode()? `<div class="addlog" id="ernte-form">
-      <input type="date" id="ernte-datum" value="${heuteISO()}">
-      <input type="number" step="0.001" min="0" class="txt" id="ernte-menge" placeholder="Menge in kg">
-      <input type="text" class="txt" id="ernte-bem" placeholder="Bemerkung" list="ernte-vorschlaege">
-      <datalist id="ernte-vorschlaege"></datalist>
-      <div class="addlog-knoepfe" id="ernte-knoepfe"></div>
-    </div>` : ''}
-    <ul class="log-list" id="ernte-list"></ul>
-    <div id="ernte-chart-wrap" style="margin-bottom:10px;"></div>
-
-    ${(isEditMode() || phaenoAlle().length)
-      ? `<div class="section-title">Phänologie-Ereignisse</div>
-    <div id="phaeno-display"></div>
-    ${isEditMode()? `<div class="addlog" id="phaeno-form">
-      <select id="phaeno-key" class="txt">
-        <option value="holunder_bluete">Schwarzer Holunder – Blühbeginn</option>
-        <option value="holunder_vollbluete">Schwarzer Holunder – Vollblüte</option>
-        <option value="knaeulgras_rispenschieben">Wiesen-Knäuelgras – Rispenschieben</option>
-      </select>
-      <input type="date" id="phaeno-datum" value="${heuteISO()}">
-      <div class="addlog-knoepfe" id="phaeno-knoepfe"></div>
-    </div>` : ''}`
-      : ''}
-  `;
-  /* Kaufblock: „nochmal so einen Baum" — der Besucher steht vor dem Muster
-     und will genau diese Sorte. Ohne Sorte am Baum gibt es nichts anzubieten. */
-  const shopHtml = t.sorte
-    ? `<div class="section-title">Diese Sorte bestellen</div>`
-      + renderShopBlock(t.sorte, {frucht: t.frucht})
-    : '';
-  document.getElementById('modal-content').innerHTML = html + shopHtml;
-  document.getElementById('modal-content').dataset.modalType = 'baum';
-  document.getElementById('modal-content').dataset.modalId = id;
+  let html;
+  if(angemeldet){
+    /* Ernte: Kopfzeile zeigt das Wichtigste, ohne aufzuklappen. */
+    const mittel = t.sorte ? calcPfluckMittel(t.sorte) : null;
+    const prediction = t.sorte ? predictErnte(t.sorte) : null;
+    const jahr = String(new Date().getFullYear());
+    const reifZeilen = kartenZeilen([
+      ['Laut Beschreibung', pflueck],
+      ['Aus den Ernten', mittel ? `${pfluckWertToText(mittel.wert)} (${mittel.anzahl} Ernten, ${mittel.jahre.join(', ')})` : ''],
+      [`Vorhersage ${jahr}`, prediction ? `${pfluckWertToText(prediction.wert)} (${prediction.abweichungTage>0?'+':''}${prediction.abweichungTage} Tage, Holunderblüte)` : '']
+    ]);
+    const unterlage = t.unterlage ? ` · Unterlage <button class="ka-link inline" onclick="showUnterlageInfo('${escAttr(t.sorte||'')}')">${escHtml(t.unterlage)}</button>` : '';
+    html = `${kopfzeile}
+      <h2>${escHtml(t.sorte||'Unbekannte Sorte')} <span class="idbadge">${t.id_placeholder ? 'ID noch offen' : `ID ${escHtml(t.id)}`}</span></h2>
+      <div class="karte-unterzeile">${escHtml(t.frucht||'')}${t.ausgepflanzt ? ` · gepflanzt ${escHtml(String(t.ausgepflanzt))}` : ''}${t.veredelt ? ` · veredelt ${escHtml(String(t.veredelt))}` : ''}${unterlage}</div>
+      ${lageZeile}
+      ${karteAbschnitt('sorte', 'Sorte', '', karteSorteInhalt(t, merged, sorteInfo), merged.geschmack ? escHtml(karteSatz(merged.geschmack)) : '')}
+      ${karteAbschnitt('ernte', 'Ernte', `<span id="ernte-info">${escHtml(karteErnteInfo(id))}</span>`,
+        `${reifZeilen}
+         <button class="btn log-neu" id="ernte-neu" onclick="logNeu('ernte','${ti}')">Ernte eintragen</button>
+         <div class="addlog" id="ernte-form" hidden>
+           <input type="date" id="ernte-datum" value="${heuteISO()}">
+           <input type="number" step="0.001" min="0" class="txt" id="ernte-menge" placeholder="Menge in kg">
+           <input type="text" class="txt" id="ernte-bem" placeholder="Bemerkung" list="ernte-vorschlaege">
+           <datalist id="ernte-vorschlaege"></datalist>
+           <div class="addlog-knoepfe" id="ernte-knoepfe"></div>
+         </div>
+         <ul class="log-list" id="ernte-list"></ul>
+         <div id="ernte-chart-wrap" style="margin-bottom:10px;"></div>`)}
+      ${karteAbschnitt('beob', 'Beobachtungen', `<span id="beob-anzahl">${(state.sukzession[id]||[]).length || ''}</span>`,
+        `<button class="btn log-neu" id="sukz-neu" onclick="logNeu('sukz','${ti}')">Beobachtung eintragen</button>
+         <div class="addlog" id="sukz-form" hidden>
+           <input type="date" id="sukz-datum" value="${heuteISO()}">
+           <input type="text" class="txt" id="sukz-text" placeholder="Beobachtung" list="sukz-vorschlaege">
+           <datalist id="sukz-vorschlaege"></datalist>
+           <div class="addlog-knoepfe" id="sukz-knoepfe"></div>
+         </div>
+         <ul class="log-list" id="sukz-list"></ul>`)}
+      ${karteGilden(merged)}`;
+  } else {
+    const genuss = karteGenussKurz(merged);
+    const chips = [
+      pflueck ? `Pflücken ${pflueck}` : '',
+      genuss ? `Genuss ${genuss}` : '',
+      (merged.verwendung||[]).join(', ')
+    ].filter(Boolean).map(c => `<span class="chip">${escHtml(c)}</span>`).join('');
+    html = `${kopfzeile}
+      <h2>${escHtml(t.sorte||'Unbekannte Sorte')}</h2>
+      <div class="karte-unterzeile">${escHtml(t.frucht||'')}${merged.herkunft_jahr ? ` · ${escHtml(String(merged.herkunft_jahr))}` : ''}</div>
+      ${merged.geschmack ? `<p class="karte-kurz">${escHtml(karteSatz(merged.geschmack))}</p>` : ''}
+      ${chips ? `<div class="karte-chips">${chips}</div>` : ''}
+      ${karteAbschnitt('sorte', 'Sortenbeschreibung', '', karteSorteInhalt(t, merged, sorteInfo))}
+      ${karteAbschnitt('lage', 'Wo steht er?', '', lageZeile)}
+      ${t.sorte ? karteAbschnitt('bestellen', 'Diesen Baum bestellen', '', renderShopBlock(t.sorte, {frucht: t.frucht})) : ''}
+      ${karteGilden(merged)}`;
+  }
+  const mc = document.getElementById('modal-content');
+  mc.innerHTML = html;
+  mc.dataset.modalType = 'baum';
+  mc.dataset.modalId = id;
   document.getElementById('overlay').classList.add('open');
   _logBearb = null;
-  _phaenoBearb = null;
-  renderSukzList(id); renderErnteList(id); renderPhaenoDisplay();
+  if(angemeldet){ renderSukzList(id); renderErnteList(id); }
 }
 
 function renderSukzList(id){
@@ -1493,6 +1610,8 @@ function renderSukzList(id){
   });
   renderLogKnoepfe('sukz', id);
   logVorschlaege('sukz');
+  const anz = document.getElementById('beob-anzahl');
+  if(anz) anz.textContent = src.length || '';
 }
 function renderErnteList(id){
   const list = document.getElementById('ernte-list');
@@ -1517,6 +1636,8 @@ function renderErnteList(id){
   });
   renderLogKnoepfe('ernte', id);
   logVorschlaege('ernte');
+  const info = document.getElementById('ernte-info');
+  if(info) info.textContent = karteErnteInfo(id);
   renderErnteChart(id);
 }
 function renderErnteChart(id){
@@ -1631,7 +1752,8 @@ function renderLogKnoepfe(art, id){
     ? `<button class="btn" onclick="logSpeichern('${art}','${a}')">Änderung speichern</button>
        <button class="btn secondary" onclick="logZuruecksetzen('${art}','${a}')">Abbrechen</button>
        <button class="btn loeschen" onclick="logLoeschen('${art}','${a}')">Löschen</button>`
-    : `<button class="btn" onclick="logSpeichern('${art}','${a}')">${LOG_ARTEN[art].neu}</button>`;
+    : `<button class="btn" onclick="logSpeichern('${art}','${a}')">${LOG_ARTEN[art].neu}</button>
+       <button class="btn secondary" onclick="logZuruecksetzen('${art}','${a}')">Abbrechen</button>`;
 }
 /* Vorschläge beim Tippen: alle bisherigen Bemerkungen bzw. Beobachtungen,
    über alle Bäume. */
@@ -1659,9 +1781,27 @@ function logFormular(art, werte){
 function logNeuZeichnen(art, id){
   if(art==='sukz') renderSukzList(id); else renderErnteList(id);
 }
+/* Seit v116 ist das Formular zu, bis „Ernte eintragen“ bzw. „Beobachtung
+   eintragen“ oder ein Eintrag angetippt wird. */
+function logFormZeigen(art, an){
+  const form = document.getElementById(`${art}-form`);
+  const neu = document.getElementById(`${art}-neu`);
+  if(form) form.hidden = !an;
+  if(neu) neu.hidden = an;
+}
+function logNeu(art, id){
+  if(_logBearb && _logBearb.art!==art) logZuruecksetzen(_logBearb.art, _logBearb.id);
+  _logBearb = null;
+  logFormular(art, {jahr:heuteISO(), datum:heuteISO()});
+  logFormZeigen(art, true);
+  logNeuZeichnen(art, id);
+  const erstes = document.getElementById(art==='sukz' ? 'sukz-text' : 'ernte-menge');
+  if(erstes) erstes.focus();
+}
 function logZuruecksetzen(art, id){
   if(_logBearb && _logBearb.art===art) _logBearb = null;
   if(document.getElementById(`${art}-form`)) logFormular(art, {jahr:heuteISO(), datum:heuteISO()});
+  logFormZeigen(art, false);
   logNeuZeichnen(art, id);
 }
 function logBearbeiten(art, id, si){
@@ -1671,6 +1811,7 @@ function logBearbeiten(art, id, si){
   if(_logBearb && _logBearb.art!==art) logZuruecksetzen(_logBearb.art, _logBearb.id);
   _logBearb = {art, id, alt: Object.assign({}, it)};
   logFormular(art, it);
+  logFormZeigen(art, true);
   logNeuZeichnen(art, id);
   document.getElementById(`${art}-form`).scrollIntoView({block:'nearest', behavior:'smooth'});
 }
@@ -1799,6 +1940,30 @@ function renderPhaenoDisplay(){
        <button class="btn secondary" onclick="phaenoZuruecksetzen()">Abbrechen</button>
        <button class="btn loeschen" onclick="phaenoLoeschen()">Löschen</button>`
     : `<button class="btn" onclick="addPhaenoEreignis()">Speichern</button>`;
+}
+/* Seit v116 im Sortenberater statt in jeder Baumkarte: Die Ereignisse gelten
+   für den ganzen Hof. Nur angemeldet sichtbar; Besucher brauchen sie nicht. */
+function renderPhaenoBox(){
+  const box = document.getElementById('phaeno-box');
+  if(!box) return;
+  const an = isEditMode();
+  box.hidden = !an;
+  if(!an){ box.querySelector('.ka-inhalt').innerHTML = ''; return; }
+  if(karteOffen('phaeno')) box.open = true;
+  const inhalt = box.querySelector('.ka-inhalt');
+  if(!document.getElementById('phaeno-form')){
+    inhalt.innerHTML = `<div id="phaeno-display"></div>
+      <div class="addlog" id="phaeno-form">
+        <select id="phaeno-key" class="txt">
+          <option value="holunder_bluete">Schwarzer Holunder – Blühbeginn</option>
+          <option value="holunder_vollbluete">Schwarzer Holunder – Vollblüte</option>
+          <option value="knaeulgras_rispenschieben">Wiesen-Knäuelgras – Rispenschieben</option>
+        </select>
+        <input type="date" id="phaeno-datum" value="${heuteISO()}">
+        <div class="addlog-knoepfe" id="phaeno-knoepfe"></div>
+      </div>`;
+  }
+  renderPhaenoDisplay();
 }
 function phaenoZuruecksetzen(){
   _phaenoBearb = null;

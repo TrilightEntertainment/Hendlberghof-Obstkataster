@@ -481,6 +481,7 @@ function activateTab(tabName){
     }
   }
   if(tabName==='pruefung' && typeof renderPruefung==='function') renderPruefung();
+  if(tabName==='sortenberater' && typeof renderPhaenoBox==='function') renderPhaenoBox();
   if(tabName==='daten'){
     renderPreislistenAdmin();
     renderBestellhistorie();

@@ -71,6 +71,7 @@ function applyEditModeUI(){
   }
   renderBaumTable();
   renderPins();
+  if(typeof renderPhaenoBox === 'function') renderPhaenoBox();
   const zeigeEdit = on;
   const placeBtn = document.getElementById('btn-place-mode');
   const unplacedSel = document.getElementById('unplaced-select');

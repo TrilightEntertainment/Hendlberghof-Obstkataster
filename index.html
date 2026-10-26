@@ -317,6 +317,40 @@
   .addlog-knoepfe{display:flex;gap:6px;flex-wrap:wrap;}
   .btn.loeschen{color:var(--dachziegel);border-color:var(--dachziegel);}
   .btn.loeschen:hover{background:rgba(178,84,58,.06);}
+  /* Baumkarte (v116): Kopfzeile mit Symbolen, Lage, zuklappbare Abschnitte */
+  #modal-content [hidden],#phaeno-box[hidden]{display:none!important;}
+  .karte-kopfzeile{display:flex;justify-content:flex-end;gap:2px;margin:-14px -14px 0 0;}
+  .karte-symbol{background:none;border:none;width:42px;height:42px;display:inline-flex;align-items:center;justify-content:center;color:var(--muted);cursor:pointer;border-radius:8px;padding:0;}
+  .karte-symbol:hover{color:var(--waldrand);}
+  .karte-symbol.gemerkt{color:var(--stroh);}
+  .karte-symbol.gemerkt svg{fill:rgba(217,180,88,.25);}
+  .karte-unterzeile{color:var(--muted);font-size:.85rem;margin:-6px 0 12px;line-height:1.5;}
+  .karte-lage{display:flex;align-items:center;justify-content:space-between;gap:10px;border:1px solid var(--rand);border-radius:10px;padding:9px 12px;margin-bottom:8px;font-size:.9rem;}
+  .karte-lage .kl-ort{display:inline-flex;align-items:center;gap:6px;min-width:0;}
+  .karte-lage .kl-ort svg{flex-shrink:0;color:var(--stroh);}
+  .ka-link{background:none;border:none;padding:4px 0;font:inherit;font-size:.85rem;color:var(--waldrand);text-decoration:underline;text-underline-offset:3px;cursor:pointer;white-space:nowrap;}
+  .ka-link.inline{padding:0;font-size:inherit;color:inherit;}
+  .ka-link.warn{color:var(--dachziegel);margin-bottom:6px;}
+  .karte-kurz{font-size:.98rem;line-height:1.5;margin:0 0 10px;}
+  .karte-chips{margin-bottom:10px;}
+  .karte-chips .chip{display:inline-block;border:1px solid var(--rand);border-radius:14px;padding:3px 10px;font-size:.8rem;color:var(--muted);margin:0 4px 6px 0;}
+  details.karte-abschnitt{border-top:1px solid var(--stroh);}
+  details.karte-abschnitt>summary{list-style:none;cursor:pointer;padding:12px 0;}
+  details.karte-abschnitt>summary::-webkit-details-marker{display:none;}
+  .ka-kopf{display:flex;justify-content:space-between;align-items:center;gap:10px;}
+  .ka-titel{font-weight:600;color:var(--waldrand);font-size:.95rem;}
+  .ka-info{display:inline-flex;align-items:center;gap:6px;font-size:.8rem;color:var(--muted);text-align:right;}
+  .ka-pfeil{flex-shrink:0;transition:transform .15s;}
+  details[open]>summary .ka-pfeil{transform:rotate(90deg);}
+  .ka-vorschau{display:block;font-size:.85rem;color:var(--muted);margin-top:3px;line-height:1.4;}
+  details[open]>summary .ka-vorschau{display:none;}
+  .ka-inhalt{padding:0 0 14px;}
+  dl.kz{margin:0 0 8px;}
+  dl.kz>div{display:flex;gap:12px;padding:7px 0;border-bottom:1px solid var(--rand);font-size:.86rem;line-height:1.45;}
+  dl.kz dt{flex:0 0 34%;color:var(--muted);font-size:.78rem;padding-top:1px;}
+  dl.kz dd{margin:0;flex:1;min-width:0;}
+  .log-neu{margin:4px 0 8px;}
+  .phaeno-box{margin:0 0 12px;background:var(--weiss);border:1px solid var(--rand)!important;border-radius:var(--radius);padding:0 12px;}
   .phaeno-frueher{margin-top:4px;}
   .phaeno-frueher summary{cursor:pointer;font-size:.82rem;color:var(--muted);padding:6px 0;}
   .addlog input[type=number]{width:120px;}
@@ -721,6 +755,11 @@
   .addlog input[type=date]{display:block;-webkit-appearance:none;appearance:none;background:#fff;text-align:left;}
   .addlog-knoepfe .btn{flex:1 1 auto;min-height:44px;font-size:16px;}
   .log-list li.tippbar{min-height:44px;box-sizing:border-box;}
+  .nur-rechner{display:none!important;}
+  .modal{padding:20px 16px;}
+  .karte-kopfzeile{margin:-10px -6px 0 0;}
+  .log-neu{width:100%;min-height:44px;font-size:16px;}
+  details.karte-abschnitt>summary{padding:14px 0;}
 }
 </style>
 </head>
@@ -989,6 +1028,10 @@
   </div>
 </div>
 
+<details class="karte-abschnitt phaeno-box" id="phaeno-box" data-merk="phaeno" hidden>
+  <summary><span class="ka-kopf"><span class="ka-titel">Phänologie</span><span class="ka-info">für die Vorhersage<svg class="ka-pfeil" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><polyline points="9 6 15 12 9 18"/></svg></span></span></summary>
+  <div class="ka-inhalt"></div>
+</details>
 <div id="sb-count" style="font-family:'DM Sans',sans-serif;font-size:12px;color:var(--text-leicht);margin-bottom:12px"></div>
 <div id="res"><div class="sb-leer">Sorten suchen oder Standort-Berater aktivieren.</div></div>
 
@@ -1222,10 +1265,10 @@
 
 <!-- Aus einem einzelnen Script-Block herausgeloest (F6). Reihenfolge ist
      bindend: Ueber Dateigrenzen hinweg gibt es kein Hoisting mehr. -->
-<script src="js/kern.js?v=115"></script>
-<script src="js/kataster.js?v=115"></script>
-<script src="js/lageplan.js?v=115"></script>
-<script src="js/start.js?v=115"></script>
+<script src="js/kern.js?v=116"></script>
+<script src="js/kataster.js?v=116"></script>
+<script src="js/lageplan.js?v=116"></script>
+<script src="js/start.js?v=116"></script>
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-app.js";
@@ -1392,9 +1435,9 @@
     });
   }
 </script>
-<script src="js/berater.js?v=115"></script>
-<script src="js/shop.js?v=115"></script>
-<script src="js/konfigurator.js?v=115"></script>
-<script src="js/pruefung.js?v=115"></script>
+<script src="js/berater.js?v=116"></script>
+<script src="js/shop.js?v=116"></script>
+<script src="js/konfigurator.js?v=116"></script>
+<script src="js/pruefung.js?v=116"></script>
 </body>
 </html>
