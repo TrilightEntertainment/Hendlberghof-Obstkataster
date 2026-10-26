@@ -4,12 +4,8 @@
 # Legt den Datenbestand an drei Orten ab:
 #   1. Firestore  - der Live-Stand selbst (nichts zu tun, liegt bei Google)
 #   2. Dieser Mac - ~/Hendlberghof-Backups, privat, MIT Bestelldaten
-#   3. GitHub     - versioniert im Repo, OHNE Bestelldaten (das Repo ist oeffentlich)
-#
-# Punkt 3 lief urspruenglich als GitHub-Action. Das Anlegen der Workflow-Datei
-# scheiterte an einer fehlenden Token-Berechtigung, das normale git push
-# funktioniert aber. Deshalb erzeugt dieses Skript das Repo-Backup selbst und
-# schiebt es hoch - dasselbe Ergebnis ohne Sonderrechte.
+#   3. iCloud     - Zweitkopie ausser Haus, privat
+# Die fruehere Ablage auf GitHub ist seit 26.10.2026 abgeschaltet (siehe unten).
 #
 # Aufruf:  tools/backup_lokal.sh
 # Automatisch am 1. jedes Monats um 09:00 ueber ~/Library/LaunchAgents/
@@ -43,35 +39,13 @@ fi
 echo "-- lokal (mit Bestelldaten)" | tee -a "$LOG"
 python3 "$SKRIPT" --ziel "$ZIEL" --daten "$REPO/data" --mit-bestellungen 2>&1 | tee -a "$LOG"
 
-# --- 2. Versioniertes Backup im Repo (ohne Bestelldaten) --------------------
-if [ -d "$REPO/.git" ]; then
-  echo "-- GitHub (ohne Bestelldaten)" | tee -a "$LOG"
-
-  # Erst den Stand von GitHub holen, sonst scheitert der Push. --autostash
-  # rettet dabei unfertige Aenderungen im Arbeitsbaum.
-  git -C "$REPO" pull --quiet --rebase --autostash 2>&1 | tee -a "$LOG"
-
-  mkdir -p "$REPO/backup"
-  if python3 "$SKRIPT" --ziel "$REPO/backup" --daten "$REPO/data" 2>&1 | tee -a "$LOG"; then
-    git -C "$REPO" add backup/
-    # Nur den Backup-Ordner committen - andere Baustellen bleiben unberuehrt
-    if git -C "$REPO" diff --staged --quiet -- backup/; then
-      echo "   unveraendert - kein Commit noetig" | tee -a "$LOG"
-    else
-      git -C "$REPO" commit --quiet \
-        -m "Backup $MONAT: Firestore-Stand + Excel-Auswertung" -- backup/ 2>&1 | tee -a "$LOG"
-      if git -C "$REPO" push --quiet 2>&1 | tee -a "$LOG"; then
-        echo "   gepusht" | tee -a "$LOG"
-      else
-        echo "   HINWEIS: Push fehlgeschlagen (offline?) - Commit liegt lokal bereit" | tee -a "$LOG"
-      fi
-    fi
-  else
-    echo "   FEHLER beim Erzeugen des Repo-Backups" | tee -a "$LOG"
-  fi
-else
-  echo "-- kein Git-Repo unter $REPO - GitHub-Ablage uebersprungen" | tee -a "$LOG"
-fi
+# --- 2. Versioniertes Backup im Repo: ABGESCHALTET (26.10.2026) -------------
+# Bis Oktober 2026 legte dieser Schritt eine Kopie ohne Bestelldaten in den
+# Ordner backup/ des Repos und pushte sie. Das Repo ist oeffentlich, und die
+# Kopie enthielt Erntemengen und andere Betriebsdaten – einmal gepusht, bleiben
+# sie in der Git-Historie. Volkmar hat den Schritt am 26.10.2026 abgeschaltet;
+# gesichert wird nur noch privat (Schritt 1 hier am Mac, Schritt 5 in iCloud).
+echo "-- GitHub-Ablage abgeschaltet (nur private Sicherung)" | tee -a "$LOG"
 
 # --- 3. Planungsunterlagen mitsichern (nur lokal!) ---------------------------
 # Plan, Agentenkontext und Projektstaende liegen bewusst NICHT im Repo: Sie
