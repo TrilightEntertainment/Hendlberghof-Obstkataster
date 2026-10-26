@@ -480,11 +480,8 @@ function activateTab(tabName){
   document.querySelectorAll('main > section').forEach(s=>s.style.display='none');
   document.getElementById('tab-'+tabName).style.display='block';
   if(tabName==='lageplan'){
-    renderPins();
-    if(typeof mapLayer!=='undefined' && mapLayer==='sat' && satMap){
-      renderSatMarkers();
-      setTimeout(()=>{ satMap.invalidateSize(); }, 50);
-    }
+    if(typeof mapLayer!=='undefined' && mapLayer==='sat') initSatMap();
+    else renderPins();
   }
   if(tabName==='pruefung' && typeof renderPruefung==='function') renderPruefung();
   if(tabName==='sortenberater' && typeof renderPhaenoBox==='function') renderPhaenoBox();
@@ -510,17 +507,7 @@ function showOnLageplan(id, vonKarte){
   activateTab('lageplan');
   _lageplanZurueck = vonKarte ? {id, tab: vorher} : null;
   renderLageplanZurueck();
-  if(typeof mapLayer!=='undefined' && mapLayer==='sat') setMapLayer('foto');
-  document.querySelectorAll('.pin.selected').forEach(p=>p.classList.remove('selected'));
-  const pin = document.querySelector(`.pin[data-id="${id}"]`);
-  if(pin){
-    pin.scrollIntoView({behavior:'smooth', block:'center', inline:'center'});
-    pin.classList.add('blink');
-    pin.addEventListener('animationend', ()=>{
-      pin.classList.remove('blink');
-      pin.classList.add('selected');
-    }, {once:true});
-  }
+  lageZeigen(id);
 }
 
 function renderLageplanZurueck(){

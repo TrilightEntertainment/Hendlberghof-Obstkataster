@@ -1541,7 +1541,7 @@ function openBaumModal(id){
   const angemeldet = isEditMode();
   const ti = escAttr(id);
   const standort = karteStandort(t, merged);
-  const hatNadel = !!state.positions[id];
+  const hatNadel = !!(state.positions[id] || (state.satPositions||{})[id]);
   const pflueck = kartePflueckText(merged.pflueckzeitpunkt||merged.pflueck_reifezeit);
   const bestellbar = t.sorte && getBestellbarkeit(t.sorte, {frucht: t.frucht}).zustand !== 'nur_beratung';
   const gemerkt = !angemeldet && !!karteGemerkt(t.sorte);
