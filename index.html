@@ -261,7 +261,7 @@
   }
   .pdf-overlay{
     position:fixed;inset:0;background:rgba(30,25,18,.7);
-    display:none;align-items:center;justify-content:center;z-index:60;padding:18px;
+    display:none;align-items:center;justify-content:center;z-index:1100;padding:18px;
   }
   .pdf-overlay.open{display:flex;}
   .pdf-box{
@@ -285,6 +285,8 @@
     .pdf-overlay{padding:0;}
     .pdf-box{height:100vh;max-width:none;border-radius:0;}
     .pdf-title{font-size:.85rem;width:100%;}
+    /* Am iPhone als Startbildschirm-App liegt sonst die Statusleiste über der Leiste. */
+    .pdf-bar{padding-top:calc(10px + env(safe-area-inset-top));}
   }
   .modal .close{position:absolute;top:14px;right:16px;background:none;border:none;font-size:1.4rem;cursor:pointer;color:var(--muted);}
   .modal h2{font-family:'Cormorant Garamond',serif;color:var(--ackerde);margin-top:0;font-size:1.7rem;}
@@ -340,15 +342,14 @@
   .ka-kopf{display:flex;justify-content:space-between;align-items:center;gap:10px;}
   .ka-titel{font-weight:600;color:var(--waldrand);font-size:.95rem;}
   .ka-info{display:inline-flex;align-items:center;gap:6px;font-size:.8rem;color:var(--muted);text-align:right;}
-  /* Zuklappen deutlich (v117): Pfeil nach unten; offen zeigt er nach oben
-     in einem kleinen goldenen Kreis. Kein Text (Volkmar 26.10.2026). */
-  .ka-pfeil{flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border:1px solid transparent;border-radius:50%;color:var(--muted);}
+  /* Auf-/Zuklappen (v118): immer derselbe goldene Kreis, nur der Pfeil
+     dreht sich – offen und zu sehen gleich aus (visuelle Konsistenz). */
+  .ka-pfeil{flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border:1px solid var(--stroh);border-radius:50%;color:var(--muted);}
   .ka-pfeil svg{transition:transform .15s;}
-  details[open]>summary .ka-pfeil{border-color:var(--stroh);color:var(--waldrand);}
+  details[open]>summary .ka-pfeil{color:var(--waldrand);}
   details[open]>summary .ka-pfeil svg{transform:rotate(180deg);}
   /* Offene Kopfzeile bleibt beim Scrollen stehen, solange man im Abschnitt ist. */
   #modal-content details.karte-abschnitt[open]>summary{position:sticky;top:0;z-index:3;background:#fff;box-shadow:0 -28px 0 0 #fff;}
-  details.karte-abschnitt[open]>.ka-inhalt{border-left:1px solid var(--stroh);padding-left:12px;margin-left:2px;}
   .lageplan-zurueck{display:flex;align-items:center;gap:8px;width:100%;min-height:44px;margin:0 0 10px;padding:8px 12px;background:#fff;border:1px solid var(--stroh);border-radius:10px;font:inherit;font-size:.9rem;color:var(--waldrand);text-align:left;cursor:pointer;}
   .lageplan-zurueck .lz-sorte{font-family:Georgia,serif;}
   .ka-vorschau{display:block;font-size:.85rem;color:var(--muted);margin-top:3px;line-height:1.4;}
@@ -1202,7 +1203,7 @@
   <div class="modal" style="max-width:700px;max-height:90vh;overflow-y:auto;">
     <div class="import-modal-header">
       <h3>Sorten importieren</h3>
-      <button class="btn secondary" onclick="closeImportModal()">✕ Schließen</button>
+      <button class="btn secondary" onclick="closeImportModal()"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" focusable="false" style="vertical-align:-2px;"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg> Schließen</button>
     </div>
     
     <!-- Schritt 1: Datei wählen -->
@@ -1259,7 +1260,7 @@
       <a class="pdf-act" id="pdf-download" href="#" download>
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M4 21h16"/></svg>
         Herunterladen</a>
-      <button class="pdf-act" onclick="closeArcheViewer()">✕ Schließen</button>
+      <button class="pdf-act" onclick="closeArcheViewer()"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" focusable="false"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg> Schließen</button>
     </div>
     <div class="pdf-frame" id="pdf-frame" title="Arche-Noah-Sortenblatt" style="overflow:auto;background:#f4f2ec;"></div>
   </div>
@@ -1274,10 +1275,10 @@
 
 <!-- Aus einem einzelnen Script-Block herausgeloest (F6). Reihenfolge ist
      bindend: Ueber Dateigrenzen hinweg gibt es kein Hoisting mehr. -->
-<script src="js/kern.js?v=117"></script>
-<script src="js/kataster.js?v=117"></script>
-<script src="js/lageplan.js?v=117"></script>
-<script src="js/start.js?v=117"></script>
+<script src="js/kern.js?v=118"></script>
+<script src="js/kataster.js?v=118"></script>
+<script src="js/lageplan.js?v=118"></script>
+<script src="js/start.js?v=118"></script>
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-app.js";
@@ -1444,9 +1445,9 @@
     });
   }
 </script>
-<script src="js/berater.js?v=117"></script>
-<script src="js/shop.js?v=117"></script>
-<script src="js/konfigurator.js?v=117"></script>
-<script src="js/pruefung.js?v=117"></script>
+<script src="js/berater.js?v=118"></script>
+<script src="js/shop.js?v=118"></script>
+<script src="js/konfigurator.js?v=118"></script>
+<script src="js/pruefung.js?v=118"></script>
 </body>
 </html>
