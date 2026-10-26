@@ -102,6 +102,9 @@ function doUndo(){
     state.ernten[data.id].splice(data.idx, 0, data.item);
     _mittelCache=null;
     saveState(); renderErnteList(data.id);
+  } else if(type==='phaeno'){
+    setPhaenoEreignis(data.jahr, data.key, data.datum);
+    renderPhaenoDisplay();
   } else if(type==='baum'){
     state.customTrees.push(data.tree);
     if(data.pos) state.positions[data.id] = data.pos;

@@ -1449,17 +1449,17 @@ function openBaumModal(id){
     <ul class="log-list" id="ernte-list"></ul>
     <div id="ernte-chart-wrap" style="margin-bottom:10px;"></div>
 
-    ${(isEditMode() || (state.phaenologie && Object.keys(state.phaenologie).some(y=>Object.keys(state.phaenologie[y]).length>0)))
+    ${(isEditMode() || phaenoAlle().length)
       ? `<div class="section-title">Phänologie-Ereignisse</div>
-    <div class="field" id="phaeno-display"></div>
-    ${isEditMode()? `<div class="addlog">
+    <div id="phaeno-display"></div>
+    ${isEditMode()? `<div class="addlog" id="phaeno-form">
       <select id="phaeno-key" class="txt">
         <option value="holunder_bluete">Schwarzer Holunder – Blühbeginn</option>
         <option value="holunder_vollbluete">Schwarzer Holunder – Vollblüte</option>
         <option value="knaeulgras_rispenschieben">Wiesen-Knäuelgras – Rispenschieben</option>
       </select>
       <input type="date" id="phaeno-datum" value="${heuteISO()}">
-      <div class="addlog-knoepfe"><button class="btn" onclick="addPhaenoEreignis()">Speichern</button></div>
+      <div class="addlog-knoepfe" id="phaeno-knoepfe"></div>
     </div>` : ''}`
       : ''}
   `;
@@ -1474,6 +1474,7 @@ function openBaumModal(id){
   document.getElementById('modal-content').dataset.modalId = id;
   document.getElementById('overlay').classList.add('open');
   _logBearb = null;
+  _phaenoBearb = null;
   renderSukzList(id); renderErnteList(id); renderPhaenoDisplay();
 }
 
@@ -1488,7 +1489,7 @@ function renderSukzList(id){
   indices.forEach(si=>{
     const it = src[si];
     const datumAnzeige = it.jahr? new Date(it.jahr).toLocaleDateString('de-AT',{day:'2-digit',month:'2-digit',year:'numeric'}) : '–';
-    list.appendChild(logEintragLi('sukz', id, si, `<b>${datumAnzeige}</b> — ${escHtml(it.text)}`, editing, si===bearbIdx));
+    list.appendChild(logEintragLi(`<b>${datumAnzeige}</b> — ${escHtml(it.text)}`, editing, si===bearbIdx, () => logBearbeiten('sukz', id, si)));
   });
   renderLogKnoepfe('sukz', id);
   logVorschlaege('sukz');
@@ -1512,7 +1513,7 @@ function renderErnteList(id){
         mengeText = String(it.menge);
       }
     }
-    list.appendChild(logEintragLi('ernte', id, si, `<b>${it.datum||'–'}</b> — ${mengeText} ${it.bemerkung? `(${escHtml(it.bemerkung)})`:''}`, editing, si===bearbIdx));
+    list.appendChild(logEintragLi(`<b>${it.datum||'–'}</b> — ${mengeText} ${it.bemerkung? `(${escHtml(it.bemerkung)})`:''}`, editing, si===bearbIdx, () => logBearbeiten('ernte', id, si)));
   });
   renderLogKnoepfe('ernte', id);
   logVorschlaege('ernte');
@@ -1608,7 +1609,9 @@ function logBearbIndex(art, id){
   if(!_logBearb || _logBearb.art!==art || _logBearb.id!==id) return -1;
   return (LOG_ARTEN[art].quelle()[id]||[]).findIndex(it => logGleich(art, it, _logBearb.alt));
 }
-function logEintragLi(art, id, si, inhaltHtml, editing, inBearb){
+/* Eine Listenzeile; angemeldet antippbar (Stift), onTipp öffnet sie im Formular.
+   Gilt für Sukzession, Ernte und Phänologie. */
+function logEintragLi(inhaltHtml, editing, inBearb, onTipp){
   const li = document.createElement('li');
   li.innerHTML = `<span>${inhaltHtml}</span>`;
   if(!editing) return li;
@@ -1616,8 +1619,8 @@ function logEintragLi(art, id, si, inhaltHtml, editing, inBearb){
   li.setAttribute('role', 'button');
   li.tabIndex = 0;
   li.insertAdjacentHTML('beforeend', `<svg class="stift" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>`);
-  li.addEventListener('click', () => logBearbeiten(art, id, si));
-  li.addEventListener('keydown', e => { if(e.key==='Enter' || e.key===' '){ e.preventDefault(); logBearbeiten(art, id, si); } });
+  li.addEventListener('click', onTipp);
+  li.addEventListener('keydown', e => { if(e.key==='Enter' || e.key===' '){ e.preventDefault(); onTipp(); } });
   return li;
 }
 function renderLogKnoepfe(art, id){
@@ -1738,31 +1741,111 @@ function delErnte(id, idx){
 }
 
 const _PHAENO_LABELS={holunder_bluete:'Holunder-Blühbeginn',holunder_vollbluete:'Holunder-Vollblüte',knaeulgras_rispenschieben:'Knäuelgras-Rispenschieben'};
+/* ---------- Phänologie: anlegen, ändern, löschen ----------
+   Je Jahr und Ereignis gibt es genau ein Datum: state.phaenologie[jahr][key].
+   Das Jahr kommt aus dem gewählten Datum — bis v114 war es immer das laufende
+   Jahr, auch wenn das Datum in einem anderen lag. Gelöscht wird durch null,
+   nicht durch Entfernen des Schlüssels; so kommt die Löschung sicher auf allen
+   Geräten an. Frühere Jahre stehen zugeklappt unter den aktuellen. */
+let _phaenoBearb = null;   /* null oder { jahr, key, datum } des angetippten Eintrags */
+
+function phaenoAlle(){
+  const alle = [];
+  Object.keys(state.phaenologie||{}).forEach(jahr => {
+    Object.entries(state.phaenologie[jahr]||{}).forEach(([key, datum]) => { if(datum) alle.push({jahr, key, datum}); });
+  });
+  return alle.sort((a,b) => String(b.datum).localeCompare(String(a.datum)));
+}
+function phaenoDatum(v){
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(v||''));
+  return m ? `${m[3]}.${m[2]}.${m[1]}` : String(v||'–');
+}
+function phaenoZeile(e, editing){
+  const tag = tagDesJahres(e.datum);
+  const std = PHAENO_STANDARDS[e.key];
+  const diff = (std!=null && !isNaN(std)) ? tag-std : null;
+  const diffText = (diff!=null && !isNaN(diff)) ? ` <span style="font-size:.78rem;color:${diff<0?'var(--gruen)':'var(--dachziegel)'};">(${diff>0?'+':''}${diff} Tage vs. Standard)</span>` : '';
+  const inBearb = !!_phaenoBearb && _phaenoBearb.jahr===e.jahr && _phaenoBearb.key===e.key;
+  return logEintragLi(`<b>${_PHAENO_LABELS[e.key]||escHtml(e.key)}:</b> ${phaenoDatum(e.datum)}${diffText}`, editing, inBearb, () => phaenoBearbeiten(e));
+}
 function renderPhaenoDisplay(){
   const el=document.getElementById('phaeno-display');
   if(!el) return;
-  const jahr=new Date().getFullYear();
-  const phaeno=state.phaenologie&&state.phaenologie[jahr]?state.phaenologie[jahr]:null;
-  const entries=phaeno?Object.entries(phaeno).filter(([,v])=>v):[];
-  if(!entries.length){ el.innerHTML='<span style="color:var(--text-mid,#6B7280);font-size:.85rem;">Noch keine Phänologie-Ereignisse für '+jahr+' eingetragen.</span>'; return; }
-  el.innerHTML=entries.map(([k,v])=>{
-    const tag=tagDesJahres(v);
-    const std=PHAENO_STANDARDS[k];
-    const diff=(std!=null&&!isNaN(std))? tag-std : null;
-    const diffText=(diff!=null&&!isNaN(diff))?` <span style="font-size:.78rem;color:${diff<0?'var(--gruen)':'var(--dachziegel)'};">(${diff>0?'+':''}${diff} Tage vs. Standard)</span>`:'';
-    return `<div style="margin-bottom:4px;"><b>${_PHAENO_LABELS[k]||k}:</b> ${v}${diffText}</div>`;
-  }).join('');
+  const jahrJetzt = String(new Date().getFullYear());
+  const alle = phaenoAlle();
+  const aktuell = alle.filter(e => e.jahr===jahrJetzt);
+  const frueher = alle.filter(e => e.jahr!==jahrJetzt);
+  const editing = isEditMode();
+  const ul = document.createElement('ul');
+  ul.className = 'log-list';
+  if(!aktuell.length) ul.innerHTML = `<li class="empty" style="background:none;">Noch keine Phänologie-Ereignisse für ${jahrJetzt} eingetragen.</li>`;
+  aktuell.forEach(e => ul.appendChild(phaenoZeile(e, editing)));
+  el.innerHTML = '';
+  el.appendChild(ul);
+  if(frueher.length){
+    const det = document.createElement('details');
+    det.className = 'phaeno-frueher';
+    det.innerHTML = `<summary>Frühere Jahre (${frueher.length})</summary>`;
+    const ul2 = document.createElement('ul');
+    ul2.className = 'log-list';
+    frueher.forEach(e => ul2.appendChild(phaenoZeile(e, editing)));
+    det.appendChild(ul2);
+    if(_phaenoBearb && _phaenoBearb.jahr!==jahrJetzt) det.open = true;
+    el.appendChild(det);
+  }
+  const kn = document.getElementById('phaeno-knoepfe');
+  if(kn) kn.innerHTML = _phaenoBearb
+    ? `<button class="btn" onclick="addPhaenoEreignis()">Änderung speichern</button>
+       <button class="btn secondary" onclick="phaenoZuruecksetzen()">Abbrechen</button>
+       <button class="btn loeschen" onclick="phaenoLoeschen()">Löschen</button>`
+    : `<button class="btn" onclick="addPhaenoEreignis()">Speichern</button>`;
+}
+function phaenoZuruecksetzen(){
+  _phaenoBearb = null;
+  const d = document.getElementById('phaeno-datum');
+  if(d) d.value = heuteISO();
+  renderPhaenoDisplay();
+}
+function phaenoBearbeiten(e){
+  const form = document.getElementById('phaeno-form');
+  if(!form) return;
+  _phaenoBearb = {jahr:e.jahr, key:e.key, datum:e.datum};
+  document.getElementById('phaeno-key').value = e.key;
+  document.getElementById('phaeno-datum').value = e.datum;
+  renderPhaenoDisplay();
+  form.scrollIntoView({block:'nearest', behavior:'smooth'});
+}
+/* Noch derselbe Wert wie beim Antippen? Sonst hat ein anderes Gerät ihn
+   inzwischen geändert — dann nichts überschreiben. */
+function phaenoUnveraendert(){
+  const b = _phaenoBearb;
+  if(b && (state.phaenologie[b.jahr]||{})[b.key]===b.datum) return true;
+  showToast('Dieser Eintrag wurde inzwischen auf einem anderen Gerät geändert oder gelöscht. Bitte neu antippen.', 'error', 5000);
+  phaenoZuruecksetzen();
+  return false;
 }
 function addPhaenoEreignis(){
   const key=document.getElementById('phaeno-key').value;
   const datum=document.getElementById('phaeno-datum').value;
   if(!key) return;
   if(!datum){ showToast('Bitte ein Datum wählen.', 'error'); return; }
-  const jahr=new Date().getFullYear();
+  const jahr = datum.slice(0,4);
+  const b = _phaenoBearb;
+  if(b && !phaenoUnveraendert()) return;
+  const selbe = b && b.jahr===jahr && b.key===key;
+  const vorher = (state.phaenologie[jahr]||{})[key];
+  if(b && !selbe) getPhaeno(b.jahr)[b.key] = null;   /* Ereignis oder Jahr gewechselt: alten Platz leeren */
   setPhaenoEreignis(jahr, key, datum);
-  renderPhaenoDisplay();
-  showToast('Gespeichert', 'success');
-  document.getElementById('phaeno-datum').value=heuteISO();
+  showToast(b ? 'Änderung gespeichert'
+    : (vorher && vorher!==datum ? `Gespeichert – vorheriges Datum ${phaenoDatum(vorher)} ersetzt` : 'Gespeichert'), 'success', vorher && !b ? 5000 : 3000);
+  phaenoZuruecksetzen();
+}
+function phaenoLoeschen(){
+  if(!phaenoUnveraendert()) return;
+  const {jahr, key, datum} = _phaenoBearb;
+  setPhaenoEreignis(jahr, key, null);
+  setUndo('phaeno', {jahr, key, datum});
+  phaenoZuruecksetzen();
 }
 
 /* ---------- Modal: Sorten-Detail ---------- */
