@@ -1431,18 +1431,20 @@ function openBaumModal(id){
       : `<div class="field empty">Noch keine Position im Lageplan gesetzt.</div>`}
     <div class="section-title">Sukzessions-Dokumentation</div>
     <ul class="log-list" id="sukz-list"></ul>
-    ${isEditMode()? `<div class="addlog">
-      <input type="date" id="sukz-datum">
-      <input type="text" class="txt" id="sukz-text" placeholder="Beobachtung / Ereignis">
-      <button class="btn secondary" onclick="addSukz('${t.id}')">+ Eintrag</button>
+    ${isEditMode()? `<div class="addlog" id="sukz-form">
+      <input type="date" id="sukz-datum" value="${heuteISO()}">
+      <input type="text" class="txt" id="sukz-text" placeholder="Beobachtung / Ereignis" list="sukz-vorschlaege">
+      <datalist id="sukz-vorschlaege"></datalist>
+      <div class="addlog-knoepfe" id="sukz-knoepfe"></div>
     </div>` : ''}
 
     <div class="section-title">Ernte-Dokumentation</div>
-    ${isEditMode()? `<div class="addlog">
-      <input type="date" id="ernte-datum">
-      <input type="number" step="0.001" min="0" class="txt" id="ernte-menge" placeholder="Menge in kg" style="width:120px;">
-      <input type="text" class="txt" id="ernte-bem" placeholder="Bemerkung">
-      <button class="btn secondary" onclick="addErnte('${t.id}')">+ Eintrag</button>
+    ${isEditMode()? `<div class="addlog" id="ernte-form">
+      <input type="date" id="ernte-datum" value="${heuteISO()}">
+      <input type="number" step="0.001" min="0" class="txt" id="ernte-menge" placeholder="Menge in kg">
+      <input type="text" class="txt" id="ernte-bem" placeholder="Bemerkung" list="ernte-vorschlaege">
+      <datalist id="ernte-vorschlaege"></datalist>
+      <div class="addlog-knoepfe" id="ernte-knoepfe"></div>
     </div>` : ''}
     <ul class="log-list" id="ernte-list"></ul>
     <div id="ernte-chart-wrap" style="margin-bottom:10px;"></div>
@@ -1450,14 +1452,14 @@ function openBaumModal(id){
     ${(isEditMode() || (state.phaenologie && Object.keys(state.phaenologie).some(y=>Object.keys(state.phaenologie[y]).length>0)))
       ? `<div class="section-title">Phänologie-Ereignisse</div>
     <div class="field" id="phaeno-display"></div>
-    ${isEditMode()? `<div class="addlog" style="flex-wrap:wrap;">
-      <select id="phaeno-key" class="txt" style="width:200px;">
+    ${isEditMode()? `<div class="addlog">
+      <select id="phaeno-key" class="txt">
         <option value="holunder_bluete">Schwarzer Holunder – Blühbeginn</option>
         <option value="holunder_vollbluete">Schwarzer Holunder – Vollblüte</option>
         <option value="knaeulgras_rispenschieben">Wiesen-Knäuelgras – Rispenschieben</option>
       </select>
-      <input type="date" id="phaeno-datum">
-      <button class="btn secondary" onclick="addPhaenoEreignis()">+ Eintrag</button>
+      <input type="date" id="phaeno-datum" value="${heuteISO()}">
+      <div class="addlog-knoepfe"><button class="btn" onclick="addPhaenoEreignis()">Speichern</button></div>
     </div>` : ''}`
       : ''}
   `;
@@ -1471,6 +1473,7 @@ function openBaumModal(id){
   document.getElementById('modal-content').dataset.modalType = 'baum';
   document.getElementById('modal-content').dataset.modalId = id;
   document.getElementById('overlay').classList.add('open');
+  _logBearb = null;
   renderSukzList(id); renderErnteList(id); renderPhaenoDisplay();
 }
 
@@ -1481,13 +1484,14 @@ function renderSukzList(id){
   const indices = src.map((_,i)=>i).sort((a,b)=>String(src[b].jahr||'').localeCompare(String(src[a].jahr||'')));
   list.innerHTML = indices.length? '' : '<li class="empty" style="background:none;">Noch keine Einträge.</li>';
   const editing = isEditMode();
+  const bearbIdx = logBearbIndex('sukz', id);
   indices.forEach(si=>{
     const it = src[si];
-    const li = document.createElement('li');
     const datumAnzeige = it.jahr? new Date(it.jahr).toLocaleDateString('de-AT',{day:'2-digit',month:'2-digit',year:'numeric'}) : '–';
-    li.innerHTML = `<span><b>${datumAnzeige}</b> — ${escHtml(it.text)}</span>${editing? `<span class="del" onclick="delSukz('${id}', ${si})">✕</span>`:''}`;
-    list.appendChild(li);
+    list.appendChild(logEintragLi('sukz', id, si, `<b>${datumAnzeige}</b> — ${escHtml(it.text)}`, editing, si===bearbIdx));
   });
+  renderLogKnoepfe('sukz', id);
+  logVorschlaege('sukz');
 }
 function renderErnteList(id){
   const list = document.getElementById('ernte-list');
@@ -1496,9 +1500,9 @@ function renderErnteList(id){
   const indices = src.map((_,i)=>i).sort((a,b)=>(src[b].datum||'').localeCompare(src[a].datum||''));
   list.innerHTML = indices.length? '' : '<li class="empty" style="background:none;">Noch keine Einträge.</li>';
   const editing = isEditMode();
+  const bearbIdx = logBearbIndex('ernte', id);
   indices.forEach(si=>{
     const it = src[si];
-    const li = document.createElement('li');
     let mengeText = '';
     if(it.menge !== null && it.menge !== undefined && it.menge !== ''){
       const m = typeof it.menge === 'string' ? parseFloat(it.menge) : it.menge;
@@ -1508,9 +1512,10 @@ function renderErnteList(id){
         mengeText = String(it.menge);
       }
     }
-    li.innerHTML = `<span><b>${it.datum||'–'}</b> — ${mengeText} ${it.bemerkung? '('+escHtml(it.bemerkung)+')':''}</span>${editing? `<span class="del" onclick="delErnte('${id}', ${si})">✕</span>`:''}`;
-    list.appendChild(li);
+    list.appendChild(logEintragLi('ernte', id, si, `<b>${it.datum||'–'}</b> — ${mengeText} ${it.bemerkung? `(${escHtml(it.bemerkung)})`:''}`, editing, si===bearbIdx));
   });
+  renderLogKnoepfe('ernte', id);
+  logVorschlaege('ernte');
   renderErnteChart(id);
 }
 function renderErnteChart(id){
@@ -1574,33 +1579,154 @@ function renderErnteChart(id){
   wrap.innerHTML = svg;
 }
 
-function addSukz(id){
-  const datum = document.getElementById('sukz-datum').value;
-  const text = document.getElementById('sukz-text').value.trim();
-  if(!datum || !text) return;
-  if(!state.sukzession[id]) state.sukzession[id]=[];
-  state.sukzession[id].push({jahr:datum, text});
-  saveState(); renderSukzList(id);
-  document.getElementById('sukz-datum').value=''; document.getElementById('sukz-text').value='';
+/* ---------- Sukzession und Ernte: anlegen, ändern, löschen ----------
+   Angemeldet ist jeder Eintrag antippbar: Er wandert ins Formular, der Knopf
+   heißt dann „Änderung speichern", daneben Abbrechen und Löschen. Ein eigenes
+   ✕ je Zeile gibt es nicht mehr — es war am Handy zu klein und löschte ohne
+   Rückfrage.
+   Die Einträge haben keine eigene Kennung, nur ihre Stelle in der Liste. Die
+   kann sich verschieben, wenn ein anderes Gerät zwischen Antippen und
+   Speichern dieselbe Liste ändert. Deshalb merkt sich die Bearbeitung den
+   Inhalt und sucht den Eintrag beim Speichern danach; ist er weg, wird nichts
+   überschrieben. */
+const LOG_ARTEN = {
+  sukz:  { felder:['jahr','text'],               quelle:()=>state.sukzession, feld:'text',      neu:'Beobachtung speichern', gespeichert:'Beobachtung gespeichert' },
+  ernte: { felder:['datum','menge','bemerkung'], quelle:()=>state.ernten,     feld:'bemerkung', neu:'Ernte speichern',       gespeichert:'Ernte gespeichert' }
+};
+let _logBearb = null;   /* null oder { art, id, alt } — alt ist eine Kopie des angetippten Eintrags */
+
+/* Heute als JJJJ-MM-TT in Ortszeit — toISOString() wäre UTC und zeigte
+   nach Mitternacht bis 2 Uhr noch den Vortag. */
+function heuteISO(){
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
+function logGleich(art, a, b){
+  return LOG_ARTEN[art].felder.every(f => String(a[f] ?? '') === String(b[f] ?? ''));
+}
+function logBearbIndex(art, id){
+  if(!_logBearb || _logBearb.art!==art || _logBearb.id!==id) return -1;
+  return (LOG_ARTEN[art].quelle()[id]||[]).findIndex(it => logGleich(art, it, _logBearb.alt));
+}
+function logEintragLi(art, id, si, inhaltHtml, editing, inBearb){
+  const li = document.createElement('li');
+  li.innerHTML = `<span>${inhaltHtml}</span>`;
+  if(!editing) return li;
+  li.className = inBearb ? 'tippbar in-bearb' : 'tippbar';
+  li.setAttribute('role', 'button');
+  li.tabIndex = 0;
+  li.insertAdjacentHTML('beforeend', `<svg class="stift" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>`);
+  li.addEventListener('click', () => logBearbeiten(art, id, si));
+  li.addEventListener('keydown', e => { if(e.key==='Enter' || e.key===' '){ e.preventDefault(); logBearbeiten(art, id, si); } });
+  return li;
+}
+function renderLogKnoepfe(art, id){
+  const el = document.getElementById(`${art}-knoepfe`);
+  if(!el) return;
+  const a = escAttr(id);
+  el.innerHTML = (_logBearb && _logBearb.art===art && _logBearb.id===id)
+    ? `<button class="btn" onclick="logSpeichern('${art}','${a}')">Änderung speichern</button>
+       <button class="btn secondary" onclick="logZuruecksetzen('${art}','${a}')">Abbrechen</button>
+       <button class="btn loeschen" onclick="logLoeschen('${art}','${a}')">Löschen</button>`
+    : `<button class="btn" onclick="logSpeichern('${art}','${a}')">${LOG_ARTEN[art].neu}</button>`;
+}
+/* Vorschläge beim Tippen: alle bisherigen Bemerkungen bzw. Beobachtungen,
+   über alle Bäume. */
+function logVorschlaege(art){
+  const dl = document.getElementById(`${art}-vorschlaege`);
+  if(!dl) return;
+  const feld = LOG_ARTEN[art].feld;
+  const werte = new Set();
+  Object.values(LOG_ARTEN[art].quelle()||{}).forEach(arr => (arr||[]).forEach(it => {
+    const w = String(it[feld]||'').trim();
+    if(w) werte.add(w);
+  }));
+  dl.innerHTML = [...werte].sort((a,b)=>a.localeCompare(b,'de')).map(w=>`<option value="${escAttr(w)}">`).join('');
+}
+function logFormular(art, werte){
+  if(art==='sukz'){
+    document.getElementById('sukz-datum').value = werte.jahr||'';
+    document.getElementById('sukz-text').value = werte.text||'';
+  } else {
+    document.getElementById('ernte-datum').value = werte.datum||'';
+    document.getElementById('ernte-menge').value = (werte.menge===null || werte.menge===undefined) ? '' : String(werte.menge);
+    document.getElementById('ernte-bem').value = werte.bemerkung||'';
+  }
+}
+function logNeuZeichnen(art, id){
+  if(art==='sukz') renderSukzList(id); else renderErnteList(id);
+}
+function logZuruecksetzen(art, id){
+  if(_logBearb && _logBearb.art===art) _logBearb = null;
+  if(document.getElementById(`${art}-form`)) logFormular(art, {jahr:heuteISO(), datum:heuteISO()});
+  logNeuZeichnen(art, id);
+}
+function logBearbeiten(art, id, si){
+  const it = (LOG_ARTEN[art].quelle()[id]||[])[si];
+  if(!it || !document.getElementById(`${art}-form`)) return;
+  /* Nur eine Bearbeitung zugleich: das andere Formular wieder leeren. */
+  if(_logBearb && _logBearb.art!==art) logZuruecksetzen(_logBearb.art, _logBearb.id);
+  _logBearb = {art, id, alt: Object.assign({}, it)};
+  logFormular(art, it);
+  logNeuZeichnen(art, id);
+  document.getElementById(`${art}-form`).scrollIntoView({block:'nearest', behavior:'smooth'});
+}
+function logNichtGefunden(art, id){
+  showToast('Dieser Eintrag wurde inzwischen auf einem anderen Gerät geändert oder gelöscht. Bitte neu antippen.', 'error', 5000);
+  logZuruecksetzen(art, id);
+}
+function logSpeichern(art, id){
+  const bearb = (_logBearb && _logBearb.art===art && _logBearb.id===id) ? _logBearb : null;
+  let eintrag;
+  if(art==='sukz'){
+    /* Ältere Einträge tragen teils nur ein Jahr; das Datumsfeld kann das nicht
+       zeigen und bleibt leer. Leer heißt dann: alten Wert behalten. */
+    const jahr = document.getElementById('sukz-datum').value || (bearb ? bearb.alt.jahr : '');
+    const text = document.getElementById('sukz-text').value.trim();
+    if(!jahr){ showToast('Bitte ein Datum wählen.', 'error'); return; }
+    if(!text){ showToast('Bitte eine Beobachtung eintragen.', 'error'); return; }
+    eintrag = {jahr, text};
+  } else {
+    const mengeEl = document.getElementById('ernte-menge');
+    const mengeRaw = mengeEl.value.trim();
+    const datum = document.getElementById('ernte-datum').value || (bearb ? (bearb.alt.datum||'') : '');
+    const bemerkung = document.getElementById('ernte-bem').value.trim();
+    const menge = mengeRaw ? parseFloat(mengeRaw) : null;
+    if((mengeEl.validity && mengeEl.validity.badInput) || (mengeRaw && (isNaN(menge) || menge<0))){
+      showToast('Menge bitte als Zahl in kg eintragen.', 'error'); return;
+    }
+    if(!datum){ showToast('Bitte ein Datum wählen.', 'error'); return; }
+    if(menge===null && !bemerkung){ showToast('Bitte Menge oder Bemerkung eintragen.', 'error'); return; }
+    eintrag = {datum, menge, bemerkung};
+  }
+  const quelle = LOG_ARTEN[art].quelle();
+  if(!quelle[id]) quelle[id] = [];
+  if(bearb){
+    const idx = logBearbIndex(art, id);
+    if(idx<0){ logNichtGefunden(art, id); return; }
+    /* Unbekannte Felder des alten Eintrags mitnehmen. */
+    quelle[id][idx] = Object.assign({}, quelle[id][idx], eintrag);
+  } else {
+    quelle[id].push(eintrag);
+  }
+  saveState();
+  showToast(bearb ? 'Änderung gespeichert' : LOG_ARTEN[art].gespeichert, 'success');
+  logZuruecksetzen(art, id);
+}
+function logLoeschen(art, id){
+  const idx = logBearbIndex(art, id);
+  if(idx<0){ logNichtGefunden(art, id); return; }
+  _logBearb = null;
+  if(art==='sukz') delSukz(id, idx); else delErnte(id, idx);
+  logZuruecksetzen(art, id);
+}
+
 function delSukz(id, idx){
   const items = state.sukzession[id]||[];
   const item = items[idx];
   state.sukzession[id] = items.filter((it,i)=>i!==idx);
   saveState(); renderSukzList(id);
   setUndo('sukz', {id, idx, item});
-}
-function addErnte(id){
-  const datum = document.getElementById('ernte-datum').value;
-  const mengeRaw = document.getElementById('ernte-menge').value.trim();
-  const bemerkung = document.getElementById('ernte-bem').value.trim();
-  if(!datum && !mengeRaw) return;
-  const menge = mengeRaw ? parseFloat(mengeRaw) : null;
-  if(mengeRaw && isNaN(menge)) return;
-  if(!state.ernten[id]) state.ernten[id]=[];
-  state.ernten[id].push({datum, menge, bemerkung});
-  saveState(); renderErnteList(id);
-  document.getElementById('ernte-datum').value=''; document.getElementById('ernte-menge').value=''; document.getElementById('ernte-bem').value='';
 }
 function delErnte(id, idx){
   const items = state.ernten[id]||[];
@@ -1630,11 +1756,13 @@ function renderPhaenoDisplay(){
 function addPhaenoEreignis(){
   const key=document.getElementById('phaeno-key').value;
   const datum=document.getElementById('phaeno-datum').value;
-  if(!key||!datum) return;
+  if(!key) return;
+  if(!datum){ showToast('Bitte ein Datum wählen.', 'error'); return; }
   const jahr=new Date().getFullYear();
   setPhaenoEreignis(jahr, key, datum);
   renderPhaenoDisplay();
-  document.getElementById('phaeno-datum').value='';
+  showToast('Gespeichert', 'success');
+  document.getElementById('phaeno-datum').value=heuteISO();
 }
 
 /* ---------- Modal: Sorten-Detail ---------- */

@@ -307,9 +307,17 @@
     display:flex;justify-content:space-between;gap:10px;align-items:center;
   }
   .log-list li span.del{cursor:pointer;color:var(--dachziegel);font-weight:700;}
-  .addlog{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;}
-  .addlog input{padding:7px 9px;border:1px solid var(--border);border-radius:8px;font-size:.82rem;font-family:inherit;}
-  .addlog input[type=number]{width:90px;}
+  .log-list li.tippbar{cursor:pointer;}
+  .log-list li.tippbar .stift{flex-shrink:0;color:var(--muted);}
+  .log-list li.in-bearb{background:transparent;box-shadow:inset 0 0 0 1px var(--stroh);}
+  .log-list li.in-bearb .stift{color:var(--stroh);}
+  .addlog{display:flex;gap:6px;margin:8px 0;flex-wrap:wrap;}
+  .addlog input,.addlog select{padding:7px 9px;border:1px solid var(--border);border-radius:8px;font-size:.82rem;font-family:inherit;}
+  .addlog select{width:200px;}
+  .addlog-knoepfe{display:flex;gap:6px;flex-wrap:wrap;}
+  .btn.loeschen{color:var(--dachziegel);border-color:var(--dachziegel);}
+  .btn.loeschen:hover{background:rgba(178,84,58,.06);}
+  .addlog input[type=number]{width:120px;}
   .addlog input[type=date]{width:140px;}
   .addlog input.txt{flex:1;min-width:120px;}
 
@@ -700,6 +708,17 @@
   #tab-pruefung .pr-fund-raster{grid-template-columns:1fr;}
   #tab-pruefung .pr-angaben-raster{grid-template-columns:1fr;}
   #tab-pruefung .pr-fuss .btn{flex:1 1 100%;}
+}
+/* Handy: Ernte-, Sukzessions- und Phänologie-Formular untereinander, Felder
+   mit 16 px (sonst zoomt iOS beim Antippen) und 44 px Höhe. */
+@media (max-width:640px){
+  .addlog{flex-direction:column;align-items:stretch;}
+  .addlog input,.addlog input[type=number],.addlog input[type=date],.addlog input.txt,.addlog select{
+    width:100%;min-width:0;box-sizing:border-box;font-size:16px;min-height:44px;
+  }
+  .addlog input[type=date]{display:block;-webkit-appearance:none;appearance:none;background:#fff;text-align:left;}
+  .addlog-knoepfe .btn{flex:1 1 auto;min-height:44px;font-size:16px;}
+  .log-list li.tippbar{min-height:44px;box-sizing:border-box;}
 }
 </style>
 </head>
@@ -1201,10 +1220,10 @@
 
 <!-- Aus einem einzelnen Script-Block herausgeloest (F6). Reihenfolge ist
      bindend: Ueber Dateigrenzen hinweg gibt es kein Hoisting mehr. -->
-<script src="js/kern.js?v=113"></script>
-<script src="js/kataster.js?v=113"></script>
-<script src="js/lageplan.js?v=113"></script>
-<script src="js/start.js?v=113"></script>
+<script src="js/kern.js?v=114"></script>
+<script src="js/kataster.js?v=114"></script>
+<script src="js/lageplan.js?v=114"></script>
+<script src="js/start.js?v=114"></script>
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-app.js";
@@ -1371,9 +1390,9 @@
     });
   }
 </script>
-<script src="js/berater.js?v=113"></script>
-<script src="js/shop.js?v=113"></script>
-<script src="js/konfigurator.js?v=113"></script>
-<script src="js/pruefung.js?v=113"></script>
+<script src="js/berater.js?v=114"></script>
+<script src="js/shop.js?v=114"></script>
+<script src="js/konfigurator.js?v=114"></script>
+<script src="js/pruefung.js?v=114"></script>
 </body>
 </html>
