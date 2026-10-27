@@ -436,6 +436,23 @@
   .lp-legende{display:flex;gap:6px 16px;flex-wrap:wrap;align-items:center;font-size:.78rem;color:var(--muted);margin-top:8px;}
   .lp-legende > span{display:inline-flex;align-items:center;gap:4px;}
   .lp-legende .kp{margin:0;}
+  .lp-bearbeiten .kp-huelle{pointer-events:none;opacity:.45;}
+  .lp-planung{display:inline-flex;align-items:center;gap:6px;cursor:pointer;min-height:32px;}
+  .lp-planung input{width:16px;height:16px;margin:0;accent-color:var(--waldrand);}
+  .lp-label{background:rgba(40,54,42,.72);color:#F1EDE2;border:none;border-radius:4px;box-shadow:none;font:500 .72rem/1.2 'DM Sans',system-ui,sans-serif;padding:2px 6px;white-space:nowrap;}
+  .lp-label::before{display:none;}
+  .lp-fern .lp-label{display:none;}
+  .lp-bearb{border:1px solid var(--stroh);border-radius:var(--radius);background:var(--weiss);padding:10px 12px;margin-bottom:10px;display:flex;flex-direction:column;gap:8px;}
+  .lp-bearb-zeile{display:flex;gap:8px;flex-wrap:wrap;}
+  .lp-bearb-zeile .btn{min-height:40px;}
+  .lp-bearb-hinweis{font-size:.8rem;color:var(--muted);line-height:1.4;}
+  .lp-bearb-form{display:grid;grid-template-columns:2fr 2fr 1fr;gap:8px;}
+  .lp-bearb-form label{display:flex;flex-direction:column;gap:3px;font-size:.75rem;color:var(--muted);}
+  .lp-bearb-form input,.lp-bearb-form select{font:inherit;font-size:16px;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:#fff;min-width:0;}
+  @media(max-width:640px){
+    .lp-bearb-form{grid-template-columns:1fr;}
+    .lp-bearb-zeile .btn{flex:1 1 calc(50% - 4px);}
+  }
   .hint{font-size:.82rem;color:var(--muted);background:#faf7ef;border:1px dashed var(--border);padding:8px 12px;border-radius:8px;margin-bottom:12px;}
   footer{text-align:center;padding:20px;color:var(--muted);font-size:.78rem;}
 
@@ -885,7 +902,7 @@
   <!-- LAGEPLAN -->
   <section id="tab-lageplan" style="display:none;">
     <div class="hint" id="lageplan-hint">
-      <b>So funktioniert's:</b> „Position setzen“ → Baum wählen → auf die Karte tippen oder „Per GPS setzen“. Stecknadeln lassen sich ziehen. Hohle Kreise sind aus dem alten Foto umgerechnet – zurechtziehen, dann gilt die Lage als genau.
+      <b>So funktioniert's:</b> „Position setzen“ → Baum wählen → auf die Karte tippen oder „Per GPS setzen“. Stecknadeln lassen sich ziehen. Hohle Kreise sind aus dem alten Foto umgerechnet – zurechtziehen, dann gilt die Lage als genau. Wege und Flächen änderst du mit „Karte bearbeiten“.
     </div>
     <div class="lp-leiste">
       <div class="pr-segment" id="lp-ansicht" role="group" aria-label="Ansicht">
@@ -902,6 +919,7 @@
       <button class="btn" id="btn-place-mode"><span id="place-mode-label">Baum verschieben</span></button>
       <select id="unplaced-select"><option value="">– Baum wählen –</option></select>
       <button class="btn secondary" id="btn-gps-place" title="Aktuelle GPS-Position für den gewählten Baum übernehmen">Per GPS setzen</button>
+      <button class="btn secondary" id="btn-karte-bearbeiten" onclick="kbStart()" style="display:none;">Karte bearbeiten</button>
       <span id="place-status" style="font-size:.85rem;color:var(--muted);"></span>
     </div>
     <div class="map-wrap" id="map-wrap">
@@ -914,11 +932,12 @@
         <button class="btn secondary" style="width:36px;height:36px;font-size:.7rem;padding:0;" onclick="lageZoomReset()">1:1</button>
       </div>
     </div>
+    <div class="lp-bearb" id="lp-bearb" style="display:none;"></div>
     <div id="sat-map"></div>
     <div class="lp-legende" id="lp-legende">
       <span><span class="kp" style="--kp:var(--muted)"></span>Lage gesetzt</span>
       <span><span class="kp ungefaehr" style="--kp:var(--muted)"></span>Lage ungefähr</span>
-      <span>Flächen: Entwurf aus dem Konzeptplan 2020</span>
+      <label class="lp-planung"><input type="checkbox" id="lp-planung" onchange="planungUmschalten(this.checked)"> Konzeptplan 2020 zeigen</label>
     </div>
   </section>
 
@@ -1311,10 +1330,10 @@
 
 <!-- Aus einem einzelnen Script-Block herausgeloest (F6). Reihenfolge ist
      bindend: Ueber Dateigrenzen hinweg gibt es kein Hoisting mehr. -->
-<script src="js/kern.js?v=122"></script>
-<script src="js/kataster.js?v=122"></script>
-<script src="js/lageplan.js?v=122"></script>
-<script src="js/start.js?v=122"></script>
+<script src="js/kern.js?v=123"></script>
+<script src="js/kataster.js?v=123"></script>
+<script src="js/lageplan.js?v=123"></script>
+<script src="js/start.js?v=123"></script>
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-app.js";
@@ -1481,9 +1500,9 @@
     });
   }
 </script>
-<script src="js/berater.js?v=122"></script>
-<script src="js/shop.js?v=122"></script>
-<script src="js/konfigurator.js?v=122"></script>
-<script src="js/pruefung.js?v=122"></script>
+<script src="js/berater.js?v=123"></script>
+<script src="js/shop.js?v=123"></script>
+<script src="js/konfigurator.js?v=123"></script>
+<script src="js/pruefung.js?v=123"></script>
 </body>
 </html>

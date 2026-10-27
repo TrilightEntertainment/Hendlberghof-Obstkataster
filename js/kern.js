@@ -105,6 +105,11 @@ function doUndo(){
   } else if(type==='phaeno'){
     setPhaenoEreignis(data.jahr, data.key, data.datum);
     renderPhaenoDisplay();
+  } else if(type==='karte'){
+    if(data.vorher === undefined) delete state.karte[data.id];
+    else state.karte[data.id] = data.vorher;
+    saveState();
+    if(typeof zeichneKarte === 'function'){ zeichneKarte(); renderLageFilter(); }
   } else if(type==='baum'){
     state.customTrees.push(data.tree);
     if(data.pos) state.positions[data.id] = data.pos;
@@ -164,7 +169,7 @@ function loadState(){
       return parsed;
     }
   }catch(e){ console.error('State corrupted, resetting:', e); setTimeout(()=>showToast('Gespeicherte Daten beschädigt — Zurückgesetzt.','error',5000),500); }
-  return { positions: Object.assign({}, SEED_POSITIONS), sukzession:{}, ernten:{}, verifiziert:{}, customTrees:[], baumEdits:{}, sortenEdits:{}, importLog:[], importSnapshots:[], phaenologie:{}, sortenSichtbar:{}, preislisten:{}, bestellungen:[], satPositions:{}, deletedSatPositions:{}, obstarten:{}, merklisten:{}, produktion:{}, betrieb:{} };
+  return { positions: Object.assign({}, SEED_POSITIONS), sukzession:{}, ernten:{}, verifiziert:{}, customTrees:[], baumEdits:{}, sortenEdits:{}, importLog:[], importSnapshots:[], phaenologie:{}, sortenSichtbar:{}, preislisten:{}, bestellungen:[], satPositions:{}, deletedSatPositions:{}, obstarten:{}, merklisten:{}, produktion:{}, betrieb:{}, karte:{} };
 }
 let _saveTimer = null;
 function saveState(){
@@ -198,6 +203,7 @@ function initState(){
   if(!state.merklisten) state.merklisten = {};
   if(!state.produktion) state.produktion = {};
   if(!state.betrieb) state.betrieb = {};
+  if(!state.karte) state.karte = {};   /* Kartenobjekte aus der App (v123), Vorrang vor data/flaechen.json */
   invalidateTreeCache();
 }
 
@@ -280,6 +286,7 @@ function applyRemoteState(remote){
      die stillschweigend nicht sperrt, ist schlimmer als keine. */
   state.produktion = _mergeObj(state.produktion, remote.produktion);
   state.betrieb = _mergeObj(state.betrieb, remote.betrieb);
+  state.karte = _mergeObj(state.karte, remote.karte);
   /* Merklisten NUR im angemeldeten Zustand zusammenfuehren. Ohne diese Bedingung
      bekaeme ein Besucher am Hof die Merkliste des Betriebs ins Geraet gespielt -
      seine eigene liegt seit A3 in einem getrennten, geraetelokalen Topf. */
@@ -322,6 +329,7 @@ function applyRemoteState(remote){
   if(!state.merklisten) state.merklisten = {};
   if(!state.produktion) state.produktion = {};
   if(!state.betrieb) state.betrieb = {};
+  if(!state.karte) state.karte = {};
   localStorage.setItem(LS_KEY, JSON.stringify(state));
   /* Arbeitskopie der Merklisten nachziehen, sonst zeigt dieses Gerät weiter den
      Stand von vor der Synchronisierung. */

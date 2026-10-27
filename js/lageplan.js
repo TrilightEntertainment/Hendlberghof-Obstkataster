@@ -137,10 +137,10 @@ let satMarkers = [];
 let satMarkerById = {};
 let mapLayer = 'foto';
 let LAGE_UNGEFAEHR = {};
-let FLAECHEN = null;
+let FLAECHEN = null;        /* data/flaechen.json: {quelle, objekte} */
 let _lageDatenPromise = null;
 let _flaechenEbene = null;
-let _flaecheAktiv = null;
+let _flaecheAktiv = null;   /* ID des markierten Kartenobjekts */
 
 const KARTEN_FARBEN = {apfel:'#dc2626', birne:'#22c55e', walnuss:'#b98e1a', zwetschke:'#6b21a8', kirsch:'#be185d', kirsche:'#be185d', weichsel:'#be185d', marille:'#f59e0b', quitte:'#84cc16', pflaume:'#7c3aed', sonstige:'#888'};
 const FLAECHEN_FARBEN = {
@@ -184,6 +184,7 @@ function setMapLayer(layer){
   if(layer==='sat'){
     initSatMap();
   } else {
+    if(_kb) kbEnde();
     placeMode = false;
     if(satMap) satMap.dragging.enable();
     lageScale = 1; lageTx = 0; lageTy = 0; _lageApplyTransform();
@@ -227,10 +228,11 @@ function initSatMap(){
         renderUnplacedSelect();
         return;
       }
+      if(_kb) return;
       flaecheMarkieren(null);
     });
     ladeLageDaten().then(() => {
-      zeichneFlaechen();
+      zeichneKarte();
       renderSatMarkers();
       renderLageFilter();
     });
@@ -240,71 +242,166 @@ function initSatMap(){
   setTimeout(()=>{ satMap.invalidateSize(); }, 500);
 }
 
-function flaechenStil(f, aktiv){
-  const farbe = FLAECHEN_FARBEN[f.art] || '#ffffff';
-  return {color: farbe, weight: aktiv ? 2.5 : 1.2, opacity: aktiv ? 1 : .85, fillColor: farbe, fillOpacity: aktiv ? .22 : .06};
+/* ---------- Kartenobjekte: Bestand und Planung (v123) ----------
+   data/flaechen.json enthält Linien und Flächen mit Ebene „bestand“ (Wege
+   aus dem Luftbild, Swale, Grundstücksgrenze) oder „planung“ (Konzeptplan
+   2020). Änderungen aus der App liegen in state.karte, je Objekt-ID:
+   {name, art, ebene, typ, geo} – geo als JSON-Text, weil Firestore keine
+   Listen in Listen speichert. null heißt gelöscht. Der Stand in der App hat
+   Vorrang vor der Datei. */
+const KARTEN_ART_FARBEN = Object.assign({
+  'Weg':'#F1EDE2', 'Grundstücksgrenze':'#D9B458', 'Waldgarten':'#7FBF6A', 'Baumschule':'#C9B26B',
+  'Wiese':'#B8D97A', 'Teich':'#7C93E8', 'Beerenreihe':'#C77DA8', 'Sonstiges':'#FFFFFF',
+  'Weg Bestand':'#C9C3D6', 'Weg, begrünt':'#B9C2AE', 'Weg, begrünt (optional)':'#8C8A82', 'Gebäude':'#E36A6C', 'Vorplatz':'#C77DB8'
+}, FLAECHEN_FARBEN);
+const PLANUNG_KEY = 'hendlberghof_planung_zeigen';
+let _planungZeigen = false;
+try { _planungZeigen = localStorage.getItem(PLANUNG_KEY) === '1'; } catch(e){}
+
+function kartenObjektAusState(id, u){
+  if(!u || typeof u !== 'object') return null;
+  try { return {id, name: u.name || 'Ohne Namen', art: u.art || 'Sonstiges', ebene: u.ebene === 'planung' ? 'planung' : 'bestand', typ: u.typ === 'linie' ? 'linie' : 'flaeche', geo: JSON.parse(u.geo)}; }
+  catch(e){ return null; }
 }
 
-function zeichneFlaechen(){
-  if(!satMap || !FLAECHEN || _flaechenEbene) return;
+function kartenObjekte(){
+  const ueber = state.karte || {};
+  const liste = [];
+  const gesehen = new Set();
+  (FLAECHEN && FLAECHEN.objekte || []).forEach(o => {
+    gesehen.add(o.id);
+    if(Object.prototype.hasOwnProperty.call(ueber, o.id)){
+      const u = kartenObjektAusState(o.id, ueber[o.id]);
+      if(u) liste.push(u);
+      return;
+    }
+    liste.push(o);
+  });
+  Object.keys(ueber).forEach(id => {
+    if(gesehen.has(id)) return;
+    const u = kartenObjektAusState(id, ueber[id]);
+    if(u) liste.push(u);
+  });
+  return liste;
+}
+function kartenObjekt(id){ return kartenObjekte().find(o => o.id === id) || null; }
+
+/* Fläche in m² und Länge in m, eben gerechnet – auf 4,5 ha genau genug. */
+function _kMeter(p, lat0){ return [p[1] * 111320 * Math.cos(lat0 * Math.PI / 180), p[0] * 110540]; }
+function objektGroesse(o){
+  if(o.typ === 'linie'){
+    const pts = o.geo; if(!pts || pts.length < 2) return '';
+    let m = 0;
+    for(let i = 1; i < pts.length; i++){ const a = _kMeter(pts[i-1], pts[0][0]), b = _kMeter(pts[i], pts[0][0]); m += Math.hypot(a[0]-b[0], a[1]-b[1]); }
+    return `${Math.round(m).toLocaleString('de-AT')} m lang`;
+  }
+  const ringe = o.geo || [];
+  let summe = 0;
+  ringe.forEach((r, i) => {
+    let f = 0;
+    for(let k = 0; k < r.length; k++){ const a = _kMeter(r[k], r[0][0]), b = _kMeter(r[(k+1) % r.length], r[0][0]); f += a[0]*b[1] - b[0]*a[1]; }
+    summe += (i === 0 ? 1 : -1) * Math.abs(f) / 2;
+  });
+  return `${Math.round(summe).toLocaleString('de-AT')} m²`;
+}
+
+function objektStil(o, aktiv){
+  const farbe = KARTEN_ART_FARBEN[o.art] || '#FFFFFF';
+  const plan = o.ebene === 'planung';
+  if(o.typ === 'linie'){
+    if(o.art === 'Grundstücksgrenze') return {color: farbe, weight: aktiv ? 3 : 1.5, opacity: 1, dashArray: '6 5', fill: false};
+    return {color: farbe, weight: aktiv ? 6 : 3.5, opacity: plan ? .6 : .95, dashArray: plan ? '4 4' : null, lineCap: 'round', lineJoin: 'round', fill: false};
+  }
+  return {color: farbe, weight: aktiv ? 2.5 : (plan ? 1 : 1.6), opacity: plan ? .75 : .95, dashArray: plan ? '4 3' : null,
+          fillColor: farbe, fillOpacity: aktiv ? .22 : (plan ? .04 : .1)};
+}
+
+let _kartenRenderer = null;
+function zeichneKarte(){
+  if(!satMap || !FLAECHEN) return;
+  if(_flaechenEbene) _flaechenEbene.remove();
+  if(!_kartenRenderer) _kartenRenderer = L.svg({padding: .5});
   _flaechenEbene = L.layerGroup().addTo(satMap);
-  if(FLAECHEN.grenze) L.polyline(FLAECHEN.grenze, {color: '#D9B458', weight: 1.5, dashArray: '6 5', interactive: false}).addTo(_flaechenEbene);
-  (FLAECHEN.flaechen || []).forEach(f => {
-    const poly = L.polygon(f.ringe, flaechenStil(f, false));
-    poly._flaeche = f;
-    poly.on('click', e => {
-      if(placeMode) return;
+  const objekte = kartenObjekte().filter(o => o.ebene === 'bestand' || _planungZeigen || (_kb && _kb.id === o.id));
+  /* Planung unten, Flächen vor Linien, damit Wege antippbar bleiben */
+  const rang = o => (o.ebene === 'planung' ? 0 : 2) + (o.typ === 'linie' ? 1 : 0);
+  objekte.sort((a, b) => rang(a) - rang(b)).forEach(o => {
+    const stil = Object.assign({renderer: _kartenRenderer}, objektStil(o, o.id === _flaecheAktiv));
+    const l = o.typ === 'linie' ? L.polyline(o.geo, stil) : L.polygon(o.geo, stil);
+    l._objekt = o;
+    if(o.ebene === 'bestand' && o.typ === 'linie' && o.art !== 'Grundstücksgrenze')
+      l.bindTooltip(escHtml(o.name), {permanent: true, direction: 'center', className: 'lp-label', interactive: false});
+    l.on('click', e => {
       L.DomEvent.stopPropagation(e);
-      flaecheMarkieren(f.id, e.latlng);
+      if(placeMode) return;
+      if(_kb){ kbObjektGetippt(o.id); return; }
+      objektMarkieren(o.id, e.latlng);
     });
-    poly.addTo(_flaechenEbene);
+    l.addTo(_flaechenEbene);
   });
 }
 
-function flaecheMarkieren(id, wo, zoomen){
+function objektLayer(id){
+  let treffer = null;
+  if(_flaechenEbene) _flaechenEbene.eachLayer(l => { if(l._objekt && l._objekt.id === id) treffer = l; });
+  return treffer;
+}
+
+function objektMarkieren(id, wo, zoomen){
   if(!_flaechenEbene) return;
   _flaecheAktiv = id || null;
-  let treffer = null;
-  _flaechenEbene.eachLayer(l => {
-    if(!l._flaeche) return;
-    const aktiv = l._flaeche.id === _flaecheAktiv;
-    l.setStyle(flaechenStil(l._flaeche, aktiv));
-    if(aktiv){ treffer = l; l.bringToFront(); }
-  });
+  _flaechenEbene.eachLayer(l => { if(l._objekt) l.setStyle(objektStil(l._objekt, l._objekt.id === _flaecheAktiv)); });
   satMap.closePopup();
   const sel = document.getElementById('lp-bereich');
   if(sel) sel.value = _flaecheAktiv || '';
-  if(!treffer) return;
-  const f = treffer._flaeche;
-  if(zoomen) satMap.fitBounds(treffer.getBounds(), {padding: [24, 24], maxZoom: 21});
+  const l = _flaecheAktiv && objektLayer(_flaecheAktiv);
+  if(!l) return;
+  if(l._objekt.typ !== 'linie') l.bringToFront();
+  const o = l._objekt;
+  if(zoomen) satMap.fitBounds(l.getBounds(), {padding: [24, 24], maxZoom: 21});
+  const herkunft = o.ebene === 'planung' ? 'Konzeptplan 2020' : 'Bestand';
   L.popup({closeButton: false, className: 'lp-popup', autoPanPadding: [16, 16]})
-    .setLatLng(wo || treffer.getBounds().getCenter())
-    .setContent(`<div class="lp-fl-name">${escHtml(f.name)}</div><div class="lp-fl-info">${escHtml(f.art)} · ${f.m2.toLocaleString('de-AT')} m²</div><div class="lp-fl-info">Entwurf aus dem Konzeptplan 2020</div>`)
+    .setLatLng(wo || l.getBounds().getCenter())
+    .setContent(`<div class="lp-fl-name">${escHtml(o.name)}</div><div class="lp-fl-info">${escHtml(o.art)} · ${objektGroesse(o)}</div><div class="lp-fl-info">${herkunft}</div>`)
     .openOn(satMap);
 }
+function flaecheMarkieren(id, wo, zoomen){ objektMarkieren(id, wo, zoomen); }
 
 function lageBereichWaehlen(id){
   if(!satMap) return;
-  if(!id){
-    flaecheMarkieren(null);
-    lageGanzerHof();
-    return;
-  }
-  flaecheMarkieren(id, null, true);
+  if(!id){ objektMarkieren(null); lageGanzerHof(); return; }
+  objektMarkieren(id, null, true);
 }
 
 function lageGanzerHof(){
   if(!satMap) return;
-  if(FLAECHEN && FLAECHEN.grenze) satMap.fitBounds(FLAECHEN.grenze, {padding: [12, 12]});
+  const grenze = kartenObjekt('grenze');
+  if(grenze) satMap.fitBounds(grenze.geo, {padding: [12, 12]});
+}
+
+function planungUmschalten(an){
+  _planungZeigen = !!an;
+  try { localStorage.setItem(PLANUNG_KEY, an ? '1' : '0'); } catch(e){}
+  if(!_planungZeigen && _flaecheAktiv){ const o = kartenObjekt(_flaecheAktiv); if(o && o.ebene === 'planung') objektMarkieren(null); }
+  zeichneKarte();
+  renderLageFilter();
 }
 
 function renderLageFilter(){
   const bereich = document.getElementById('lp-bereich');
   if(bereich && FLAECHEN){
-    const liste = (FLAECHEN.flaechen || []).slice().sort((a, b) => a.name.localeCompare(b.name, 'de', {numeric: true}));
-    bereich.innerHTML = `<option value="">Ganzer Hof</option>${liste.map(f => `<option value="${escAttr(f.id)}">${escHtml(f.name)}</option>`).join('')}`;
+    const sortiert = l => l.slice().sort((a, b) => a.name.localeCompare(b.name, 'de', {numeric: true}));
+    const opt = o => `<option value="${escAttr(o.id)}">${escHtml(o.name)}</option>`;
+    const alle = kartenObjekte().filter(o => o.art !== 'Grundstücksgrenze');
+    const bestand = sortiert(alle.filter(o => o.ebene === 'bestand'));
+    const planung = _planungZeigen ? sortiert(alle.filter(o => o.ebene === 'planung')) : [];
+    bereich.innerHTML = `<option value="">Ganzer Hof</option>
+      <optgroup label="Bestand">${bestand.map(opt).join('')}</optgroup>
+      ${planung.length ? `<optgroup label="Konzeptplan 2020">${planung.map(opt).join('')}</optgroup>` : ''}`;
     bereich.value = _flaecheAktiv || '';
   }
+  const pl = document.getElementById('lp-planung');
+  if(pl) pl.checked = _planungZeigen;
   const art = document.getElementById('lp-obstart');
   if(art){
     const wert = art.value;
@@ -345,7 +442,7 @@ function renderSatMarkers(){
     });
     m.on('click', function(){
       if(_dragMoved){ _dragMoved = false; return; }
-      if(placeMode) return;
+      if(placeMode || _kb) return;
       lageMarkerWaehlen(id);
       openBaumModal(id);
     });
@@ -407,6 +504,256 @@ function lageFotoZeigen(id){
     }, {once:true});
   }
 }
+/* ---------- Karte bearbeiten (v123, nur Volkmar) ----------
+   Zeichnen und Ecken verschieben mit Leaflet-Geoman (kostenlos, wird erst beim
+   ersten „Karte bearbeiten“ nachgeladen). „Per GPS gehen“ sammelt Punkte am
+   Standort des Handys, für Grenzen unter Bäumen, wo das Luftbild nichts zeigt. */
+const GEOMAN_VERSION = '2.17.0';
+let _kb = null;            /* null oder {modus, id, gps:[], watch, ...} */
+let _geomanPromise = null;
+
+function geomanLaden(){
+  if(!_geomanPromise){
+    _geomanPromise = new Promise((ok, fehler) => {
+      const basis = `https://cdn.jsdelivr.net/npm/@geoman-io/leaflet-geoman-free@${GEOMAN_VERSION}/dist/`;
+      const css = document.createElement('link');
+      css.rel = 'stylesheet'; css.href = `${basis}leaflet-geoman.css`;
+      document.head.appendChild(css);
+      const js = document.createElement('script');
+      js.src = `${basis}leaflet-geoman.min.js`;
+      js.onload = ok;
+      js.onerror = () => { _geomanPromise = null; fehler(new Error('Geoman nicht ladbar')); };
+      document.head.appendChild(js);
+    });
+  }
+  return _geomanPromise;
+}
+
+function kbStart(){
+  if(!isAdmin() || !satMap) return;
+  if(_kb){ kbEnde(); return; }
+  geomanLaden().then(() => {
+    if(!satMap.pm) satMap.pm = new L.PM.Map(satMap);
+    satMap.pm.setLang('de');
+    satMap.pm.setGlobalOptions({snappable: true, snapDistance: 14, allowSelfIntersection: false});
+    satMap.off('pm:create', kbErstellt);
+    satMap.on('pm:create', kbErstellt);
+    _kb = {modus: 'start', id: null, gps: []};
+    satMap.getContainer().classList.add('lp-bearbeiten');   /* Bäume treten zurück, damit Ecken greifbar sind */
+    satMap.closePopup();
+    zeichneKarte();   /* neue Ebenen bekommen erst nach dem Laden ein .pm */
+    kbLeiste();
+  }).catch(() => showToast('Die Zeichenwerkzeuge brauchen Internet.', 'error'));
+}
+
+function kbEnde(){
+  if(!_kb) return;
+  if(_kb.modus === 'objekt') kbObjektAbbrechen(true);
+  if(_kb.modus === 'zeichnen' && satMap.pm) satMap.pm.disableDraw();
+  kbGpsStopp();
+  _kb = null;
+  satMap.getContainer().classList.remove('lp-bearbeiten');
+  kbLeiste();
+  zeichneKarte();
+  renderLageFilter();
+}
+
+function kbLeiste(){
+  const box = document.getElementById('lp-bearb');
+  const knopf = document.getElementById('btn-karte-bearbeiten');
+  if(knopf) knopf.textContent = _kb ? 'Bearbeiten beenden' : 'Karte bearbeiten';
+  if(!box) return;
+  if(!_kb){ box.style.display = 'none'; box.innerHTML = ''; return; }
+  box.style.display = '';
+  const k = _kb;
+  if(k.modus === 'start'){
+    box.innerHTML = `<div class="lp-bearb-zeile">
+        <button type="button" class="btn secondary" onclick="kbNeu('flaeche')">Neue Fläche</button>
+        <button type="button" class="btn secondary" onclick="kbNeu('linie')">Neue Linie</button>
+        <button type="button" class="btn secondary" onclick="kbGpsStart()">Per GPS gehen</button>
+        <button type="button" class="btn" onclick="kbEnde()">Fertig</button>
+      </div>
+      <div class="lp-bearb-hinweis">Fläche oder Linie antippen, um sie zu ändern. ${_planungZeigen ? '' : 'Den Konzeptplan blendest du unter der Karte ein.'}</div>`;
+  } else if(k.modus === 'zeichnen'){
+    box.innerHTML = `<div class="lp-bearb-hinweis">${k.typ === 'linie'
+        ? 'Punkt für Punkt auf die Karte tippen. Zum Abschließen den letzten Punkt noch einmal antippen.'
+        : 'Ecke für Ecke auf die Karte tippen. Zum Abschließen den ersten Punkt antippen.'}</div>
+      <div class="lp-bearb-zeile"><button type="button" class="btn secondary" onclick="kbZeichnenAbbrechen()">Abbrechen</button></div>`;
+  } else if(k.modus === 'gps'){
+    const n = k.gps.length;
+    const genau = k.genau ? `GPS ±${Math.round(k.genau)} m` : 'GPS wird gesucht …';
+    box.innerHTML = `<div class="lp-bearb-hinweis">Zur nächsten Ecke gehen und „Punkt hier“ tippen. ${genau} · ${n} ${n === 1 ? 'Punkt' : 'Punkte'}</div>
+      <div class="lp-bearb-zeile">
+        <button type="button" class="btn" onclick="kbGpsPunkt()">Punkt hier</button>
+        <button type="button" class="btn secondary" onclick="kbGpsFertig('flaeche')" ${n < 3 ? 'disabled' : ''}>Als Fläche</button>
+        <button type="button" class="btn secondary" onclick="kbGpsFertig('linie')" ${n < 2 ? 'disabled' : ''}>Als Linie</button>
+        <button type="button" class="btn secondary" onclick="kbGpsAbbrechen()">Abbrechen</button>
+      </div>`;
+  } else if(k.modus === 'objekt'){
+    const o = kartenObjekt(k.id) || k.neu;
+    const namen = [...new Set(kartenObjekte().map(x => x.name))].sort((a, b) => a.localeCompare(b, 'de'));
+    const arten = [...new Set(Object.keys(KARTEN_ART_FARBEN).concat(kartenObjekte().map(x => x.art)))].sort((a, b) => a.localeCompare(b, 'de'));
+    box.innerHTML = `<div class="lp-bearb-form">
+        <label>Name<input type="text" id="kb-name" list="kb-namen" value="${escAttr(o.name)}" autocomplete="off"></label>
+        <label>Art<input type="text" id="kb-art" list="kb-arten" value="${escAttr(o.art)}" autocomplete="off"></label>
+        <label>Ebene<select id="kb-ebene"><option value="bestand"${o.ebene === 'bestand' ? ' selected' : ''}>Bestand</option><option value="planung"${o.ebene === 'planung' ? ' selected' : ''}>Planung</option></select></label>
+        <datalist id="kb-namen">${namen.map(n => `<option value="${escAttr(n)}">`).join('')}</datalist>
+        <datalist id="kb-arten">${arten.map(n => `<option value="${escAttr(n)}">`).join('')}</datalist>
+      </div>
+      <div class="lp-bearb-hinweis">Ecke ziehen = verschieben · Zwischenpunkt ziehen = neue Ecke · Ecke antippen = Ecke weg</div>
+      <div class="lp-bearb-zeile">
+        <button type="button" class="btn" onclick="kbObjektSpeichern()">Speichern</button>
+        <button type="button" class="btn secondary" onclick="kbObjektAbbrechen()">Abbrechen</button>
+        ${k.neu ? '' : `<button type="button" class="btn secondary loeschen" onclick="kbObjektLoeschen()">Löschen</button>`}
+      </div>`;
+  }
+}
+
+function kbNeu(typ){
+  if(!_kb) return;
+  _kb.modus = 'zeichnen'; _kb.typ = typ;
+  const stil = objektStil({typ, art: typ === 'linie' ? 'Weg' : 'Sonstiges', ebene: 'bestand'}, true);
+  satMap.pm.enableDraw(typ === 'linie' ? 'Line' : 'Polygon', {pathOptions: stil, templineStyle: {color: '#D9B458'}, hintlineStyle: {color: '#D9B458', dashArray: '4 4'}, finishOn: typ === 'linie' ? 'snap' : null});
+  kbLeiste();
+}
+function kbZeichnenAbbrechen(){
+  if(satMap.pm) satMap.pm.disableDraw();
+  _kb.modus = 'start';
+  kbLeiste();
+}
+
+function _kbGeoAusLayer(l, typ){
+  const r = p => [Math.round(p.lat * 1e7) / 1e7, Math.round(p.lng * 1e7) / 1e7];
+  const ll = l.getLatLngs();
+  if(typ === 'linie') return (Array.isArray(ll[0]) ? ll[0] : ll).map(r);
+  const ringe = Array.isArray(ll[0]) && Array.isArray(ll[0][0]) ? ll[0] : ll;   /* Mehrfachfläche: erste nehmen */
+  return (Array.isArray(ringe[0]) ? ringe : [ringe]).map(ring => ring.map(r));
+}
+
+function kbErstellt(e){
+  if(!_kb) return;
+  const typ = e.shape === 'Line' ? 'linie' : 'flaeche';
+  const geo = _kbGeoAusLayer(e.layer, typ);
+  e.layer.remove();
+  kbNeuesObjekt(typ, geo);
+}
+
+function kbNeuesObjekt(typ, geo){
+  const id = `k${Date.now().toString(36)}`;
+  _kb.modus = 'objekt'; _kb.id = id;
+  _kb.neu = {id, name: typ === 'linie' ? 'Neue Linie' : 'Neue Fläche', art: typ === 'linie' ? 'Weg' : 'Sonstiges', ebene: 'bestand', typ, geo};
+  /* Erst beim Speichern in den Zustand; bis dahin nur auf der Karte */
+  const stil = Object.assign({renderer: _kartenRenderer}, objektStil(_kb.neu, true));
+  const l = typ === 'linie' ? L.polyline(geo, stil) : L.polygon(geo, stil);
+  l._objekt = _kb.neu;
+  l.addTo(_flaechenEbene);
+  kbBearbeitbar(l);
+  kbLeiste();
+  const feld = document.getElementById('kb-name');
+  if(feld){ feld.focus(); feld.select(); }
+}
+
+function kbBearbeitbar(l){
+  if(l && l.pm) l.pm.enable({allowSelfIntersection: true, removeVertexOn: 'click', snappable: true, draggable: false});
+}
+
+function kbObjektGetippt(id){
+  if(!_kb || _kb.modus === 'zeichnen' || _kb.modus === 'gps') return;
+  if(_kb.modus === 'objekt'){
+    if(_kb.id === id) return;
+    kbObjektAbbrechen(true);
+  }
+  _kb.modus = 'objekt'; _kb.id = id; _kb.neu = null;
+  _flaecheAktiv = id;
+  zeichneKarte();
+  kbBearbeitbar(objektLayer(id));
+  kbLeiste();
+}
+
+function kbObjektSpeichern(){
+  const k = _kb; if(!k || k.modus !== 'objekt') return;
+  const l = objektLayer(k.id) || (_flaechenEbene && (() => { let t = null; _flaechenEbene.eachLayer(x => { if(x._objekt === k.neu) t = x; }); return t; })());
+  const alt = k.neu || kartenObjekt(k.id);
+  if(!l || !alt) return;
+  const name = (document.getElementById('kb-name').value || '').trim();
+  const art = (document.getElementById('kb-art').value || '').trim();
+  if(!name){ showToast('Bitte einen Namen eingeben.', 'error'); return; }
+  const geo = _kbGeoAusLayer(l, alt.typ);
+  if(alt.typ === 'linie' ? geo.length < 2 : (!geo[0] || geo[0].length < 3)){ showToast(alt.typ === 'linie' ? 'Eine Linie braucht mindestens 2 Punkte.' : 'Eine Fläche braucht mindestens 3 Ecken.', 'error'); return; }
+  if(!state.karte) state.karte = {};
+  state.karte[k.id] = {name, art: art || 'Sonstiges', ebene: document.getElementById('kb-ebene').value, typ: alt.typ, geo: JSON.stringify(geo), stand: new Date().toISOString().slice(0, 10)};
+  saveState();
+  if(l.pm) l.pm.disable();
+  showToast(`${name} gespeichert`, 'success');
+  _kb.modus = 'start'; _kb.id = null; _kb.neu = null;
+  _flaecheAktiv = null;
+  zeichneKarte(); renderLageFilter(); kbLeiste();
+}
+
+function kbObjektAbbrechen(still){
+  const k = _kb; if(!k || k.modus !== 'objekt') return;
+  const l = objektLayer(k.id);
+  if(l && l.pm) l.pm.disable();
+  k.modus = 'start'; k.id = null; k.neu = null;
+  _flaecheAktiv = null;
+  if(!still){ zeichneKarte(); kbLeiste(); }
+}
+
+function kbObjektLoeschen(){
+  const k = _kb; if(!k || k.modus !== 'objekt' || k.neu) return;
+  const o = kartenObjekt(k.id); if(!o) return;
+  if(!state.karte) state.karte = {};
+  const vorher = Object.prototype.hasOwnProperty.call(state.karte, k.id) ? state.karte[k.id] : undefined;
+  state.karte[k.id] = null;
+  saveState();
+  setUndo('karte', {id: k.id, vorher});
+  k.modus = 'start'; k.id = null;
+  _flaecheAktiv = null;
+  zeichneKarte(); renderLageFilter(); kbLeiste();
+}
+
+/* GPS: Punkte sammeln, während man die Grenze abgeht */
+function kbGpsStart(){
+  if(!navigator.geolocation){ showToast('Dieses Gerät kann keinen Standort liefern.', 'error'); return; }
+  _kb.modus = 'gps'; _kb.gps = []; _kb.genau = null; _kb.letzte = null;
+  _kb.spur = L.polyline([], {color: '#D9B458', weight: 3, dashArray: '4 4', renderer: _kartenRenderer}).addTo(satMap);
+  _kb.watch = navigator.geolocation.watchPosition(p => {
+    if(!_kb) return;
+    _kb.letzte = [p.coords.latitude, p.coords.longitude];
+    _kb.genau = p.coords.accuracy;
+    if(!_kb.ich) _kb.ich = L.circleMarker(_kb.letzte, {radius: 7, color: '#fff', weight: 2, fillColor: '#2563eb', fillOpacity: 1}).addTo(satMap);
+    else _kb.ich.setLatLng(_kb.letzte);
+    if(!_kb.kreis) _kb.kreis = L.circle(_kb.letzte, {radius: _kb.genau, color: '#2563eb', weight: 1, fillOpacity: .08, interactive: false}).addTo(satMap);
+    else { _kb.kreis.setLatLng(_kb.letzte); _kb.kreis.setRadius(_kb.genau); }
+    kbLeiste();
+  }, err => showToast(`GPS: ${err.message}`, 'error'), {enableHighAccuracy: true, maximumAge: 0, timeout: 30000});
+  kbLeiste();
+}
+function kbGpsPunkt(){
+  const k = _kb; if(!k || !k.letzte){ showToast('Noch kein GPS-Standort – kurz warten.', 'error'); return; }
+  if(k.genau > 15) showToast(`GPS ungenau (±${Math.round(k.genau)} m) – Punkt trotzdem gesetzt.`, 'info');
+  k.gps.push(k.letzte.slice());
+  k.spur.setLatLngs(k.gps);
+  satMap.panTo(k.letzte);
+  kbLeiste();
+}
+function kbGpsStopp(){
+  const k = _kb; if(!k) return;
+  if(k.watch != null) navigator.geolocation.clearWatch(k.watch);
+  ['spur', 'ich', 'kreis'].forEach(n => { if(k[n]){ k[n].remove(); k[n] = null; } });
+  k.watch = null;
+}
+function kbGpsFertig(typ){
+  const pts = (_kb && _kb.gps || []).map(p => [Math.round(p[0] * 1e7) / 1e7, Math.round(p[1] * 1e7) / 1e7]);
+  kbGpsStopp();
+  kbNeuesObjekt(typ, typ === 'linie' ? pts : [pts]);
+}
+function kbGpsAbbrechen(){
+  kbGpsStopp();
+  _kb.modus = 'start'; _kb.gps = [];
+  kbLeiste();
+}
+
 /* ---------- GPS Place Button ---------- */
 document.getElementById('btn-gps-place').addEventListener('click', ()=>{
   if(!navigator.geolocation){ alert('Dieses Gerät/Dieser Browser unterstützt keine GPS-Standortermittlung.'); return; }

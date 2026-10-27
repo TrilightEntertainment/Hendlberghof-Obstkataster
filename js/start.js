@@ -79,6 +79,9 @@ function applyEditModeUI(){
   if(unplacedSel) unplacedSel.style.display = zeigeEdit ? '' : 'none';
   const gpsPlaceBtn = document.getElementById('btn-gps-place');
   if(gpsPlaceBtn) gpsPlaceBtn.style.display = zeigeEdit && mapLayer==='sat' ? '' : 'none';
+  const karteBtn = document.getElementById('btn-karte-bearbeiten');
+  if(karteBtn) karteBtn.style.display = isAdmin() && mapLayer==='sat' ? '' : 'none';
+  if(typeof _kb !== 'undefined' && _kb && !isAdmin()) kbEnde();
   const hint = document.getElementById('lageplan-hint');
   if(hint) hint.style.display = on ? '' : 'none';
   if(!on){
