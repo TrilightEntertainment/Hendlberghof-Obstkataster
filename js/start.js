@@ -240,7 +240,7 @@ function editSorteWithLogin(sorteName){
 const FELDER = [
   {key:'id',         label:'ID-Nummer',          full:false},
   {key:'sorte',      label:'Sorte',               full:false},
-  {key:'frucht',     label:'Obstart',             full:false, type:'select', opts:['Apfel','Birne','Walnuss','Quitte','Kirsche','Pflaume','Marille','Sonstiges']},
+  {key:'frucht',     label:'Obstart',             full:false, type:'vorschlag', vorschlaege:()=>obstartVorschlaege()},
   {key:'verwendung', label:'Verwendung',          full:true,  type:'checkboxgroup', opts:VERWENDUNG_OPTIONEN},
   {key:'unterlage',  label:'Wurzelunterlage',     full:false},
   {key:'veredelt',   label:'Veredelungsjahr',     full:false},
@@ -256,6 +256,20 @@ const FELDER = [
   {key:'herkunft_jahr',label:'Herkunft & Jahr',   full:true},
   {key:'synonyme',   label:'Synonyme',            full:false},
 ];
+
+/* Obstart als Eingabe mit Vorschlägen statt fester Liste (v129): Die Liste
+   kannte nur acht Arten, Che, Zwetschke, Mispel usw. ließen sich nicht wählen.
+   Vorschläge = Arten der vorhandenen Bäume (häufigste zuerst), dann die aus
+   OBSTART_GRUPPE; gleiche Art in anderer Schreibweise nur einmal. */
+function obstartVorschlaege(){
+  const zahl = {};
+  getAllTrees().forEach(b=>{ const f = String(b.frucht || '').trim(); if(f) zahl[f] = (zahl[f] || 0) + 1; });
+  const liste = Object.keys(zahl).sort((a, b)=> zahl[b] - zahl[a] || a.localeCompare(b, 'de'));
+  const gross = k => k.split(' ').map(w=> w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+  Object.keys(OBSTART_GRUPPE).filter(k=> !k.includes('-')).sort((a, b)=> a.localeCompare(b, 'de')).forEach(k=> liste.push(gross(k)));
+  const gesehen = new Set();
+  return liste.filter(f=>{ const k = obstartSchluessel(f); if(gesehen.has(k)) return false; gesehen.add(k); return true; });
+}
 
 function buildEditForm(t, isNew, isSort){
   const felder = isSort
@@ -274,6 +288,9 @@ function buildEditForm(t, isNew, isSort){
           const optListe = val && !f.opts.includes(val) ? [val].concat(f.opts) : f.opts;
           const opts = optListe.map(o=>`<option${o===val?' selected':''}>${escHtml(o)}</option>`).join('');
           return `<div class="${cls}"><label>${f.label}</label><select name="${f.key}"><option value="">– wählen –</option>${opts}</select></div>`;
+        } else if(f.type==='vorschlag'){
+          const dl = `dl-edit-${f.key}`;
+          return `<div class="${cls}"><label>${f.label}</label><input type="text" name="${f.key}" list="${dl}" autocomplete="off" value="${escAttr(String(val))}" placeholder="wählen oder eintippen"><datalist id="${dl}">${f.vorschlaege().map(o=>`<option value="${escAttr(o)}">`).join('')}</datalist></div>`;
         } else if(f.type==='checkboxgroup'){
           const current = (t && t[f.key]) || [];
           const boxes = f.opts.map(o=>`<label style="margin-right:12px;font-weight:400;display:inline-block;">
