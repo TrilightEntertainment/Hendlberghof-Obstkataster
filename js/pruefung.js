@@ -552,11 +552,12 @@ function renderPruefDetail(e, r){
           ${PRUEF_ORTE.map(o=>`<button type="button" class="${ort===o.id?'aktiv':''}" data-pr="ort" data-pnr="${pnr}" data-ort="${o.id}">${o.label}</button>`).join('')}
         </div>
       </div>
+      ${ort!=='beet' ? renderPruefStandort(e, r) : ''}
       ${ort!=='beet' ? renderPruefGps(e, gps) : ''}
       ${ort==='beet' ? `
       <label class="pr-verkauf"><input type="checkbox" data-pr-verkauf="${pnr}"${r && r.verkaufsfertig ? ' checked' : ''}> verkaufsfertig</label>` : ''}
       ${e.fund ? renderPruefFundAngaben(e) : ''}
-      ${renderPruefAngaben(e, r)}
+      ${renderPruefAngaben(e, r, ort!=='beet')}
       <div class="pr-zeile pr-notiz">
         <label for="pr-notiz-${pnr}" class="pr-zeile-label">Notiz</label>
         <input type="text" id="pr-notiz-${pnr}" list="pr-notizen" data-pr-notiz="${pnr}" value="${escAttr((r && r.notiz) || '')}"
@@ -569,6 +570,22 @@ function renderPruefDetail(e, r){
         ${e.fund ? `<button type="button" class="pr-link" data-pr="fund-loeschen" data-pnr="${pnr}">Fund löschen</button>` : ''}
       </div>
     </div>`;
+}
+
+/* Standort offen statt im zugeklappten „Angaben korrigieren“ (v131, Volkmar
+   27.10.2026): Er wurde dort nicht gefunden und landete deshalb in der Notiz.
+   Gleiches Feld (data-pr-korr="standort"), nur an anderer Stelle. */
+function renderPruefStandort(e, r){
+  const pnr = escAttr(e.pnr);
+  const geaendert = pruefGeaendert(e, r, 'standort');
+  const o = geaendert ? pruefOriginal(e, 'standort') : '';
+  return `
+      <div class="pr-zeile pr-standort${geaendert ? ' geaendert' : ''}">
+        <label for="pr-standort-${pnr}" class="pr-zeile-label">Standort</label>
+        <input type="text" id="pr-standort-${pnr}" list="pr-dl-standorte" data-pr-korr="standort" data-pnr="${pnr}"
+               value="${escAttr(pruefWert(e, r, 'standort'))}" placeholder="z. B. Böschung 2, Waldgarten" autocomplete="off">
+        ${geaendert ? `<span class="pr-orig">Liste: ${o ? escHtml(o) : '–'}</span>` : ''}
+      </div>`;
 }
 
 function renderPruefFundAngaben(e){
@@ -606,7 +623,7 @@ function pruefJahrOptionen(wert, extras){
   return werte.map(v=> `<option value="${escAttr(v)}" ${v===wert?'selected':''}>${v ? escHtml(v) : '–'}</option>`).join('');
 }
 
-function renderPruefAngaben(e, r){
+function renderPruefAngaben(e, r, ohneStandort){
   const pnr = escAttr(e.pnr);
   const w = feld => pruefWert(e, r, feld);
   const orig = feld => {
@@ -622,7 +639,8 @@ function renderPruefAngaben(e, r){
   const pj = w('ausgepflanzt');
   const pjTeile = pj.match(/^(Frühjahr|Herbst)\s+(\d{4})$/);
   const pjJahr = pjTeile ? pjTeile[2] : pj, pjZeit = pjTeile ? pjTeile[1] : '';
-  const anzahl = ['sorte','frucht','unterlage','veredelt','ausgepflanzt','standort'].filter(f=> pruefGeaendert(e, r, f)).length;
+  const anzahl = ['sorte','frucht','unterlage','veredelt','ausgepflanzt'].concat(ohneStandort ? [] : ['standort'])
+    .filter(f=> pruefGeaendert(e, r, f)).length;
   return `
       <details class="pr-angaben"${anzahl ? ' open' : ''}>
         <summary>Angaben korrigieren${anzahl ? ` <span class="pr-geaendert">${anzahl} geändert</span>` : ''}</summary>
@@ -637,7 +655,7 @@ function renderPruefAngaben(e, r){
                 ${['', 'Frühjahr', 'Herbst'].map(z=>`<option value="${z}" ${z===pjZeit?'selected':''}>${z || 'Jahreszeit'}</option>`).join('')}
               </select>
             </span>${orig('ausgepflanzt')}</label>
-          ${text('standort', 'Standort', 'pr-dl-standorte', 'z. B. Böschung 2, Weg1 Oben')}
+          ${ohneStandort ? '' : text('standort', 'Standort', 'pr-dl-standorte', 'z. B. Böschung 2, Weg1 Oben')}
           ${text('sorte', 'Sorte', 'pr-dl-sorten')}
           ${text('frucht', 'Obstart', 'pr-dl-arten')}
         </div>

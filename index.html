@@ -816,7 +816,8 @@
 #tab-pruefung .pr-zeile{display:flex;flex-wrap:wrap;align-items:center;gap:8px;}
 #tab-pruefung .pr-zeile>.pr-zeile-label{width:100%;margin:0;}
 #tab-pruefung .pr-zeile .pr-segment{flex:1;}
-#tab-pruefung .pr-notiz input{width:100%;}
+#tab-pruefung .pr-notiz input,#tab-pruefung .pr-standort input{width:100%;}
+#tab-pruefung .pr-standort.geaendert input{border-color:var(--stroh);}
 #tab-pruefung .pr-gps{font-size:.78rem;color:var(--muted);font-variant-numeric:tabular-nums;}
 #tab-pruefung .pr-detail-fuss{display:flex;flex-wrap:wrap;align-items:center;gap:10px;}
 #tab-pruefung .pr-zeit{font-size:.75rem;color:var(--muted);}
@@ -1404,10 +1405,10 @@
 
 <!-- Aus einem einzelnen Script-Block herausgeloest (F6). Reihenfolge ist
      bindend: Ueber Dateigrenzen hinweg gibt es kein Hoisting mehr. -->
-<script src="js/kern.js?v=130"></script>
-<script src="js/kataster.js?v=130"></script>
-<script src="js/lageplan.js?v=130"></script>
-<script src="js/start.js?v=130"></script>
+<script src="js/kern.js?v=131"></script>
+<script src="js/kataster.js?v=131"></script>
+<script src="js/lageplan.js?v=131"></script>
+<script src="js/start.js?v=131"></script>
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-app.js";
@@ -1574,9 +1575,9 @@
     });
   }
 </script>
-<script src="js/berater.js?v=130"></script>
-<script src="js/shop.js?v=130"></script>
-<script src="js/konfigurator.js?v=130"></script>
-<script src="js/pruefung.js?v=130"></script>
+<script src="js/berater.js?v=131"></script>
+<script src="js/shop.js?v=131"></script>
+<script src="js/konfigurator.js?v=131"></script>
+<script src="js/pruefung.js?v=131"></script>
 </body>
 </html>
