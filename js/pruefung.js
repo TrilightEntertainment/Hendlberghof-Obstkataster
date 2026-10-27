@@ -637,7 +637,7 @@ function renderPruefAngaben(e, r){
                 ${['', 'Frühjahr', 'Herbst'].map(z=>`<option value="${z}" ${z===pjZeit?'selected':''}>${z || 'Jahreszeit'}</option>`).join('')}
               </select>
             </span>${orig('ausgepflanzt')}</label>
-          ${text('standort', 'Standort', 'pr-dl-standorte', 'z. B. Bösch2, Weg1 Oben')}
+          ${text('standort', 'Standort', 'pr-dl-standorte', 'z. B. Böschung 2, Weg1 Oben')}
           ${text('sorte', 'Sorte', 'pr-dl-sorten')}
           ${text('frucht', 'Obstart', 'pr-dl-arten')}
         </div>
