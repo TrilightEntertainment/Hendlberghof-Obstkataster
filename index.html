@@ -249,9 +249,13 @@
   .empty{color:var(--muted);font-style:italic;}
 
   /* Modal */
+  /* Fenster oben angeschlagen statt mittig (v125): Klappt in einer Karte etwas
+     auf oder zu, wächst oder schrumpft sie nur nach unten – die Überschriften
+     bleiben stehen (Volkmar 27.10.2026). */
   .overlay{
     position:fixed;inset:0;background:rgba(30,25,18,.55);
-    display:none;align-items:center;justify-content:center;z-index:1000;padding:20px;
+    display:none;align-items:flex-start;justify-content:center;z-index:1000;
+    padding:max(20px, 5vh) 20px 20px;
   }
   .overlay.open{display:flex;}
   .modal{
@@ -350,7 +354,6 @@
   details[open]>summary .ka-pfeil{color:var(--waldrand);}
   details[open]>summary .ka-pfeil svg{transform:rotate(180deg);}
   /* Offene Kopfzeile bleibt beim Scrollen stehen, solange man im Abschnitt ist. */
-  #modal-content details.karte-abschnitt[open]>summary{position:sticky;top:0;z-index:3;background:#fff;box-shadow:0 -28px 0 0 #fff;}
   .lageplan-zurueck{display:flex;align-items:center;gap:8px;width:100%;min-height:44px;margin:10px 0 0;padding:8px 12px;background:#fff;border:1px solid var(--stroh);border-radius:10px;font:inherit;font-size:.9rem;color:var(--waldrand);text-align:left;cursor:pointer;}
   .lageplan-zurueck .lz-sorte{font-family:Georgia,serif;}
   .ka-vorschau{display:block;font-size:.85rem;color:var(--muted);margin-top:3px;line-height:1.4;}
@@ -451,6 +454,9 @@
   .lp-label{background:rgba(40,54,42,.72);color:#F1EDE2;border:none;border-radius:4px;box-shadow:none;font:500 .72rem/1.2 'DM Sans',system-ui,sans-serif;padding:2px 6px;white-space:nowrap;}
   .lp-label::before{display:none;}
   .lp-fern .lp-label{display:none;}
+  .lp-hoehe{background:none;border:none;box-shadow:none;color:#F1EDE2;font:600 .7rem/1 'DM Sans',system-ui,sans-serif;text-shadow:0 0 3px rgba(0,0,0,.8);padding:0;}
+  .lp-hoehe::before{display:none;}
+  .lp-fern .lp-hoehe{display:none;}
   .lp-bearb{border:1px solid var(--stroh);border-radius:var(--radius);background:var(--weiss);padding:10px 12px;margin-bottom:10px;display:flex;flex-direction:column;gap:8px;}
   .lp-bearb-zeile{display:flex;gap:8px;flex-wrap:wrap;}
   .lp-bearb-zeile .btn{min-height:40px;}
@@ -819,6 +825,7 @@
   .log-list li.tippbar{min-height:44px;box-sizing:border-box;}
   .nur-rechner{display:none!important;}
   .modal{padding:20px 16px;}
+  .overlay{padding:calc(12px + env(safe-area-inset-top)) 10px 10px;}
   .karte-kopfzeile{margin:-10px -6px 0 0;}
   .log-neu{width:100%;min-height:44px;font-size:16px;}
   details.karte-abschnitt>summary{padding:14px 0;}
@@ -1336,10 +1343,10 @@
 
 <!-- Aus einem einzelnen Script-Block herausgeloest (F6). Reihenfolge ist
      bindend: Ueber Dateigrenzen hinweg gibt es kein Hoisting mehr. -->
-<script src="js/kern.js?v=124"></script>
-<script src="js/kataster.js?v=124"></script>
-<script src="js/lageplan.js?v=124"></script>
-<script src="js/start.js?v=124"></script>
+<script src="js/kern.js?v=125"></script>
+<script src="js/kataster.js?v=125"></script>
+<script src="js/lageplan.js?v=125"></script>
+<script src="js/start.js?v=125"></script>
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-app.js";
@@ -1506,9 +1513,9 @@
     });
   }
 </script>
-<script src="js/berater.js?v=124"></script>
-<script src="js/shop.js?v=124"></script>
-<script src="js/konfigurator.js?v=124"></script>
-<script src="js/pruefung.js?v=124"></script>
+<script src="js/berater.js?v=125"></script>
+<script src="js/shop.js?v=125"></script>
+<script src="js/konfigurator.js?v=125"></script>
+<script src="js/pruefung.js?v=125"></script>
 </body>
 </html>

@@ -1388,10 +1388,16 @@ document.addEventListener('toggle', e => {
   /* In der Baumkarte ist immer nur ein Abschnitt offen (Volkmar 26.10.2026). */
   const karte = d.closest('#modal-content');
   /* Beim Zeichnen der Karte feuern offene Abschnitte ebenfalls „toggle“ —
-     dann nicht scrollen, sonst springt die Karte gleich nach unten. */
+     das zählt nicht. Schließt sich ein Abschnitt darüber, rückt der
+     angetippte nicht nach oben: Die Karte scrollt um genau so viel mit, dass
+     seine Überschrift stehen bleibt und er nur nach unten wächst
+     (Volkmar 27.10.2026). */
   if(karte && d.open && Date.now() - _karteGezeichnet > 500){
+    const kopf = d.querySelector('summary');
+    const rollt = d.closest('.modal') || karte;
+    const vorher = kopf.getBoundingClientRect().top;
     karte.querySelectorAll('details.karte-abschnitt[open]').forEach(x => { if(x !== d) x.open = false; });
-    requestAnimationFrame(() => d.querySelector('summary').scrollIntoView({block:'nearest'}));
+    rollt.scrollTop += kopf.getBoundingClientRect().top - vorher;
   }
   try {
     const m = JSON.parse(localStorage.getItem(KARTE_OFFEN_KEY) || '{}');

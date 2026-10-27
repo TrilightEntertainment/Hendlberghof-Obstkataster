@@ -208,7 +208,9 @@ const EBENEN_KEY = 'hendlberghof_kartenebenen';
 const FOTO_GRENZEN = [[48.06945, 15.84287], [48.07116, 15.84452]];
 let _ebenen = null;
 let _ebenenOffen = false;
-const _ebenenWahl = {grund: 'hof', foto: true, fotoDeckkraft: 85, bestand: true, planung: false, baeume: true};
+const _ebenenWahl = {grund: 'hof', foto: true, fotoDeckkraft: 85, bestand: true, planung: false, hoehen: false, baeume: true};
+let _hoehenEbene = null;
+let _hoehenPromise = null;
 try { Object.assign(_ebenenWahl, JSON.parse(localStorage.getItem(EBENEN_KEY) || '{}')); } catch(e){}
 
 function ebenenMerken(){ try { localStorage.setItem(EBENEN_KEY, JSON.stringify(_ebenenWahl)); } catch(e){} }
@@ -220,6 +222,36 @@ function ebenenAnwenden(){
   an(_ebenen.foto, _ebenenWahl.foto);
   _ebenen.foto.setOpacity(_ebenenWahl.fotoDeckkraft / 100);
   if(_ebenen.foto._container) _ebenen.foto.bringToFront();
+  if(_ebenenWahl.hoehen) hoehenZeigen();
+  else if(_hoehenEbene) _hoehenEbene.remove();
+}
+
+/* Höhenlinien der Vermessung 2023 (data/hoehenlinien.json, tools/hoehenlinien.py):
+   5-m-Abstand, jede 10-m-Linie kräftiger und einmal beschriftet. Geladen wird
+   erst, wenn jemand die Ebene einschaltet. */
+function hoehenZeigen(){
+  if(_hoehenEbene){ if(!satMap.hasLayer(_hoehenEbene)) _hoehenEbene.addTo(satMap); return; }
+  if(!_hoehenPromise){
+    _hoehenPromise = fetch('data/hoehenlinien.json').then(r => { if(!r.ok) throw new Error(r.status); return r.json(); });
+  }
+  _hoehenPromise.then(d => {
+    if(_hoehenEbene || !_ebenenWahl.hoehen) return;
+    const renderer = L.canvas({padding: .5});
+    _hoehenEbene = L.layerGroup();
+    (d.linien || []).forEach(({h, geo}) => {
+      const zehner = h % 10 === 0;
+      let laengste = null, laenge = 0;
+      geo.forEach(pts => {
+        L.polyline(pts, {renderer, color: '#F1EDE2', weight: zehner ? 1.4 : .7, opacity: zehner ? .85 : .6, interactive: false}).addTo(_hoehenEbene);
+        if(zehner && pts.length > laenge){ laenge = pts.length; laengste = pts; }
+      });
+      if(laengste){
+        const mitte = laengste[Math.floor(laengste.length / 2)];
+        L.tooltip({permanent: true, direction: 'center', className: 'lp-hoehe', interactive: false}).setLatLng(mitte).setContent(`${h} m`).addTo(_hoehenEbene);
+      }
+    });
+    if(_ebenenWahl.hoehen) _hoehenEbene.addTo(satMap);
+  }).catch(() => showToast('Höhenlinien nicht ladbar – Internet nötig.', 'error'));
 }
 
 function renderEbenenKnopf(){
@@ -244,6 +276,7 @@ function renderEbenenKnopf(){
       <label class="lp-ebenen-regler">Deckkraft<input type="range" min="0" max="100" step="5" value="${w.fotoDeckkraft}" oninput="ebeneSetzen('fotoDeckkraft', +this.value)"${w.foto ? '' : ' disabled'}></label>
       ${haken('bestand', 'Wege &amp; Swale')}
       ${haken('planung', 'Konzeptplan 2020')}
+      ${haken('hoehen', 'Höhenlinien (5 m)')}
       ${haken('baeume', 'Bäume')}
     </div>`;
 }
@@ -256,7 +289,7 @@ function ebenenOeffnen(offen){
 function ebeneSetzen(key, wert){
   _ebenenWahl[key] = wert;
   ebenenMerken();
-  if(key === 'grund' || key === 'foto' || key === 'fotoDeckkraft') ebenenAnwenden();
+  if(key === 'grund' || key === 'foto' || key === 'fotoDeckkraft' || key === 'hoehen') ebenenAnwenden();
   if(key === 'foto'){ const r = document.querySelector('.lp-ebenen-regler input'); if(r) r.disabled = !wert; }
   if(key === 'bestand' || key === 'planung'){
     if(_flaecheAktiv){ const o = kartenObjekt(_flaecheAktiv); if(o && !_ebenenWahl[o.ebene]) objektMarkieren(null); }

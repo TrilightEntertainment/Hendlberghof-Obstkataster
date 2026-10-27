@@ -264,6 +264,12 @@ function applyRemoteState(remote){
     }
     return out;
   };
+  const _mergeArrFern=(local, remote, key='id')=>{
+    if(!Array.isArray(remote)) return local||[];
+    if(!Array.isArray(local)) return remote;
+    const fern=new Set(remote.map(x=>x[key]));
+    return remote.concat(local.filter(x=>!fern.has(x[key])));
+  };
   const _mergeArr=(local, remote, key='id')=>{
     if(!Array.isArray(remote)) return local||[];
     if(!Array.isArray(local)) return remote;
@@ -307,7 +313,12 @@ function applyRemoteState(remote){
   state.bestellungen = _mergeArr(state.bestellungen, remote.bestellungen);
   state.importLog = _mergeArr(state.importLog, remote.importLog);
   state.importSnapshots = _mergeArr(state.importSnapshots, remote.importSnapshots, 'importId');
-  state.customTrees = _mergeArr(state.customTrees, remote.customTrees);
+  /* Bei gleicher ID gilt die Cloud (v125): Sonst behält ein Gerät mit altem
+     Stand seine Fassung eines übernommenen Baums und schreibt sie beim
+     nächsten Speichern zurück – so ging am 27.10.2026 die Korrektur von
+     931/932 verloren. Nur Bäume, die die Cloud noch nicht kennt, bleiben
+     lokal dazu. */
+  state.customTrees = _mergeArrFern(state.customTrees, remote.customTrees);
   _mittelCache=null;
   _sortenCache=null;
   invalidateTreeCache();
