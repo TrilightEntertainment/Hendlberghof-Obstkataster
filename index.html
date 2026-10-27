@@ -610,6 +610,29 @@
 #tab-sortenberater .bf-beratung{border-top:1px solid var(--rand);margin-top:14px;padding-top:12px;}
 #tab-sortenberater .bf-beratung-titel{font-family:var(--font-heading);font-size:1.1rem;color:var(--gruen);margin:0 0 6px;}
 #tab-sortenberater .bf-pdf{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-top:12px;font-size:.85rem;color:var(--muted);}
+#tab-sortenberater .bf-kal{border:1px solid var(--rand);border-radius:var(--radius);padding:8px 10px 6px;margin:4px 0 8px;}
+#tab-sortenberater .bf-kal-zeile{display:flex;align-items:center;gap:8px;min-height:24px;}
+#tab-sortenberater .bf-kal-name{flex:0 0 34%;font-family:var(--font-heading);font-size:.88rem;color:var(--gruen);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+#tab-sortenberater .bf-kal-monate{flex:1;display:grid;grid-template-columns:repeat(11,1fr);align-items:center;}
+#tab-sortenberater .bf-kal-kopf .bf-kal-monate span{text-align:center;font-size:.68rem;color:var(--muted);}
+#tab-sortenberater .bf-kal-zelle{position:relative;height:14px;border-bottom:1px solid var(--rand);margin-bottom:6px;}
+#tab-sortenberater .bf-kal-zelle.genuss{border-bottom:2px solid var(--stroh);margin-bottom:5.5px;}
+#tab-sortenberater .bf-kal-zelle.genuss:not(.l){margin-left:2px;}
+#tab-sortenberater .bf-kal-zelle.genuss:not(.r){margin-right:2px;}
+#tab-sortenberater .bf-kal-ernte{display:inline-block;width:9px;height:9px;border:1.5px solid var(--gruen);border-radius:50%;background:var(--weiss);}
+#tab-sortenberater .bf-kal-zelle .bf-kal-ernte{position:absolute;left:50%;bottom:-5.5px;transform:translateX(-50%);}
+#tab-sortenberater .bf-kal-strich{display:inline-block;width:16px;border-bottom:2px solid var(--stroh);vertical-align:middle;margin-left:10px;}
+#tab-sortenberater .bf-kal-legende{font-size:.72rem;color:var(--muted);margin-top:2px;display:flex;align-items:center;gap:5px;}
+#tab-sortenberater .bf-genuss-satz{font-size:.86rem;}
+#tab-sortenberater .bf-filter{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-bottom:6px;}
+#tab-sortenberater .bf-filter-titel{font-size:.78rem;color:var(--muted);min-width:100px;}
+#tab-sortenberater .bf-link{background:none;border:none;padding:0;font:inherit;font-size:.8rem;color:var(--gruen);text-decoration:underline;text-decoration-color:var(--stroh);cursor:pointer;}
+#tab-sortenberater .bf-liste{border-top:1px solid var(--rand);}
+#tab-sortenberater .bf-zeile{display:flex;align-items:flex-start;gap:10px;border-bottom:1px solid var(--rand);padding:8px 0;}
+#tab-sortenberater .bf-haken{flex:none;width:22px;height:22px;margin-top:2px;border:1px solid var(--muted);border-radius:4px;background:var(--weiss);cursor:pointer;position:relative;padding:0;}
+#tab-sortenberater .bf-haken.an{border:1.5px solid var(--stroh);}
+#tab-sortenberater .bf-haken.an::after{content:"";position:absolute;left:6.5px;top:2px;width:5px;height:11px;border:solid var(--stroh);border-width:0 2px 2px 0;transform:rotate(45deg);}
+#tab-sortenberater .bf-zeile-text{flex:1;display:flex;flex-direction:column;gap:2px;text-align:left;background:none;border:none;padding:0;font:inherit;color:var(--text);cursor:pointer;min-width:0;}
 #tab-sortenberater #sb-filter-quelle[hidden]{display:none;}
 #tab-sortenberater .bf-stoebern{max-width:640px;margin:8px auto 0;}
 #tab-sortenberater .bf-stoebern[open]{max-width:none;}
@@ -1458,10 +1481,10 @@
 
 <!-- Aus einem einzelnen Script-Block herausgeloest (F6). Reihenfolge ist
      bindend: Ueber Dateigrenzen hinweg gibt es kein Hoisting mehr. -->
-<script src="js/kern.js?v=133"></script>
-<script src="js/kataster.js?v=133"></script>
-<script src="js/lageplan.js?v=133"></script>
-<script src="js/start.js?v=133"></script>
+<script src="js/kern.js?v=134"></script>
+<script src="js/kataster.js?v=134"></script>
+<script src="js/lageplan.js?v=134"></script>
+<script src="js/start.js?v=134"></script>
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-app.js";
@@ -1628,10 +1651,10 @@
     });
   }
 </script>
-<script src="js/berater.js?v=133"></script>
-<script src="js/shop.js?v=133"></script>
-<script src="js/konfigurator.js?v=133"></script>
-<script src="js/pruefung.js?v=133"></script>
-<script src="js/baumfinder.js?v=133"></script>
+<script src="js/berater.js?v=134"></script>
+<script src="js/shop.js?v=134"></script>
+<script src="js/konfigurator.js?v=134"></script>
+<script src="js/pruefung.js?v=134"></script>
+<script src="js/baumfinder.js?v=134"></script>
 </body>
 </html>

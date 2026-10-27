@@ -63,7 +63,8 @@ let _bf = bfLaden();
 
 function bfLeer(){
   return { schritt:-1, art:null, hoehe:600, lage:'sued', boden:'mittel', platz:null,
-           garten:[], nutzung:[], ernte:[], lange:false, mitPlan:true };
+           garten:[], nutzung:[], ernte:[], lange:false, mitPlan:true,
+           filter:{ geschmack:[], fleisch:[], verwendung:[], genuss:[] }, auswahl:null };
 }
 function bfLaden(){
   try {
@@ -121,11 +122,78 @@ const BF_PASST = {
   lager:   s => bfLagert(s),
   most:    s => bfZiele(s).includes('most') || (s.verwendung || []).includes('Saft/Most') || /most|saft|cider/.test(bfText(s)),
   backen:  s => (s.verwendung || []).includes('Wirtschaftsobst') || /back|koch|kuchen|strudel|mus\b|wirtschaft/.test(bfText(s)),
-  doerren: s => /dörr/.test(bfText(s)),
+  doerren: s => /dörr/.test(bfText(s)) && !/dörren ungeeignet|nicht (zum |für )?dörr|ungeeignet zum dörr/.test(bfText(s)),
   schnaps: s => /schnaps|brenn|destill/.test(bfText(s))
 };
 const BF_GRUND = { tafel:'zum Frischessen', lager:'lagerfähig', most:'für Saft und Most', backen:'zum Backen und Kochen',
                    doerren:'zum Dörren', schnaps:'für Schnaps' };
+
+/* ---------- Genusszeit und Merkmale (v134) ----------
+   Pflückreif ist nicht genussreif: Der Kalender zeigt beides, über das
+   Obstjahr von Juli bis Mai. Geschmack und Fruchtfleisch kommen aus den
+   Freitexten der Sortenbeschreibung – wo keiner steht, gilt „ohne Angabe“,
+   und die Sorte rückt beim Filtern ans Ende statt zu verschwinden. */
+const BF_JAHR = [7, 8, 9, 10, 11, 12, 1, 2, 3, 4, 5];
+const BF_MONAT_KURZ = ['', 'J', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D'];
+const bfSaison = m => (m ? (m - 7 + 12) % 12 : 99);
+
+function bfGenuss(s){
+  const ernte = bfMonat(s);
+  let von = parseInt(s.genuss_von, 10) || 0, bis = parseInt(s.genuss_bis, 10) || 0;
+  if(!von) von = ernte;
+  if(!bis) bis = von;
+  const monate = [];
+  if(von){ for(let m = von, i = 0; i < 12; i++, m = m % 12 + 1){ monate.push(m); if(m === bis) break; } }
+  return { ernte, von, bis, monate };
+}
+
+const BF_FILTER = {
+  geschmack: [ { id:'suess', label:'süß', re:/süß/ },
+               { id:'saeuerlich', label:'säuerlich-frisch', re:/säuer|säure|weinig|spritzig|herb/ },
+               { id:'wuerzig', label:'würzig, aromatisch', re:/würz|aroma|muskat|nuss|anis|edel/ } ],
+  fleisch:   [ { id:'saftig', label:'saftig', re:/saftig/ },
+               { id:'knackig', label:'knackig, fest', re:/knack|\bfest|hart/ },
+               { id:'muerbe', label:'mürbe, schmelzend', re:/mürb|schmelz|weich|butt/ } ],
+  verwendung:[ { id:'tafel', label:'frisch' }, { id:'most', label:'Most' },
+               { id:'backen', label:'Backen' }, { id:'doerren', label:'Dörren' } ],
+  genuss:    [ { id:'sommer', label:'Sommer', monate:[7, 8] }, { id:'herbst', label:'Herbst', monate:[9, 10, 11] },
+               { id:'winter', label:'Winter', monate:[12, 1, 2] }, { id:'fruehjahr', label:'Frühjahr', monate:[3, 4, 5] } ]
+};
+const BF_FILTER_TITEL = { geschmack:'Geschmack', fleisch:'Fruchtfleisch', verwendung:'Verwendung', genuss:'Genusszeit' };
+
+/* true = passt, false = passt nicht, null = keine Angabe */
+function bfFilterPasst(s, gruppe, ids){
+  if(!ids.length) return true;
+  if(gruppe === 'geschmack' || gruppe === 'fleisch'){
+    /* „schwach gewürzt“, „kaum aromatisch“ zählen nicht als würzig */
+    const g = String(s.geschmack || '').toLowerCase().replace(/(schwach|kaum|wenig|nicht)\s+(gewürzt|würzig|aromatisch)/g, '');
+    if(!String(s.geschmack || '').trim()) return null;
+    return BF_FILTER[gruppe].some(f => ids.includes(f.id) && f.re.test(g));
+  }
+  if(gruppe === 'verwendung'){
+    if(!bfText(s).trim() && !bfZiele(s).length) return null;
+    return ids.some(id => BF_PASST[id] && BF_PASST[id](s));
+  }
+  const gz = bfGenuss(s);
+  if(!gz.monate.length) return null;
+  return BF_FILTER.genuss.some(f => ids.includes(f.id) && f.monate.some(m => gz.monate.includes(m)));
+}
+
+function bfGefiltert(bewertet){
+  const f = Object.assign({ geschmack:[], fleisch:[], verwendung:[], genuss:[] }, _bf.filter || {});
+  const mit = [], ohne = [];
+  bewertet.forEach(b=>{
+    let fehlt = false;
+    for(const gruppe of Object.keys(BF_FILTER)){
+      const r = bfFilterPasst(b.s, gruppe, f[gruppe] || []);
+      if(r === false) return;
+      if(r === null) fehlt = true;
+    }
+    (fehlt || !String(b.s.geschmack || '').trim() ? ohne : mit).push(b);
+  });
+  const nachZeit = (a, b)=> bfSaison(bfGenuss(a.s).von) - bfSaison(bfGenuss(b.s).von) || b.punkte - a.punkte;
+  return mit.sort(nachZeit).concat(ohne.sort(nachZeit).map(b => Object.assign({}, b, { ohneAngabe:true })));
+}
 
 /* Standort: harte Grenze nur, wo die Sorte Angaben hat. */
 function bfStandortOk(s){
@@ -208,7 +276,8 @@ function bfErgebnis(){
   if(!_bf.art) bewertet = bewertet.filter(b => obstartSchluessel(b.s.frucht) === obstartSchluessel(art));
   if(!bewertet.length) return { art, leer:true };
   const unterlage = bfUnterlage(art);
-  const maxSorten = (_bf.lange && _bf.platz !== 'topf') ? Math.min(3, maxSortenProBaum(art)) : 1;
+  const maxBaum = _bf.platz === 'topf' ? 1 : maxSortenProBaum(art);
+  const maxSorten = _bf.lange ? Math.min(3, maxBaum) : 1;
   const verkauf = getBetrieb().shop_aktiv;
   /* Mehrsortenbaum: nur Sorten, die der Hof selbst veredeln darf, wenn verkauft
      wird – sonst wäre der Baum nicht bestellbar. Verschiedene Pflückmonate zuerst. */
@@ -216,16 +285,20 @@ function bfErgebnis(){
   const gewaehlt = [];
   (kandidaten.length ? kandidaten : bewertet).forEach(b=>{
     if(gewaehlt.length >= maxSorten) return;
-    if(gewaehlt.length && b.monat && gewaehlt.some(g => g.monat === b.monat)) return;
+    const v = bfGenuss(b.s).von;
+    if(gewaehlt.length && v && gewaehlt.some(g => bfGenuss(g.s).von === v)) return;
     gewaehlt.push(b);
   });
   if(gewaehlt.length < maxSorten){
     (kandidaten.length ? kandidaten : bewertet).forEach(b=>{ if(gewaehlt.length < maxSorten && !gewaehlt.includes(b)) gewaehlt.push(b); });
   }
-  gewaehlt.sort((a, b)=> (a.monat || 99) - (b.monat || 99));
-  const weitere = bewertet.filter(b => !gewaehlt.includes(b)).slice(0, 6);
+  /* Eigene Auswahl aus der Liste hat Vorrang vor der Vorauswahl */
+  const eigen = Array.isArray(_bf.auswahl)
+    ? _bf.auswahl.map(n => bewertet.find(b => b.s.sorte === n)).filter(Boolean).slice(0, maxBaum) : null;
+  const sorten = (eigen && eigen.length ? eigen : gewaehlt)
+    .slice().sort((a, b)=> bfSaison(bfGenuss(a.s).von) - bfSaison(bfGenuss(b.s).von));
   const andereArten = _bf.art ? [] : [...new Set(bfBewerten(null).map(b => b.s.frucht))].filter(f => f !== art).slice(0, 3);
-  return { art, unterlage, sorten:gewaehlt, weitere, andereArten, gesamt:bewertet.length };
+  return { art, unterlage, sorten, bewertet, maxBaum, andereArten, gesamt:bewertet.length };
 }
 
 function bfBefruchtung(sorten){
@@ -363,7 +436,7 @@ function bfFrage(name){
       <div class="bf-chips">${BF_ERNTE.map(e => bfChip('ernte', e.id, `${e.label} · ${e.info}`, _bf.ernte.includes(e.id))).join('')}</div>
       ${mehrsorten && _bf.platz !== 'topf' ? `
       <button type="button" class="bf-wahl${_bf.lange ? ' aktiv' : ''}" onclick="bfSetzeWert('lange', ${_bf.lange ? 'false' : 'true'})">
-        <span class="bf-wahl-text">Möglichst lange ernten<small>mehrere Sorten auf einem Baum, von früh bis spät</small></span></button>` : ''}
+        <span class="bf-wahl-text">Möglichst lange genießen<small>mehrere Sorten auf einem Baum – von der Ernte bis ins Frühjahr</small></span></button>` : ''}
       <div class="bf-knoepfe"><button type="button" class="btn" onclick="bfGehe(${nr + 1})">Meinen Baum zeigen</button></div>`;
   }
   return `<div class="bf-karte">${bfKopf(nr)}${inhalt}</div>`;
@@ -379,22 +452,19 @@ function bfErgebnisHtml(){
       ${bfBeratungBlock()}
       <div class="bf-knoepfe"><button type="button" class="btn secondary" onclick="bfGehe(${BF_SCHRITTE.length - 1})">Angaben ändern</button>${neu}</div>
     </div>`;
-  const b = getBetrieb();
-  const verkauf = b.shop_aktiv;
+  const verkauf = getBetrieb().shop_aktiv;
   const u = erg.unterlage;
   const form = u ? getProduktion().stammformen.find(f => f.id === u.form) : null;
   const preis = verkauf ? bfPreis(erg) : null;
-  const alleBestellbar = erg.sorten.every(x => x.bestellbar) && u && !u.aufAnfrage;
+  const nichtFrei = erg.sorten.filter(x => !x.bestellbar).map(x => x.s.sorte);
+  const alleBestellbar = !nichtFrei.length && u && !u.aufAnfrage;
   const sofort = verkauf ? bfSofort(erg.art) : [];
-  const titel = `${erg.art}${erg.sorten.length > 1 ? `, ${erg.sorten.length} Sorten` : ''}${u ? ` auf ${u.u.name}` : ''}`;
-  const unterzeile = [form && form.name, u && bfPlatz(u), u && u.u.ertrag && `trägt ${u.u.ertrag}`].filter(Boolean).join(' · ');
+  const titel = `${erg.art}${form ? `, ${form.name}` : ''}${u ? ` auf ${u.u.name}` : ''}`;
+  const unterzeile = [u && bfPlatz(u), u && u.u.ertrag && `trägt ${u.u.ertrag}`,
+    erg.maxBaum > 1 ? `bis ${erg.maxBaum} Sorten auf einem Baum` : ''].filter(Boolean).join(' · ');
   const hinweise = bfHinweise(erg);
-  const sortenZeilen = erg.sorten.map(x => `
-      <button type="button" class="bf-sorte" onclick="openSortenModal('${escAttr(x.s.sorte)}')">
-        <span class="bf-sorte-name">${escHtml(x.s.sorte)}</span>
-        <span class="bf-sorte-reife">${escHtml(bfReifeText(x.s))}</span>
-        ${x.gruende.length ? `<span class="bf-gruende">${x.gruende.slice(0, 3).map(escHtml).join(' · ')}</span>` : ''}
-      </button>`).join('');
+  const n = erg.sorten.length;
+  const knopfText = `${n} ${n === 1 ? 'Sorte' : 'Sorten auf einem Baum'}${preis == null ? '' : ` · ${eur(preis)}`}`;
   return `
     <div class="bf-karte bf-ergebnis">
       <div class="bf-kopf"><button type="button" class="bf-zurueck" onclick="bfGehe(${BF_SCHRITTE.length - 1})" aria-label="Zurück">
@@ -404,29 +474,101 @@ function bfErgebnisHtml(){
       <h2 class="bf-titel">${escHtml(titel)}</h2>
       ${unterzeile ? `<p class="bf-leise">${escHtml(unterzeile)}</p>` : ''}
       ${u ? `<p class="bf-text">${escHtml(u.u.beschreibung)}${u.aufAnfrage ? ' <span class="bf-anfrage">auf Anfrage</span>' : ''}</p>` : ''}
-      <div class="bf-sorten">${sortenZeilen}</div>
-      ${hinweise.length ? `<ul class="bf-hinweise">${hinweise.map(x => `<li>${escHtml(x)}</li>`).join('')}</ul>` : ''}
-      ${sofort.length ? `<div class="bf-sofort"><b>Sofort verfügbar am Hof:</b> ${sofort.map(x => escHtml(`${x.sorte || x.frucht}${x.unterlage ? ` (${x.unterlage})` : ''} – ${x.anzahl} Stk.`)).join(', ')}</div>` : ''}
+
+      <div class="bf-unterfrage">Deine Auswahl – wann du genießt</div>
+      ${bfKalenderHtml(erg.sorten)}
+      <p class="bf-text bf-genuss-satz">${escHtml(bfGenussSatz(erg.sorten))}</p>
+
       ${verkauf ? `
-        <div class="bf-preis">${preis == null ? 'Preis mit dem Angebot' : `${eur(preis)}`}
-          <small>unverbindlich · Abholung am Hof · Herbst ${konfigLieferjahr()}</small></div>
         <div class="bf-knoepfe">
-          ${alleBestellbar ? `<button type="button" class="btn" onclick="bfAufMerkliste()">Auf die Merkliste</button>
-            <button type="button" class="btn secondary" onclick="bfImKonfigurator()">Baum anpassen</button>` : ''}
-          <button type="button" class="btn ${alleBestellbar ? 'secondary' : ''}" onclick="bfBeratungAnfragen()">Beratung anfragen</button>
-        </div>` : bfBeratungBlock()}
+          ${alleBestellbar ? `<button type="button" class="btn" onclick="bfAufMerkliste()">${escHtml(knopfText)} – auf die Merkliste</button>` : ''}
+          <button type="button" class="btn secondary" onclick="bfBeratungAnfragen()">Beratung anfragen</button>
+        </div>
+        <p class="bf-leise">${preis == null ? 'Preis mit dem Angebot' : 'Richtpreis'} · unverbindlich · Abholung am Hof · Herbst ${konfigLieferjahr()}
+          ${alleBestellbar ? ` · <button type="button" class="bf-link" onclick="bfImKonfigurator()">Baum im Detail anpassen</button>` : ''}</p>
+        ${nichtFrei.length ? `<p class="bf-leise">${escHtml(nichtFrei.join(', '))}: nicht zur eigenen Veredelung freigegeben – dazu beraten wir gern.</p>` : ''}` : bfBeratungBlock()}
+      ${sofort.length ? `<div class="bf-sofort"><b>Sofort verfügbar am Hof:</b> ${sofort.map(x => escHtml(`${x.sorte || x.frucht}${x.unterlage ? ` (${x.unterlage})` : ''} – ${x.anzahl} Stk.`)).join(', ')}</div>` : ''}
+
+      ${bfListeHtml(erg)}
+
+      ${hinweise.length ? `<div class="bf-unterfrage">Gut zu wissen</div><ul class="bf-hinweise">${hinweise.map(x => `<li>${escHtml(x)}</li>`).join('')}</ul>` : ''}
       <div class="bf-pdf">
         <label><input type="checkbox" ${_bf.mitPlan ? 'checked' : ''} onchange="bfSetzeWert('mitPlan', this.checked, true)"> mit Pflanzplan</label>
         <button type="button" class="btn secondary" onclick="bfPdf()">Als PDF speichern</button>
       </div>
-      ${erg.weitere.length ? `
-        <div class="bf-unterfrage">Passt auch</div>
-        <div class="bf-chips">${erg.weitere.map(x => `<button type="button" class="bf-chip" onclick="openSortenModal('${escAttr(x.s.sorte)}')">${escHtml(x.s.sorte)}</button>`).join('')}</div>` : ''}
       ${erg.andereArten.length ? `
         <div class="bf-unterfrage">Andere Obstarten, die passen</div>
         <div class="bf-chips">${erg.andereArten.map(f => `<button type="button" class="bf-chip" onclick="bfArtWechseln('${escAttr(f)}')">${escHtml(f)}</button>`).join('')}</div>` : ''}
       <div class="bf-knoepfe">${neu}</div>
     </div>`;
+}
+
+/* Kalender Juli bis Mai: Kreis = pflücken, Linie = genießen */
+function bfKalenderHtml(sorten){
+  const kopf = BF_JAHR.map(m => `<span>${BF_MONAT_KURZ[m]}</span>`).join('');
+  const zeilen = sorten.map(x=>{
+    const g = bfGenuss(x.s);
+    const zellen = BF_JAHR.map(m=>{
+      const genuss = g.monate.includes(m);
+      const links = genuss && g.monate.includes(m === 1 ? 12 : m - 1) && m !== g.von;
+      const rechts = genuss && m !== g.bis;
+      return `<span class="bf-kal-zelle${genuss ? ' genuss' : ''}${links ? ' l' : ''}${rechts ? ' r' : ''}">${g.ernte === m ? '<i class="bf-kal-ernte"></i>' : ''}</span>`;
+    }).join('');
+    return `<div class="bf-kal-zeile"><span class="bf-kal-name">${escHtml(x.s.sorte)}</span><span class="bf-kal-monate">${zellen}</span></div>`;
+  }).join('');
+  return `<div class="bf-kal">
+      <div class="bf-kal-zeile bf-kal-kopf"><span class="bf-kal-name"></span><span class="bf-kal-monate">${kopf}</span></div>
+      ${zeilen}
+      <div class="bf-kal-legende"><i class="bf-kal-ernte"></i> pflücken <i class="bf-kal-strich"></i> genießen</div>
+    </div>`;
+}
+
+function bfGenussSatz(sorten){
+  const g = sorten.map(x => Object.assign({ name:x.s.sorte }, bfGenuss(x.s))).filter(x => x.von);
+  if(!g.length) return 'Zur Genusszeit dieser Sorten haben wir noch keine Angaben – frag uns.';
+  const start = g.reduce((a, x)=> Math.min(a, bfSaison(x.ernte || x.von)), 99);
+  const ende = g.reduce((a, x)=> Math.max(a, bfSaison(x.bis)), 0);
+  const name = i => KONFIG_MONATE[BF_JAHR[i]] || '';
+  const lager = g.filter(x => x.ernte && x.von && bfSaison(x.von) > bfSaison(x.ernte))
+    .sort((a, b)=> (bfSaison(b.von) - bfSaison(b.ernte)) - (bfSaison(a.von) - bfSaison(a.ernte)))[0];
+  const teile = [g.length > 1
+    ? `Mit diesen ${g.length} Sorten hast du Obst von ${name(start)} bis ${name(ende)}.`
+    : `${g[0].name}: von ${name(start)} bis ${name(ende)}.`];
+  if(lager) teile.push(`Pflückreif ist nicht gleich genussreif: ${lager.name} wird im ${KONFIG_MONATE[lager.ernte]} gepflückt und erst ab ${KONFIG_MONATE[lager.von]} im kühlen Keller richtig süß und aromatisch.`);
+  return teile.join(' ');
+}
+
+function bfListeHtml(erg){
+  const f = Object.assign({ geschmack:[], fleisch:[], verwendung:[], genuss:[] }, _bf.filter || {});
+  const liste = bfGefiltert(erg.bewertet);
+  const gewaehlt = erg.sorten.map(x => x.s.sorte);
+  const filterHtml = Object.keys(BF_FILTER).map(gruppe => `
+      <div class="bf-filter"><span class="bf-filter-titel">${BF_FILTER_TITEL[gruppe]}</span>
+        ${BF_FILTER[gruppe].map(x => `<button type="button" class="bf-chip${f[gruppe].includes(x.id) ? ' aktiv' : ''}" aria-pressed="${f[gruppe].includes(x.id) ? 'true' : 'false'}" onclick="bfFilter('${gruppe}','${x.id}')">${escHtml(x.label)}</button>`).join('')}
+      </div>`).join('');
+  const zeilen = liste.map(b=>{
+    const an = gewaehlt.includes(b.s.sorte);
+    const g = bfGenuss(b.s);
+    const geschmack = String(b.s.geschmack || '').trim();
+    const zeit = [g.ernte && `pflücken ${KONFIG_MONATE[g.ernte]}`,
+      g.von && g.bis && `genießen ${KONFIG_MONATE[g.von]}${g.bis !== g.von ? `–${KONFIG_MONATE[g.bis]}` : ''}`].filter(Boolean).join(' · ');
+    return `
+      <div class="bf-zeile${an ? ' an' : ''}">
+        <button type="button" class="bf-haken${an ? ' an' : ''}" aria-pressed="${an ? 'true' : 'false'}" aria-label="${escAttr(b.s.sorte)} ${an ? 'abwählen' : 'wählen'}" onclick="bfWaehlen('${escAttr(b.s.sorte)}')"></button>
+        <button type="button" class="bf-zeile-text" onclick="openSortenModal('${escAttr(b.s.sorte)}')">
+          <span class="bf-sorte-name">${escHtml(b.s.sorte)}</span>
+          <span class="bf-sorte-reife">${geschmack ? escHtml(geschmack.length > 90 ? `${geschmack.slice(0, 88)}…` : geschmack) : 'Geschmack noch ohne Angabe'}</span>
+          ${zeit ? `<span class="bf-sorte-reife">${escHtml(zeit)}</span>` : ''}
+        </button>
+      </div>`;
+  }).join('');
+  const aktiv = Object.values(f).some(x => x.length);
+  return `
+    <div class="bf-unterfrage">Verfeinern</div>
+    ${filterHtml}
+    ${aktiv ? `<button type="button" class="bf-link" onclick="bfFilterLeeren()">Filter zurücksetzen</button>` : ''}
+    <div class="bf-unterfrage">${liste.length} passende Sorten · nach Genusszeit${erg.maxBaum > 1 ? ` · bis ${erg.maxBaum} wählen` : ''}</div>
+    <div class="bf-liste">${zeilen || '<p class="bf-leise">Keine Sorte erfüllt alle Filter.</p>'}</div>`;
 }
 
 function bfBeratungBlock(){
@@ -466,21 +608,52 @@ function bfNeu(){ _bf = bfLeer(); bfMerken(); bfGehe(0); }
 /* Einfachauswahl: antippen und weiter */
 function bfSetze(gruppe, wert){
   _bf[gruppe] = wert;
+  _bf.auswahl = null;
   if(gruppe === 'art' && !istMehrsortenfaehig(wert || 'Apfel')) _bf.lange = false;
   bfGehe(_bf.schritt + 1);
 }
 function bfSetzeWert(feld, wert, stumm){
   _bf[feld] = (feld === 'hoehe') ? Math.max(200, Math.min(1200, parseInt(wert, 10) || 600)) : wert;
+  if(feld !== 'mitPlan') _bf.auswahl = null;
   bfMerken();
   if(!stumm) renderBaumfinder();
 }
 function bfUmschalten(gruppe, wert){
   const liste = _bf[gruppe] || [];
   _bf[gruppe] = liste.includes(wert) ? liste.filter(x => x !== wert) : liste.concat(wert);
+  _bf.auswahl = null;
   bfMerken();
   renderBaumfinder();
 }
-function bfArtWechseln(art){ _bf.art = art; bfMerken(); renderBaumfinder(); }
+function bfArtWechseln(art){ _bf.art = art; _bf.auswahl = null; bfMerken(); renderBaumfinder(); }
+
+/* Verfeinern ändert nur die Liste, nicht die Auswahl */
+function bfFilter(gruppe, id){
+  const f = Object.assign({ geschmack:[], fleisch:[], verwendung:[], genuss:[] }, _bf.filter || {});
+  f[gruppe] = f[gruppe].includes(id) ? f[gruppe].filter(x => x !== id) : f[gruppe].concat(id);
+  _bf.filter = f;
+  bfMerken();
+  renderBaumfinder();
+}
+function bfFilterLeeren(){ _bf.filter = bfLeer().filter; bfMerken(); renderBaumfinder(); }
+
+function bfWaehlen(name){
+  const erg = bfErgebnis();
+  let auswahl = erg.sorten.map(x => x.s.sorte);
+  if(auswahl.includes(name)){
+    if(auswahl.length === 1){ showToast('Mindestens eine Sorte bleibt gewählt.', 'info'); return; }
+    auswahl = auswahl.filter(x => x !== name);
+  } else {
+    if(auswahl.length >= erg.maxBaum){
+      showToast(erg.maxBaum === 1 ? 'Hier passt nur eine Sorte – tippe erst die gewählte ab.' : `Höchstens ${erg.maxBaum} Sorten auf einem Baum.`, 'info');
+      return;
+    }
+    auswahl = auswahl.concat(name);
+  }
+  _bf.auswahl = auswahl;
+  bfMerken();
+  renderBaumfinder();
+}
 
 function bfAufMerkliste(){
   const erg = bfErgebnis();
@@ -596,6 +769,30 @@ async function bfPdf(){
     const zeilen = [bfReifeText(x.s), x.s.geschmack, x.gruende.length ? `Warum: ${x.gruende.join(', ')}` : ''].filter(Boolean);
     zeilen.forEach(z => absatz(z, 9.5));
   });
+  /* Genusskalender: Juli bis Mai, Kreis = pflücken, Linie = genießen */
+  y += 2;
+  if(y + 8 + erg.sorten.length * 6 > 280){ doc.addPage(); y = 20; }
+  const x0 = 70, breite = 120, spalte = breite / BF_JAHR.length;
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(120);
+  BF_JAHR.forEach((m, i) => doc.text(BF_MONAT_KURZ[m], x0 + i * spalte + spalte / 2, y, { align:'center' }));
+  y += 2;
+  doc.setDrawColor(...gold);
+  erg.sorten.forEach(x => {
+    y += 5;
+    const g = bfGenuss(x.s);
+    doc.setFontSize(9); doc.setTextColor(30, 30, 30);
+    doc.text(doc.splitTextToSize(x.s.sorte, 46)[0], 20, y + 1);
+    doc.setDrawColor(226, 218, 203); doc.setLineWidth(0.2); doc.line(x0, y, x0 + breite, y);
+    doc.setDrawColor(...gold); doc.setLineWidth(1.2);
+    g.monate.forEach(m => { const i = BF_JAHR.indexOf(m); if(i >= 0) doc.line(x0 + i * spalte + 0.6, y, x0 + (i + 1) * spalte - 0.6, y); });
+    const ie = BF_JAHR.indexOf(g.ernte);
+    if(ie >= 0){ doc.setLineWidth(0.4); doc.setFillColor(255, 255, 255); doc.circle(x0 + ie * spalte + spalte / 2, y, 1.4, 'FD'); }
+  });
+  y += 5;
+  doc.setFontSize(8); doc.setTextColor(120);
+  doc.text('Kreis = pflücken · Linie = genießen', x0, y);
+  y += 5;
+  absatz(bfGenussSatz(erg.sorten), 9.5);
   if(b.shop_aktiv){
     const preis = bfPreis(erg);
     y += 1;
