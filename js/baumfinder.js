@@ -120,7 +120,7 @@ function bfLagert(s){
 const BF_PASST = {
   tafel:   s => bfZiele(s).includes('tafel') || (s.verwendung || []).includes('Tafelobst') || /tafel/.test(bfText(s)),
   lager:   s => bfLagert(s),
-  most:    s => bfZiele(s).includes('most') || (s.verwendung || []).includes('Saft/Most') || /most|saft|cider/.test(bfText(s)),
+  most:    s => bfZiele(s).includes('most') || (s.verwendung || []).includes('Saft/Most') || /most|\bsaft(?!ig)|obstwein|cider|pressen/.test(bfText(s)),
   backen:  s => (s.verwendung || []).includes('Wirtschaftsobst') || /back|koch|kuchen|strudel|mus\b|wirtschaft/.test(bfText(s)),
   doerren: s => /dörr/.test(bfText(s)) && !/dörren ungeeignet|nicht (zum |für )?dörr|ungeeignet zum dörr/.test(bfText(s)),
   schnaps: s => /schnaps|brenn|destill/.test(bfText(s))
@@ -165,8 +165,9 @@ const BF_FILTER_TITEL = { geschmack:'Geschmack', fleisch:'Fruchtfleisch', verwen
 function bfFilterPasst(s, gruppe, ids){
   if(!ids.length) return true;
   if(gruppe === 'geschmack' || gruppe === 'fleisch'){
-    /* „schwach gewürzt“, „kaum aromatisch“ zählen nicht als würzig */
-    const g = String(s.geschmack || '').toLowerCase().replace(/(schwach|kaum|wenig|nicht)\s+(gewürzt|würzig|aromatisch)/g, '');
+    /* „schwach gewürzt“, „wenig Säure“, „ohne besonderes Aroma“ zählen nicht als Treffer */
+    const g = String(s.geschmack || '').toLowerCase()
+      .replace(/(schwach|kaum|wenig|nicht|ohne( besonderes)?)\s+(gewürzt|würzig|aromatisch|aroma|süß|säuerlich|säure)/g, '');
     if(!String(s.geschmack || '').trim()) return null;
     return BF_FILTER[gruppe].some(f => ids.includes(f.id) && f.re.test(g));
   }
@@ -531,9 +532,11 @@ function bfGenussSatz(sorten){
   const name = i => KONFIG_MONATE[BF_JAHR[i]] || '';
   const lager = g.filter(x => x.ernte && x.von && bfSaison(x.von) > bfSaison(x.ernte))
     .sort((a, b)=> (bfSaison(b.von) - bfSaison(b.ernte)) - (bfSaison(a.von) - bfSaison(a.ernte)))[0];
-  const teile = [g.length > 1
-    ? `Mit diesen ${g.length} Sorten hast du Obst von ${name(start)} bis ${name(ende)}.`
+  const teile = [sorten.length > 1
+    ? `Mit diesen ${sorten.length} Sorten hast du Obst von ${name(start)} bis ${name(ende)}.`
     : `${g[0].name}: von ${name(start)} bis ${name(ende)}.`];
+  const ohne = sorten.filter(x => !bfGenuss(x.s).von).map(x => x.s.sorte);
+  if(ohne.length) teile.push(`Zur Genusszeit von ${ohne.join(' und ')} fehlen uns noch Angaben.`);
   if(lager) teile.push(`Pflückreif ist nicht gleich genussreif: ${lager.name} wird im ${KONFIG_MONATE[lager.ernte]} gepflückt und erst ab ${KONFIG_MONATE[lager.von]} im kühlen Keller richtig süß und aromatisch.`);
   return teile.join(' ');
 }
