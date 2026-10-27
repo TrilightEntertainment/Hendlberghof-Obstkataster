@@ -166,12 +166,14 @@ function bfWunsch(art){
   const g = _bf.garten;
   let wuchs = { topf:'schwach', klein:'schwach', haus:'mittel', wiese:'stark' }[_bf.platz] || 'mittel';
   let form;
-  if(g.includes('schafe')) wuchs = 'stark';
-  else if((g.includes('huehner') || g.includes('schatten')) && wuchs === 'schwach' && _bf.platz !== 'topf') wuchs = 'mittel';
+  /* Der Platz hat Vorrang (Volkmar 28.10.2026): Ein Hochstamm braucht 8–10 m
+     und kommt nur auf Wiese oder Weide. Tiere heben im kleinen Garten höchstens
+     auf einen Halbstamm, im Topf gar nicht. */
+  if((g.includes('schafe') || g.includes('huehner') || g.includes('schatten')) && wuchs === 'schwach' && _bf.platz !== 'topf') wuchs = 'mittel';
   if(!form){
     if(wuchs === 'schwach') form = 'busch';
     else if(wuchs === 'mittel') form = (g.includes('kinder') && !g.includes('huehner') && !g.includes('schatten')) ? 'busch' : 'halb';
-    else form = g.includes('schafe') || _bf.platz === 'wiese' ? 'hoch' : 'halb';
+    else form = 'hoch';
   }
   return { wuchs, form };
 }
@@ -263,7 +265,9 @@ function bfHinweise(erg){
   if(_bf.platz === 'topf')
     h.push('Im Topf: ein großer Kübel, durchlässige Erde und regelmäßig gießen. Echte Säulenäpfel sind eigene Sorten – unsere alten Hofsorten wachsen im Topf als kleiner Busch.');
   if(g.includes('huehner')) h.push('Hühner unter dem Baum: Halb- oder Hochstamm, damit die Krone über den Tieren bleibt.');
-  if(g.includes('schafe')) h.push('Schafe oder Ziegen: Hochstamm mit Krone ab etwa 1,8 m und ein fester Stammschutz gegen Verbiss.');
+  if(g.includes('schafe')) h.push(_bf.platz === 'wiese'
+    ? 'Schafe oder Ziegen: Hochstamm mit Krone ab etwa 1,8 m und ein fester Stammschutz gegen Verbiss.'
+    : 'Schafe oder Ziegen bräuchten einen Hochstamm (Krone ab etwa 1,8 m) – der braucht aber 8–10 m Platz. Bei deinem Platz: Halbstamm mit festem Stammschutz, oder die Tiere vom Baum fernhalten.');
   if(g.includes('kinder')){
     const niedrig = erg.unterlage && ['busch', 'saeule'].includes(erg.unterlage.form);
     h.push(`Am Hof wird nicht gespritzt – deshalb robuste Sorten zuerst.${niedrig ? ' Der niedrige Baum lässt Kinder selbst ernten.' : ' Die unteren Äste bleiben für Kinder erreichbar, wenn du sie beim Schnitt stehen lässt.'}`);
@@ -328,7 +332,7 @@ function bfFrage(name){
   let inhalt = '';
   if(name === 'art'){
     inhalt = `<p class="bf-frage">Welches Obst soll es sein?</p>
-      ${bfArten().map(a => bfWahl('art', a.frucht, a.frucht, `${a.anzahl} ${a.anzahl === 1 ? 'Sorte' : 'Sorten'} am Hof`, _bf.art === a.frucht)).join('')}
+      ${bfArten().map(a => bfWahl('art', a.frucht, a.frucht, '', _bf.art === a.frucht)).join('')}
       ${bfWahl('art', '', 'Weiß ich noch nicht', 'zeig mir, was am besten passt', _bf.art === '')}`;
   } else if(name === 'standort'){
     inhalt = `<p class="bf-frage">Wo steht der Baum?</p>
@@ -524,7 +528,7 @@ function bfZusammenfassung(){
   const name = (liste, id) => (liste.find(x => x.id === id) || {}).label || id;
   const z = [
     'Meine Angaben im Baumfinder:',
-    `Obstart: ${_bf.art || 'noch offen'}`,
+    `Obstart: ${_bf.art || (erg.leer ? 'noch offen' : `${erg.art} (vorgeschlagen)`)}`,
     `Seehöhe: ${_bf.hoehe} m, Lage: ${name(BF_LAGEN, _bf.lage)}, Boden: ${name(BF_BOEDEN, _bf.boden)}`,
     `Platz: ${name(BF_PLAETZE, _bf.platz)}`,
     `Im Garten: ${_bf.garten.map(g => name(BF_GARTEN, g)).join(', ') || '–'}`,
