@@ -81,23 +81,29 @@ function switchToImage(imgId) {
   img.style.opacity = '0.3';
   setTimeout(() => { img.src = src; img.onload = () => { img.style.opacity = '1'; renderPins(); }; }, 150);
 }
+/* Baumwahl als Suchfeld (v124): Nummer oder Sorte tippen, der Baum wird
+   vorgeschlagen. Zuerst Bäume ohne Lage, dann die mit „Lage ungefähr“ – auch
+   sie lassen sich so per GPS oder Antippen genau setzen. */
+function _wahlText(t, ungefaehr){ return `${t.id} — ${t.sorte || ''}${ungefaehr ? ' (ungefähr)' : ''}`; }
 function renderUnplacedSelect(){
-  const sel = document.getElementById('unplaced-select');
-  sel.innerHTML = '<option value="">– Baum wählen –</option>';
+  const liste = document.getElementById('unplaced-liste');
+  if(!liste) return;
   const isSat = mapLayer === 'sat';
-  /* Auf der Karte stehen auch die Bäume mit „Lage ungefähr“ zur Wahl: Sie
-     lassen sich so per GPS oder Antippen genau setzen. */
-  getAllTrees().filter(t=> isSat ? !(state.satPositions||{})[t.id] : !state.positions[t.id]).sort((a,b)=>a.id.localeCompare(b.id,'de',{numeric:true}))
-    .forEach(t=>{
-      const o = document.createElement('option');
-      const ungefaehr = isSat && typeof kartenPos === 'function' && kartenPos(t.id);
-      o.value = t.id; o.textContent = `${t.id} — ${t.sorte}${ungefaehr ? ' (ungefähr)' : ''}`;
-      sel.appendChild(o);
-    });
-  }
-  var sel2 = document.getElementById('unplaced-select');
-  if(sel2) sel2.addEventListener('change', e=>{
-  selectedForPlacement = e.target.value;
+  const nachId = (a, b) => a.id.localeCompare(b.id, 'de', {numeric: true});
+  const offen = getAllTrees().filter(t => isSat ? !(state.satPositions||{})[t.id] : !state.positions[t.id]);
+  const ungefaehr = t => isSat && typeof kartenPos === 'function' && !!kartenPos(t.id);
+  const sortiert = offen.filter(t => !ungefaehr(t)).sort(nachId).concat(offen.filter(ungefaehr).sort(nachId));
+  liste.innerHTML = sortiert.map(t => `<option value="${escAttr(_wahlText(t, ungefaehr(t)))}"></option>`).join('');
+}
+function _baumAusWahl(text){
+  const id = String(text || '').split(' — ')[0].trim();
+  return id && getTree(id) ? id : '';
+}
+var sel2 = document.getElementById('unplaced-select');
+if(sel2) ['input', 'change'].forEach(ereignis => sel2.addEventListener(ereignis, e=>{
+  const id = _baumAusWahl(e.target.value);
+  if(id === selectedForPlacement && ereignis === 'change') return;
+  selectedForPlacement = id;
   if(selectedForPlacement){
     placeMode = true;
     if(satMap) satMap.dragging.disable();
@@ -109,7 +115,7 @@ function renderUnplacedSelect(){
     document.getElementById('place-mode-label').textContent = 'Position setzen';
     document.getElementById('place-status').textContent = '';
   }
-});
+}));
 document.getElementById('btn-place-mode').addEventListener('click', ()=>{
   placeMode = !placeMode;
   if(satMap) satMap.dragging.enable();
@@ -194,19 +200,102 @@ function setMapLayer(layer){
   renderUnplacedSelect();
 }
 
+/* ---------- Ebenen (v124) ----------
+   Ein Knopf oben rechts in der Karte: Grundbild (eigenes Luftbild 2023 oder
+   basemap.at) und Ebenen darüber (Foto mit Reihen samt Deckkraft, Wege &
+   Swale, Konzeptplan, Bäume). Die Wahl merkt sich jedes Gerät selbst. */
+const EBENEN_KEY = 'hendlberghof_kartenebenen';
+const FOTO_GRENZEN = [[48.06945, 15.84287], [48.07116, 15.84452]];
+let _ebenen = null;
+let _ebenenOffen = false;
+const _ebenenWahl = {grund: 'hof', foto: true, fotoDeckkraft: 85, bestand: true, planung: false, baeume: true};
+try { Object.assign(_ebenenWahl, JSON.parse(localStorage.getItem(EBENEN_KEY) || '{}')); } catch(e){}
+
+function ebenenMerken(){ try { localStorage.setItem(EBENEN_KEY, JSON.stringify(_ebenenWahl)); } catch(e){} }
+
+function ebenenAnwenden(){
+  if(!_ebenen) return;
+  const an = (l, ja) => { if(ja && !satMap.hasLayer(l)) l.addTo(satMap); if(!ja && satMap.hasLayer(l)) l.remove(); };
+  an(_ebenen.hof, _ebenenWahl.grund === 'hof');
+  an(_ebenen.foto, _ebenenWahl.foto);
+  _ebenen.foto.setOpacity(_ebenenWahl.fotoDeckkraft / 100);
+  if(_ebenen.foto._container) _ebenen.foto.bringToFront();
+}
+
+function renderEbenenKnopf(){
+  const box = document.getElementById('lp-ebenen');
+  if(!box) return;
+  const w = _ebenenWahl;
+  const symbol = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 4 3 9l9 5 9-5z"/><path d="m3 14 9 5 9-5"/></svg>`;
+  const kreuz = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true" focusable="false"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>`;
+  if(!_ebenenOffen){
+    box.innerHTML = `<button type="button" class="lp-ebenen-knopf" title="Ebenen" aria-label="Ebenen" aria-expanded="false" onclick="ebenenOeffnen(true)">${symbol}</button>`;
+    return;
+  }
+  const radio = (wert, text) => `<label><input type="radio" name="lp-grund" value="${wert}"${w.grund === wert ? ' checked' : ''} onchange="ebeneSetzen('grund', '${wert}')"> ${text}</label>`;
+  const haken = (key, text) => `<label><input type="checkbox"${w[key] ? ' checked' : ''} onchange="ebeneSetzen('${key}', this.checked)"> ${text}</label>`;
+  box.innerHTML = `<div class="lp-ebenen-feld">
+      <div class="lp-ebenen-kopf"><span>Ebenen</span><button type="button" class="lp-ebenen-zu" title="Schließen" aria-label="Schließen" onclick="ebenenOeffnen(false)">${kreuz}</button></div>
+      <div class="lp-ebenen-titel">Grundbild</div>
+      ${radio('hof', 'Luftbild Hof 2023')}
+      ${radio('basis', 'Luftbild Österreich 2023')}
+      <div class="lp-ebenen-titel">Darüber</div>
+      ${haken('foto', 'Foto mit Reihen (ca. 2024)')}
+      <label class="lp-ebenen-regler">Deckkraft<input type="range" min="0" max="100" step="5" value="${w.fotoDeckkraft}" oninput="ebeneSetzen('fotoDeckkraft', +this.value)"${w.foto ? '' : ' disabled'}></label>
+      ${haken('bestand', 'Wege &amp; Swale')}
+      ${haken('planung', 'Konzeptplan 2020')}
+      ${haken('baeume', 'Bäume')}
+    </div>`;
+}
+
+function ebenenOeffnen(offen){
+  _ebenenOffen = !!offen;
+  renderEbenenKnopf();
+}
+
+function ebeneSetzen(key, wert){
+  _ebenenWahl[key] = wert;
+  ebenenMerken();
+  if(key === 'grund' || key === 'foto' || key === 'fotoDeckkraft') ebenenAnwenden();
+  if(key === 'foto'){ const r = document.querySelector('.lp-ebenen-regler input'); if(r) r.disabled = !wert; }
+  if(key === 'bestand' || key === 'planung'){
+    if(_flaecheAktiv){ const o = kartenObjekt(_flaecheAktiv); if(o && !_ebenenWahl[o.ebene]) objektMarkieren(null); }
+    zeichneKarte();
+    renderLageFilter();
+  }
+  if(key === 'baeume') renderSatMarkers();
+}
+
 function initSatMap(){
   if(typeof L === 'undefined') return;
   if(!satMap){
     satMap = L.map('sat-map', {maxZoom: 22, zoomSnap: 0.5}).setView([48.0702, 15.8442], 18);
-    L.tileLayer('https://mapsneu.wien.gv.at/basemap/bmaporthofoto30cm/normal/google3857/{z}/{y}/{x}.jpeg', {
-      maxZoom: 22, maxNativeZoom: 19,
-      attribution: 'basemap.at'
-    }).addTo(satMap);
-    L.tileLayer('assets/ortho2023/{z}/{x}/{y}.webp', {
-      maxZoom: 22, minNativeZoom: 15, maxNativeZoom: 21,
-      bounds: [[48.06842, 15.84214], [48.07240, 15.84644]],
-      attribution: 'Luftbild Hendlberghof 2023'
-    }).addTo(satMap);
+    _ebenen = {
+      basis: L.tileLayer('https://mapsneu.wien.gv.at/basemap/bmaporthofoto30cm/normal/google3857/{z}/{y}/{x}.jpeg', {
+        maxZoom: 22, maxNativeZoom: 19, attribution: 'basemap.at'
+      }).addTo(satMap),
+      hof: L.tileLayer('assets/ortho2023/{z}/{x}/{y}.webp', {
+        maxZoom: 22, minNativeZoom: 15, maxNativeZoom: 21,
+        bounds: [[48.06842, 15.84214], [48.07240, 15.84644]],
+        attribution: 'Luftbild Hendlberghof 2023'
+      }),
+      foto: L.tileLayer('assets/foto2024/{z}/{x}/{y}.webp', {
+        maxZoom: 22, minNativeZoom: 16, maxNativeZoom: 21,
+        bounds: FOTO_GRENZEN, attribution: 'Foto mit Reihen ca. 2024'
+      })
+    };
+    ebenenAnwenden();
+    new (L.Control.extend({
+      options: {position: 'topright'},
+      onAdd(){
+        const box = L.DomUtil.create('div', 'lp-ebenen');
+        box.id = 'lp-ebenen';
+        L.DomEvent.disableClickPropagation(box);
+        L.DomEvent.disableScrollPropagation(box);
+        return box;
+      }
+    }))().addTo(satMap);
+    renderEbenenKnopf();
     /* Aus der Ferne kleinere Punkte, sonst decken sich die Reihen zu. */
     const fernKlasse = () => satMap.getContainer().classList.toggle('lp-fern', satMap.getZoom() < 19);
     satMap.on('zoomend', fernKlasse);
@@ -235,6 +324,7 @@ function initSatMap(){
       zeichneKarte();
       renderSatMarkers();
       renderLageFilter();
+      renderUnplacedSelect();
     });
   }
   renderSatMarkers();
@@ -254,9 +344,6 @@ const KARTEN_ART_FARBEN = Object.assign({
   'Wiese':'#B8D97A', 'Teich':'#7C93E8', 'Beerenreihe':'#C77DA8', 'Sonstiges':'#FFFFFF',
   'Weg Bestand':'#C9C3D6', 'Weg, begrünt':'#B9C2AE', 'Weg, begrünt (optional)':'#8C8A82', 'Gebäude':'#E36A6C', 'Vorplatz':'#C77DB8'
 }, FLAECHEN_FARBEN);
-const PLANUNG_KEY = 'hendlberghof_planung_zeigen';
-let _planungZeigen = false;
-try { _planungZeigen = localStorage.getItem(PLANUNG_KEY) === '1'; } catch(e){}
 
 function kartenObjektAusState(id, u){
   if(!u || typeof u !== 'object') return null;
@@ -322,7 +409,7 @@ function zeichneKarte(){
   if(_flaechenEbene) _flaechenEbene.remove();
   if(!_kartenRenderer) _kartenRenderer = L.svg({padding: .5});
   _flaechenEbene = L.layerGroup().addTo(satMap);
-  const objekte = kartenObjekte().filter(o => o.ebene === 'bestand' || _planungZeigen || (_kb && _kb.id === o.id));
+  const objekte = kartenObjekte().filter(o => _ebenenWahl[o.ebene] || (_kb && _kb.id === o.id));
   /* Planung unten, Flächen vor Linien, damit Wege antippbar bleiben */
   const rang = o => (o.ebene === 'planung' ? 0 : 2) + (o.typ === 'linie' ? 1 : 0);
   objekte.sort((a, b) => rang(a) - rang(b)).forEach(o => {
@@ -379,29 +466,19 @@ function lageGanzerHof(){
   if(grenze) satMap.fitBounds(grenze.geo, {padding: [12, 12]});
 }
 
-function planungUmschalten(an){
-  _planungZeigen = !!an;
-  try { localStorage.setItem(PLANUNG_KEY, an ? '1' : '0'); } catch(e){}
-  if(!_planungZeigen && _flaecheAktiv){ const o = kartenObjekt(_flaecheAktiv); if(o && o.ebene === 'planung') objektMarkieren(null); }
-  zeichneKarte();
-  renderLageFilter();
-}
-
 function renderLageFilter(){
   const bereich = document.getElementById('lp-bereich');
   if(bereich && FLAECHEN){
     const sortiert = l => l.slice().sort((a, b) => a.name.localeCompare(b.name, 'de', {numeric: true}));
     const opt = o => `<option value="${escAttr(o.id)}">${escHtml(o.name)}</option>`;
     const alle = kartenObjekte().filter(o => o.art !== 'Grundstücksgrenze');
-    const bestand = sortiert(alle.filter(o => o.ebene === 'bestand'));
-    const planung = _planungZeigen ? sortiert(alle.filter(o => o.ebene === 'planung')) : [];
+    const bestand = _ebenenWahl.bestand ? sortiert(alle.filter(o => o.ebene === 'bestand')) : [];
+    const planung = _ebenenWahl.planung ? sortiert(alle.filter(o => o.ebene === 'planung')) : [];
     bereich.innerHTML = `<option value="">Ganzer Hof</option>
-      <optgroup label="Bestand">${bestand.map(opt).join('')}</optgroup>
+      ${bestand.length ? `<optgroup label="Bestand">${bestand.map(opt).join('')}</optgroup>` : ''}
       ${planung.length ? `<optgroup label="Konzeptplan 2020">${planung.map(opt).join('')}</optgroup>` : ''}`;
     bereich.value = _flaecheAktiv || '';
   }
-  const pl = document.getElementById('lp-planung');
-  if(pl) pl.checked = _planungZeigen;
   const art = document.getElementById('lp-obstart');
   if(art){
     const wert = art.value;
@@ -421,7 +498,9 @@ function renderSatMarkers(){
   const filter = (document.getElementById('lp-obstart') || {}).value || '';
   const darfZiehen = isAdmin();
   let _dragMoved = false;
+  const zeigen = _ebenenWahl.baeume || placeMode;
   getAllTrees().forEach(t => {
+    if(!zeigen) return;
     const pos = kartenPos(t.id);
     if(!pos) return;
     if(filter && t.frucht !== filter) return;
@@ -473,6 +552,7 @@ function lageZeigen(id){
     ladeLageDaten().then(() => {
       const pos = kartenPos(id);
       if(pos){
+        if(!_ebenenWahl.baeume) ebeneSetzen('baeume', true);
         const filter = document.getElementById('lp-obstart');
         const t = getTree(id);
         if(filter && filter.value && t && t.frucht !== filter.value) filter.value = '';
@@ -573,7 +653,7 @@ function kbLeiste(){
         <button type="button" class="btn secondary" onclick="kbGpsStart()">Per GPS gehen</button>
         <button type="button" class="btn" onclick="kbEnde()">Fertig</button>
       </div>
-      <div class="lp-bearb-hinweis">Fläche oder Linie antippen, um sie zu ändern. ${_planungZeigen ? '' : 'Den Konzeptplan blendest du unter der Karte ein.'}</div>`;
+      <div class="lp-bearb-hinweis">Fläche oder Linie antippen, um sie zu ändern. ${_ebenenWahl.planung ? '' : 'Den Konzeptplan blendest du über den Ebenen-Knopf ein.'}</div>`;
   } else if(k.modus === 'zeichnen'){
     box.innerHTML = `<div class="lp-bearb-hinweis">${k.typ === 'linie'
         ? 'Punkt für Punkt auf die Karte tippen. Zum Abschließen den letzten Punkt noch einmal antippen.'

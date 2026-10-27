@@ -78,7 +78,9 @@ function applyEditModeUI(){
   if(placeBtn) placeBtn.style.display = zeigeEdit ? '' : 'none';
   if(unplacedSel) unplacedSel.style.display = zeigeEdit ? '' : 'none';
   const gpsPlaceBtn = document.getElementById('btn-gps-place');
-  if(gpsPlaceBtn) gpsPlaceBtn.style.display = zeigeEdit && mapLayer==='sat' ? '' : 'none';
+  /* GPS nur auf Geräten mit Finger-Bedienung (Handy, Tablet) – am Rechner setzt man per Klick */
+  const mitFinger = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+  if(gpsPlaceBtn) gpsPlaceBtn.style.display = zeigeEdit && mapLayer==='sat' && mitFinger ? '' : 'none';
   const karteBtn = document.getElementById('btn-karte-bearbeiten');
   if(karteBtn) karteBtn.style.display = isAdmin() && mapLayer==='sat' ? '' : 'none';
   if(typeof _kb !== 'undefined' && _kb && !isAdmin()) kbEnde();

@@ -437,8 +437,17 @@
   .lp-legende > span{display:inline-flex;align-items:center;gap:4px;}
   .lp-legende .kp{margin:0;}
   .lp-bearbeiten .kp-huelle{pointer-events:none;opacity:.45;}
-  .lp-planung{display:inline-flex;align-items:center;gap:6px;cursor:pointer;min-height:32px;}
-  .lp-planung input{width:16px;height:16px;margin:0;accent-color:var(--waldrand);}
+  .lp-ebenen{background:var(--weiss);border:1px solid var(--rand);border-radius:var(--radius);box-shadow:0 1px 6px rgba(0,0,0,.18);color:var(--waldrand);}
+  .lp-ebenen-knopf{display:flex;align-items:center;justify-content:center;width:40px;height:40px;border:none;background:none;color:inherit;cursor:pointer;}
+  .lp-ebenen-feld{padding:8px 12px 10px;min-width:210px;font-size:.84rem;}
+  .lp-ebenen-kopf{display:flex;align-items:center;justify-content:space-between;font-family:Georgia,serif;font-size:.95rem;margin-bottom:2px;}
+  .lp-ebenen-zu{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border:none;background:none;color:var(--muted);cursor:pointer;margin-right:-8px;}
+  .lp-ebenen-titel{font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin:8px 0 2px;}
+  .lp-ebenen-feld label{display:flex;align-items:center;gap:8px;min-height:32px;cursor:pointer;}
+  .lp-ebenen-feld input[type=radio],.lp-ebenen-feld input[type=checkbox]{width:16px;height:16px;margin:0;accent-color:var(--waldrand);}
+  .lp-ebenen-regler{padding-left:24px;color:var(--muted);font-size:.78rem;}
+  .lp-ebenen-regler input{flex:1;min-width:0;accent-color:var(--stroh);}
+  #unplaced-select{font:inherit;font-size:16px;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:#fff;min-width:220px;}
   .lp-label{background:rgba(40,54,42,.72);color:#F1EDE2;border:none;border-radius:4px;box-shadow:none;font:500 .72rem/1.2 'DM Sans',system-ui,sans-serif;padding:2px 6px;white-space:nowrap;}
   .lp-label::before{display:none;}
   .lp-fern .lp-label{display:none;}
@@ -902,13 +911,9 @@
   <!-- LAGEPLAN -->
   <section id="tab-lageplan" style="display:none;">
     <div class="hint" id="lageplan-hint">
-      <b>So funktioniert's:</b> „Position setzen“ → Baum wählen → auf die Karte tippen oder „Per GPS setzen“. Stecknadeln lassen sich ziehen. Hohle Kreise sind aus dem alten Foto umgerechnet – zurechtziehen, dann gilt die Lage als genau. Wege und Flächen änderst du mit „Karte bearbeiten“.
+      <b>So funktioniert's:</b> „Position setzen“ → Baum wählen → auf die Karte tippen oder „Per GPS setzen“. Stecknadeln lassen sich ziehen. Hohle Kreise sind aus dem Foto mit Reihen umgerechnet – zurechtziehen, dann gilt die Lage als genau. Wege und Flächen änderst du mit „Karte bearbeiten“.
     </div>
     <div class="lp-leiste">
-      <div class="pr-segment" id="lp-ansicht" role="group" aria-label="Ansicht">
-        <button type="button" data-ansicht="sat" onclick="setMapLayer('sat')">Karte</button>
-        <button type="button" data-ansicht="foto" onclick="switchToImage('lageplan')">Foto mit Reihen</button>
-      </div>
       <div class="lp-filter" id="lp-filter">
         <select id="lp-bereich" onchange="lageBereichWaehlen(this.value)" aria-label="Bereich"><option value="">Ganzer Hof</option></select>
         <select id="lp-obstart" onchange="renderSatMarkers()" aria-label="Obstart"><option value="">Alle Obstarten</option></select>
@@ -917,7 +922,8 @@
     <div class="map-toolbar">
       <button class="btn field" id="lp-pdf" onclick="exportLageplanPDF()">PDF</button>
       <button class="btn" id="btn-place-mode"><span id="place-mode-label">Baum verschieben</span></button>
-      <select id="unplaced-select"><option value="">– Baum wählen –</option></select>
+      <input type="search" id="unplaced-select" list="unplaced-liste" placeholder="Baum: Nummer oder Sorte" autocomplete="off" aria-label="Baum wählen">
+      <datalist id="unplaced-liste"></datalist>
       <button class="btn secondary" id="btn-gps-place" title="Aktuelle GPS-Position für den gewählten Baum übernehmen">Per GPS setzen</button>
       <button class="btn secondary" id="btn-karte-bearbeiten" onclick="kbStart()" style="display:none;">Karte bearbeiten</button>
       <span id="place-status" style="font-size:.85rem;color:var(--muted);"></span>
@@ -937,7 +943,7 @@
     <div class="lp-legende" id="lp-legende">
       <span><span class="kp" style="--kp:var(--muted)"></span>Lage gesetzt</span>
       <span><span class="kp ungefaehr" style="--kp:var(--muted)"></span>Lage ungefähr</span>
-      <label class="lp-planung"><input type="checkbox" id="lp-planung" onchange="planungUmschalten(this.checked)"> Konzeptplan 2020 zeigen</label>
+      <span>Ebenen: Knopf oben rechts in der Karte</span>
     </div>
   </section>
 
@@ -1330,10 +1336,10 @@
 
 <!-- Aus einem einzelnen Script-Block herausgeloest (F6). Reihenfolge ist
      bindend: Ueber Dateigrenzen hinweg gibt es kein Hoisting mehr. -->
-<script src="js/kern.js?v=123"></script>
-<script src="js/kataster.js?v=123"></script>
-<script src="js/lageplan.js?v=123"></script>
-<script src="js/start.js?v=123"></script>
+<script src="js/kern.js?v=124"></script>
+<script src="js/kataster.js?v=124"></script>
+<script src="js/lageplan.js?v=124"></script>
+<script src="js/start.js?v=124"></script>
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-app.js";
@@ -1500,9 +1506,9 @@
     });
   }
 </script>
-<script src="js/berater.js?v=123"></script>
-<script src="js/shop.js?v=123"></script>
-<script src="js/konfigurator.js?v=123"></script>
-<script src="js/pruefung.js?v=123"></script>
+<script src="js/berater.js?v=124"></script>
+<script src="js/shop.js?v=124"></script>
+<script src="js/konfigurator.js?v=124"></script>
+<script src="js/pruefung.js?v=124"></script>
 </body>
 </html>
