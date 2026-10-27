@@ -82,7 +82,7 @@ function applyEditModeUI(){
   const placeBtn = document.getElementById('btn-place-mode');
   const unplacedSel = document.getElementById('unplaced-select');
   if(placeBtn) placeBtn.style.display = zeigeEdit ? '' : 'none';
-  if(unplacedSel) unplacedSel.style.display = zeigeEdit ? '' : 'none';
+  if(unplacedSel) unplacedSel.parentElement.style.display = zeigeEdit ? '' : 'none';   /* Suchfeld samt „Nächster“ (v137) */
   const gpsPlaceBtn = document.getElementById('btn-gps-place');
   /* GPS nur auf Geräten mit Finger-Bedienung (Handy, Tablet) – am Rechner setzt man per Klick */
   const mitFinger = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;

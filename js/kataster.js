@@ -226,19 +226,17 @@ function runExport(){
    Einstieg über die Obstarten, nach Gruppen (Kernobst, Steinobst …). Große
    Arten bekommen eine eigene Zeile, kleine teilen sich eine. In einer Obstart
    stehen die Bäume nach Sorte; am Rechner zusätzlich die breite Tabelle.
-   Angemeldet oben „Zuletzt geöffnet“ und „Ohne Standort“. */
-const KAT_ZULETZT_KEY = 'hendlberghof_zuletzt_baeume';
+   Angemeldet oben „Ohne Standort“ („Zuletzt geöffnet“ seit v137 entfernt,
+   Volkmar 27.10.2026 – wurde nicht genutzt). */
 const KAT_GROSS = 5;
-function katZuletztMerken(id){
-  try {
-    const l = JSON.parse(localStorage.getItem(KAT_ZULETZT_KEY) || '[]').filter(x => x !== id);
-    l.unshift(id);
-    localStorage.setItem(KAT_ZULETZT_KEY, JSON.stringify(l.slice(0, 8)));
-  } catch(e){}
-}
-function katZuletzt(){
-  try { return JSON.parse(localStorage.getItem(KAT_ZULETZT_KEY) || '[]').map(getTree).filter(Boolean).slice(0, 6); }
-  catch(e){ return []; }
+try { localStorage.removeItem('hendlberghof_zuletzt_baeume'); } catch(e){}
+
+/* Stecknadel im goldenen Rahmen: führt in den Lageplan zum Setzen (v137).
+   Gleich in der Liste „Ohne Standort“, in der Tabelle und in der Baumkarte. */
+function katNadelKnopf(id, ausListe){
+  const nadel = SVG_NADEL.replace(/width="15" height="15"/, 'width="20" height="20"');
+  return `<button type="button" class="kat-nadel" title="Position setzen" aria-label="Position setzen"
+      onclick="event.stopPropagation();positionSetzen('${escAttr(id)}', ${ausListe ? 'true' : 'false'})">${nadel}</button>`;
 }
 function katArtWaehlen(art){
   _katArt = art || '';
@@ -250,13 +248,14 @@ function katWuchsWaehlen(w){ _katWuchs = w || ''; renderBaumTable(); }
 const SVG_WEITER = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><polyline points="9 6 15 12 9 18"/></svg>`;
 const SVG_ZURUECK = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><polyline points="15 6 9 12 15 18"/></svg>`;
 
-function katBaumZeile(t, mitSorte){
+function katBaumZeile(t, mitSorte, setzen){
   const teile = [mitSorte ? t.sorte : '', mitSorte ? t.frucht : '', t.standort_zeile,
     t.pflueckzeitpunkt || t.pflueck_reifezeit ? `Pflücken ${kartePflueckText(t.pflueckzeitpunkt || t.pflueck_reifezeit)}` : '']
     .filter(Boolean).map(escHtml).join(' · ');
-  return `<button type="button" class="kat-baum" onclick="openBaumModal('${escAttr(t.id)}')">
-      <span class="kat-id">${t.id_placeholder ? '–' : escHtml(t.id)}</span><span class="kat-baum-text">${teile || '<i>keine Angaben</i>'}</span>${SVG_WEITER}
+  const zeile = `<button type="button" class="kat-baum" onclick="openBaumModal('${escAttr(t.id)}')">
+      <span class="kat-id">${t.id_placeholder ? '–' : escHtml(t.id)}</span><span class="kat-baum-text">${teile || '<i>keine Angaben</i>'}</span>${setzen ? '' : SVG_WEITER}
     </button>`;
+  return setzen ? `<div class="kat-zeile">${zeile}${katNadelKnopf(t.id, true)}</div>` : zeile;
 }
 
 function renderKatUebersicht(alle){
@@ -284,12 +283,9 @@ function renderKatUebersicht(alle){
   }).join('');
   let oben = '';
   if(angemeldet){
-    const zuletzt = katZuletzt();
     const ohne = alle.filter(katOhneStandort).length;
-    oben = `<div class="kat-schnell">
-        ${zuletzt.length ? `<div class="kat-schnell-titel">Zuletzt geöffnet</div>
-        <div class="kat-klein">${zuletzt.map(t => `<button type="button" class="kat-chip" onclick="openBaumModal('${escAttr(t.id)}')">${escHtml(t.id)} <span>${escHtml(t.sorte || '')}</span></button>`).join('')}</div>` : ''}
-        ${ohne ? `<button type="button" class="kat-art kat-ohne" onclick="katArtWaehlen('__ohne')">
+    oben = !ohne ? '' : `<div class="kat-schnell">
+        ${ohne ?`<button type="button" class="kat-art kat-ohne" onclick="katArtWaehlen('__ohne')">
             <span class="kat-art-name">Ohne Standort</span><span class="kat-art-zahl">${ohne} ${ohne === 1 ? 'Baum' : 'Bäume'} noch nicht im Lageplan</span>${SVG_WEITER}</button>` : ''}
       </div>`;
   }
@@ -308,7 +304,7 @@ function renderKatListe(rows, titel, untertitel){
     </div>
     <div class="kat-liste">
       ${!rows.length ? '<div class="empty">Keine Treffer.</div>' : flach
-        ? rows.map(t => katBaumZeile(t, true)).join('')
+        ? rows.map(t => katBaumZeile(t, true, _katArt === '__ohne' && isEditMode())).join('')
         : sorten.map(s => `<div class="kat-sorte">
             <div class="kat-sorte-kopf"><span>${escHtml(s)}</span><span>${nachSorte[s].length}</span></div>
             ${nachSorte[s].map(t => katBaumZeile(t, false)).join('')}
@@ -345,7 +341,7 @@ function renderBaumTable(){
   } else {
     const titel = q ? `Suche „${q}“` : _katArt === '__ohne' ? 'Ohne Standort' : _katArt;
     const sorten = new Set(rows.map(t => t.sorte).filter(Boolean)).size;
-    const unter = `${rows.length} ${rows.length === 1 ? 'Baum' : 'Bäume'}${q ? '' : ` · ${sorten} ${sorten === 1 ? 'Sorte' : 'Sorten'}`}${_katArt === '__ohne' ? ' – im Lageplan mit „Position setzen“ eintragen' : ''}`;
+    const unter = `${rows.length} ${rows.length === 1 ? 'Baum' : 'Bäume'}${q ? '' : ` · ${sorten} ${sorten === 1 ? 'Sorte' : 'Sorten'}`}${_katArt === '__ohne' ? ' – mit der Stecknadel im Lageplan eintragen' : ''}`;
     inhalt.innerHTML = renderKatListe(rows, titel, unter);
   }
   if(tabelle) tabelle.hidden = uebersicht;
@@ -357,12 +353,13 @@ function renderBaumTable(){
     tbody.innerHTML = `<tr><td colspan="5" class="empty">Keine Treffer.</td></tr>`;
     return;
   }
+  const setzen = _katArt === '__ohne' && isEditMode();
   rows.forEach(t=>{
     const tr = document.createElement('tr');
     tr.innerHTML = `<td><b>${t.id_placeholder? '<span style="color:var(--muted);font-weight:400;font-style:italic;">noch offen</span>' : escHtml(t.id)}</b></td><td>${escHtml(t.sorte)||'–'}</td>
       <td><span class="pill ${(t.frucht||'sonstige').toLowerCase()}">${escHtml(t.frucht)||'–'}</span></td>
       <td>${escHtml(t.pflueckzeitpunkt||t.pflueck_reifezeit||'–')}</td>
-      <td>${escHtml(t.standort_zeile||'–')}</td>`;
+      <td>${setzen ? `<span class="kat-td-setzen">${escHtml(t.standort_zeile||'–')}${katNadelKnopf(t.id, true)}</span>` : escHtml(t.standort_zeile||'–')}</td>`;
     tr.addEventListener('click', ()=>openBaumModal(t.id));
     tbody.appendChild(tr);
   });
@@ -1668,7 +1665,6 @@ function karteErnteInfo(id){
 function openBaumModal(id){
   const t = getTree(id);
   if(!t) return;
-  katZuletztMerken(id);
   const sorteInfo = getSorte(t.sorte);
   const merged = mitSorte(sorteInfo, t); // Baum-eigene Werte haben Vorrang, sonst Sorten-Fallback
   const angemeldet = isEditMode();
@@ -1691,7 +1687,7 @@ function openBaumModal(id){
 
   const lageZeile = `<div class="karte-lage">
       <span class="kl-ort">${SVG_NADEL}${standort ? escHtml(standort) : '<span class="empty">Standort nicht eingetragen</span>'}</span>
-      ${hatNadel ? `<button class="ka-link" onclick="showOnLageplan('${ti}', true)">Im Lageplan</button>` : '<span class="ka-info">keine Stecknadel</span>'}
+      ${hatNadel ? `<button class="ka-link" onclick="showOnLageplan('${ti}', true)">Im Lageplan</button>` : `<span class="ka-info">keine Stecknadel${angemeldet ? katNadelKnopf(id, false) : ''}</span>`}
     </div>
     ${angemeldet && isAdmin() && hatNadel ? `<button class="ka-link warn" onclick="removePosition('${ti}')">Stecknadel entfernen</button>` : ''}`;
 

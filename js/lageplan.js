@@ -88,6 +88,10 @@ function _wahlText(t, ungefaehr){ return `${t.id} — ${t.sorte || ''}${ungefaeh
 function renderUnplacedSelect(){
   const liste = document.getElementById('unplaced-liste');
   if(!liste) return;
+  if(_setzListe){
+    liste.innerHTML = _setzOffen().map(id => `<option value="${escAttr(_wahlText(getTree(id), false))}"></option>`).join('');
+    return;
+  }
   const isSat = mapLayer === 'sat';
   const nachId = (a, b) => a.id.localeCompare(b.id, 'de', {numeric: true});
   const offen = getAllTrees().filter(t => isSat ? !(state.satPositions||{})[t.id] : !state.positions[t.id]);
@@ -116,6 +120,79 @@ if(sel2) ['input', 'change'].forEach(ereignis => sel2.addEventListener(ereignis,
     document.getElementById('place-status').textContent = '';
   }
 }));
+
+/* ---------- Setzen aus der Liste „Ohne Standort“ (v137) ----------
+   Die Stecknadel in der Liste (oder in der Baumkarte) öffnet den Lageplan mit
+   dem Baum im Suchfeld. Aus der Liste zeigt das Suchfeld nur deren Bäume, und
+   nach jedem Setzen steht schon der nächste drin. Ist der letzte gesetzt,
+   geht es zurück zum Kataster (Volkmar 27.10.2026). */
+const _mitFinger = () => !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+function _setzOffen(){
+  return (_setzListe || []).filter(id => { const t = getTree(id); return t && katOhneStandort(t); });
+}
+function setzKnopfZeigen(){
+  const k = document.getElementById('btn-naechster');
+  if(k) k.style.display = _setzListe && _setzOffen().length > 1 ? '' : 'none';
+}
+function setzListeBeenden(){ setzKnopfZeigen(); }
+function baumZumSetzen(id, vorweg){
+  const t = getTree(id);
+  if(!t) return;
+  selectedForPlacement = id;
+  placeMode = true;
+  if(satMap) satMap.dragging.disable();
+  document.getElementById('unplaced-select').value = _wahlText(t, false);
+  document.getElementById('place-mode-label').textContent = 'Baum setzen';
+  const wie = _mitFinger() && mapLayer === 'sat' ? 'auf die Karte tippen oder „Per GPS setzen“.' : 'auf die Karte klicken.';
+  document.getElementById('place-status').textContent = [vorweg, `${t.id} ${t.sorte || ''}: ${wie}`].filter(Boolean).join(' ');
+  setzKnopfZeigen();
+}
+function positionSetzen(id, ausListe){
+  const aktiv = document.querySelector('.tab-btn.active');
+  const vorher = aktiv && aktiv.dataset.tab !== 'lageplan' ? aktiv.dataset.tab : 'baumkataster';
+  const liste = ausListe ? getFilteredBaumRows().filter(katOhneStandort).map(t => t.id) : null;
+  closeModal();
+  activateTab('lageplan');
+  _setzListe = liste;
+  _lageplanZurueck = ausListe ? {liste: true, tab: vorher} : {id, tab: vorher};
+  renderLageplanZurueck();
+  if(mapLayer !== 'sat' && typeof L !== 'undefined') setMapLayer('sat');
+  renderUnplacedSelect();
+  baumZumSetzen(id);
+}
+function setzNaechster(){
+  const offen = _setzOffen();
+  if(!offen.length) return;
+  baumZumSetzen(offen[(offen.indexOf(selectedForPlacement) + 1) % offen.length]);
+}
+/* Gemeinsamer Abschluss für Antippen (Karte, Foto) und GPS. */
+function nachDemSetzen(gesetzt, meldung){
+  placeMode = false;
+  selectedForPlacement = '';
+  if(satMap) satMap.dragging.enable();
+  document.getElementById('unplaced-select').value = '';
+  document.getElementById('place-mode-label').textContent = 'Position setzen';
+  document.getElementById('place-status').textContent = meldung;
+  renderUnplacedSelect();
+  if(!_setzListe){ setzKnopfZeigen(); return; }
+  const offen = _setzOffen();
+  if(offen.length){
+    /* der nächste nach dem gesetzten, in der Reihenfolge der Liste */
+    const ab = _setzListe.indexOf(gesetzt);
+    const reihe = _setzListe.slice(ab + 1).concat(_setzListe.slice(0, ab + 1));
+    baumZumSetzen(reihe.find(x => offen.includes(x)), meldung);
+    return;
+  }
+  const alleGesetzt = !getAllTrees().some(katOhneStandort);
+  _setzListe = null;
+  setzKnopfZeigen();
+  _lageplanZurueck = null;
+  renderLageplanZurueck();
+  showToast(alleGesetzt ? 'Alle Bäume haben jetzt einen Standort.' : 'Alle Bäume dieser Liste haben jetzt einen Standort.', 'success', 4000);
+  activateTab('baumkataster');
+  katArtWaehlen(alleGesetzt ? '' : '__ohne');
+}
+
 document.getElementById('btn-place-mode').addEventListener('click', ()=>{
   placeMode = !placeMode;
   if(satMap) satMap.dragging.enable();
@@ -341,13 +418,7 @@ function initSatMap(){
         delete state.deletedSatPositions[selectedForPlacement];
         saveState();
         renderSatMarkers();
-        placeMode = false;
-        selectedForPlacement = null;
-        if(satMap) satMap.dragging.enable();
-        document.getElementById('place-mode-label').textContent = 'Position setzen';
-        document.getElementById('place-status').textContent = 'Position auf der Karte gesetzt.';
-        document.getElementById('unplaced-select').value = '';
-        renderUnplacedSelect();
+        nachDemSetzen(selectedForPlacement, 'Position auf der Karte gesetzt.');
         return;
       }
       if(_kb) return;
@@ -871,20 +942,22 @@ function kbGpsAbbrechen(){
 document.getElementById('btn-gps-place').addEventListener('click', ()=>{
   if(!navigator.geolocation){ alert('Dieses Gerät/Dieser Browser unterstützt keine GPS-Standortermittlung.'); return; }
   if(!selectedForPlacement){ alert('Bitte zuerst einen Baum aus der Liste auswählen.'); return; }
+  const id = selectedForPlacement;   /* fest, auch wenn inzwischen „Nächster“ getippt wird */
   document.getElementById('place-status').textContent = 'GPS-Position wird ermittelt …';
   navigator.geolocation.getCurrentPosition(pos=>{
     const {latitude, longitude, accuracy} = pos.coords;
+    const genau = Math.round(accuracy);
+    /* Unter Bäumen und am Hang liegt GPS oft 10–30 m daneben (v137) */
+    if(genau > 15 && !confirm(`GPS ist nur auf ±${genau} m genau. Trotzdem setzen?\n\nAbbrechen = warten: ein paar Schritte ins Freie gehen und noch einmal „Per GPS setzen“ tippen.`)){
+      document.getElementById('place-status').textContent = `GPS ±${genau} m – noch nicht gesetzt. Kurz warten und noch einmal versuchen.`;
+      return;
+    }
     if(!state.satPositions) state.satPositions = {};
-    state.satPositions[selectedForPlacement] = {lat:latitude, lng:longitude, gpsAccuracy:Math.round(accuracy)};
-    delete state.deletedSatPositions[selectedForPlacement];
+    state.satPositions[id] = {lat:latitude, lng:longitude, gpsAccuracy:genau};
+    delete state.deletedSatPositions[id];
     saveState();
-    renderSatMarkers(); renderUnplacedSelect();
-    placeMode = false;
-    if(satMap) satMap.dragging.enable();
-    selectedForPlacement = '';
-    document.getElementById('unplaced-select').value='';
-    document.getElementById('place-mode-label').textContent = 'Position setzen';
-    document.getElementById('place-status').textContent = `GPS-Position im Satellit gesetzt (±${Math.round(accuracy)} m)`;
+    renderSatMarkers();
+    nachDemSetzen(id, `GPS-Position gesetzt (±${genau} m).`);
   }, err=>{
     alert('GPS-Standort konnte nicht ermittelt werden: '+err.message);
     document.getElementById('place-status').textContent = '';
@@ -908,12 +981,8 @@ document.getElementById('map-wrap').addEventListener('click', (e)=>{
   y = Math.max(0, Math.min(100, parseFloat(imgPct.y.toFixed(2))));
   state.positions[selectedForPlacement] = {x, y};
   saveState();
-  renderPins(); renderUnplacedSelect();
-  placeMode = false;
-  selectedForPlacement = '';
-  document.getElementById('unplaced-select').value='';
-  document.getElementById('place-mode-label').textContent = 'Position setzen';
-  document.getElementById('place-status').textContent = 'Position gespeichert – nächsten Baum wählen.';
+  renderPins();
+  nachDemSetzen(selectedForPlacement, 'Position gespeichert.');
 });
 
 /* ---------- Lageplan Zoom & Pan ---------- */

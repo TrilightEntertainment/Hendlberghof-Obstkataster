@@ -536,9 +536,13 @@ function getTree(id){ return getTreeMap().get(id); }
    Lageplan“ tippt, bekommt unter der Karte eine Leiste „Zurück zu …“. Sie
    öffnet die Karte wieder und kehrt in den Reiter zurück, aus dem man kam.
    Wer selbst einen anderen Reiter wählt, braucht sie nicht mehr. */
-let _lageplanZurueck = null;   /* null oder { id, tab } */
+let _lageplanZurueck = null;   /* null oder { id, tab } oder { liste:true, tab } */
+/* Setzliste (v137): Wer aus „Ohne Standort“ kommt, setzt der Reihe nach –
+   IDs in der Reihenfolge der Liste, sonst null. Gilt nur im Lageplan. */
+let _setzListe = null;
 function activateTab(tabName){
   if(tabName!=='lageplan' && _lageplanZurueck){ _lageplanZurueck = null; renderLageplanZurueck(); }
+  if(tabName!=='lageplan' && _setzListe){ _setzListe = null; if(typeof setzListeBeenden === 'function') setzListeBeenden(); }
   if(tabName==='daten' && !isAdmin()) return;
   if(tabName==='pruefung' && !isEditMode()) return;
   document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active', b.dataset.tab===tabName));
@@ -588,15 +592,17 @@ function renderLageplanZurueck(){
     leiste.addEventListener('click', lageplanZurueck);
     sec.appendChild(leiste);   /* unter der Karte (Volkmar 26.10.2026) */
   }
-  const t = getTree(_lageplanZurueck.id);
+  const t = _lageplanZurueck.liste ? null : getTree(_lageplanZurueck.id);
   leiste.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><polyline points="15 6 9 12 15 18"/></svg>
-    <span>Zurück zu <span class="lz-sorte">${escHtml((t && t.sorte) || 'Baum')}</span> · ${escHtml(String(_lageplanZurueck.id))}</span>`;
+    ${_lageplanZurueck.liste ? '<span>Zurück zur Liste <span class="lz-sorte">Ohne Standort</span></span>'
+      : `<span>Zurück zu <span class="lz-sorte">${escHtml((t && t.sorte) || 'Baum')}</span> · ${escHtml(String(_lageplanZurueck.id))}</span>`}`;
 }
 function lageplanZurueck(){
   const z = _lageplanZurueck;
   if(!z) return;
   _lageplanZurueck = null;
   renderLageplanZurueck();
+  if(z.liste){ activateTab(z.tab || 'baumkataster'); katArtWaehlen('__ohne'); return; }
   if(z.tab) activateTab(z.tab);
   openBaumModal(z.id);
 }

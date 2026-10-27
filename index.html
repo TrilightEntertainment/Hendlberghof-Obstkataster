@@ -451,6 +451,9 @@
   .lp-ebenen-regler{padding-left:24px;color:var(--muted);font-size:.78rem;}
   .lp-ebenen-regler input{flex:1;min-width:0;accent-color:var(--stroh);}
   #unplaced-select{font:inherit;font-size:16px;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:#fff;min-width:220px;}
+  .lp-suche{display:flex;gap:8px;align-items:center;min-width:260px;}
+  .lp-suche #unplaced-select{flex:1;min-width:0;}
+  .lp-suche #btn-naechster{flex:none;white-space:nowrap;}   /* klein neben dem Suchfeld (v137) */
   .lp-label{background:rgba(40,54,42,.72);color:#F1EDE2;border:none;border-radius:4px;box-shadow:none;font:500 .72rem/1.2 'DM Sans',system-ui,sans-serif;padding:2px 6px;white-space:nowrap;}
   .lp-label::before{display:none;}
   .lp-fern .lp-label{display:none;}
@@ -528,6 +531,15 @@
   .kat-liste>.kat-baum+.kat-baum{border-top:1px solid var(--rand);}
   .kat-id{flex:0 0 auto;min-width:44px;border:1px solid var(--stroh);border-radius:6px;padding:2px 6px;text-align:center;font-size:.82rem;color:var(--waldrand);}
   .kat-baum-text{flex:1;min-width:0;font-size:.84rem;color:var(--muted);}
+  /* Stecknadel zum Setzen (v137): goldener Rahmen, überall gleich */
+  .kat-zeile{display:flex;align-items:center;gap:8px;}
+  .kat-zeile .kat-baum{flex:1;min-width:0;}
+  .kat-liste>.kat-zeile+.kat-zeile{border-top:1px solid var(--rand);}
+  .kat-nadel{flex:none;display:inline-flex;align-items:center;justify-content:center;width:44px;height:36px;padding:0;border:1px solid var(--stroh);border-radius:8px;background:none;color:var(--waldrand);cursor:pointer;}
+  .kat-nadel:hover{color:var(--ackerde);}
+  .kat-td-setzen{display:flex;align-items:center;justify-content:space-between;gap:8px;}
+  .ka-info .kat-nadel{margin-left:4px;}
+  @media (pointer:fine){ .nur-finger{display:none;} }   /* GPS nur am Handy (v137) */
   .kat-tabelle{margin-top:14px;}
   @media (max-width:899px){ .kat-tabelle{display:none!important;} }
   @media (min-width:900px){ .kat-liste{display:none;} }
@@ -1039,7 +1051,7 @@
   <!-- LAGEPLAN -->
   <section id="tab-lageplan" style="display:none;">
     <div class="hint" id="lageplan-hint">
-      <b>So funktioniert's:</b> „Position setzen“ → Baum wählen → auf die Karte tippen oder „Per GPS setzen“. Stecknadeln lassen sich ziehen. Hohle Kreise sind aus dem Foto mit Reihen umgerechnet – zurechtziehen, dann gilt die Lage als genau. Wege und Flächen änderst du mit „Karte bearbeiten“.
+      <b>So funktioniert's:</b> „Position setzen“ → Baum wählen → auf die Karte tippen<span class="nur-finger"> oder „Per GPS setzen“</span>. Stecknadeln lassen sich ziehen. Hohle Kreise sind aus dem Foto mit Reihen umgerechnet – zurechtziehen, dann gilt die Lage als genau. Wege und Flächen änderst du mit „Karte bearbeiten“.
     </div>
     <div class="lp-leiste">
       <div class="lp-filter" id="lp-filter">
@@ -1050,8 +1062,11 @@
     <div class="map-toolbar">
       <button class="btn field" id="lp-pdf" onclick="exportLageplanPDF()">PDF</button>
       <button class="btn" id="btn-place-mode"><span id="place-mode-label">Baum verschieben</span></button>
-      <input type="search" id="unplaced-select" list="unplaced-liste" placeholder="Baum: Nummer oder Sorte" autocomplete="off" aria-label="Baum wählen">
-      <datalist id="unplaced-liste"></datalist>
+      <div class="lp-suche" id="lp-suche">
+        <input type="search" id="unplaced-select" list="unplaced-liste" placeholder="Baum: Nummer oder Sorte" autocomplete="off" aria-label="Baum wählen">
+        <datalist id="unplaced-liste"></datalist>
+        <button class="btn secondary" id="btn-naechster" style="display:none;" onclick="setzNaechster()" title="Zum nächsten Baum der Liste, ohne zu setzen">Nächster</button>
+      </div>
       <button class="btn secondary" id="btn-gps-place" title="Aktuelle GPS-Position für den gewählten Baum übernehmen">Per GPS setzen</button>
       <button class="btn secondary" id="btn-karte-bearbeiten" onclick="kbStart()" style="display:none;">Karte bearbeiten</button>
       <span id="place-status" style="font-size:.85rem;color:var(--muted);"></span>
@@ -1481,10 +1496,10 @@
 
 <!-- Aus einem einzelnen Script-Block herausgeloest (F6). Reihenfolge ist
      bindend: Ueber Dateigrenzen hinweg gibt es kein Hoisting mehr. -->
-<script src="js/kern.js?v=136"></script>
-<script src="js/kataster.js?v=136"></script>
-<script src="js/lageplan.js?v=136"></script>
-<script src="js/start.js?v=136"></script>
+<script src="js/kern.js?v=137"></script>
+<script src="js/kataster.js?v=137"></script>
+<script src="js/lageplan.js?v=137"></script>
+<script src="js/start.js?v=137"></script>
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-app.js";
@@ -1651,10 +1666,10 @@
     });
   }
 </script>
-<script src="js/berater.js?v=136"></script>
-<script src="js/shop.js?v=136"></script>
-<script src="js/konfigurator.js?v=136"></script>
-<script src="js/pruefung.js?v=136"></script>
-<script src="js/baumfinder.js?v=136"></script>
+<script src="js/berater.js?v=137"></script>
+<script src="js/shop.js?v=137"></script>
+<script src="js/konfigurator.js?v=137"></script>
+<script src="js/pruefung.js?v=137"></script>
+<script src="js/baumfinder.js?v=137"></script>
 </body>
 </html>
