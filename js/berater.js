@@ -209,7 +209,7 @@ function getAllSorten(){
         const sorte=getSorte(t.sorte);
         const anSorte=AN_SORTEN.find(a=>a.name===t.sorte);
         const anTags=anSorte?anSorte.tags:[];
-        sortenMap.set(t.sorte,{name:t.sorte,frucht:t.frucht||sorte?.frucht||'',quelle:'hof',quelleName:'Hofsorten',verwendung:getVerwendung(t),beschreibung:sorte?.beschreibung||sorte?.geschmack||sorte?.eigenschaften||'',geschmack:sorte?.geschmack,eigenschaften:sorte?.eigenschaften,erntem:sorte?.erntem||[],lagerm:sorte?.lagerm||[],genuss:sorte?.genuss||'',tags:[...new Set([...(sorte?.tags||[]),...anTags])],pdf:sorte?.pdf||'',baum_ids:sorte?.baum_ids||[],pflueckzeitpunkt:sorte?(sorte.pflueckzeitpunkt||sorte.pflueck_reifezeit||''):''});
+        sortenMap.set(t.sorte,{name:t.sorte,frucht:t.frucht||sorte?.frucht||'',quelle:'hof',quelleName:'Hofsorten',verwendung:getVerwendung(t),beschreibung:sorte?.beschreibung||sorte?.geschmack||sorte?.eigenschaften||'',geschmack:sorte?.geschmack,eignung:sorte?.eignung,eigenschaften:sorte?.eigenschaften,erntem:sorte?.erntem||[],lagerm:sorte?.lagerm||[],genuss:sorte?.genuss||'',tags:[...new Set([...(sorte?.tags||[]),...anTags])],pdf:sorte?.pdf||'',baum_ids:sorte?.baum_ids||[],pflueckzeitpunkt:sorte?(sorte.pflueckzeitpunkt||sorte.pflueck_reifezeit||''):''});
       }
     });
     sortenMap.forEach(s=>result.push(s));

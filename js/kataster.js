@@ -124,6 +124,7 @@ const EXPORT_SPALTEN = {
     {key:'Lagerfähigkeit', def:false, get:t=> baumMerged(t).lagerfaehig||''},
     {key:'Befruchtungspartner', def:false, get:t=> baumMerged(t).befruchtungspartner||''},
     {key:'Geschmack', def:false, get:t=> baumMerged(t).geschmack||''},
+    {key:'Eignung', def:false, get:t=> baumMerged(t).eignung||''},
     {key:'Eigenschaften', def:false, get:t=> baumMerged(t).eigenschaften||''},
     {key:'Herkunft', def:false, get:t=>{const m=baumMerged(t); return m.herkunft_jahr||m.herkunft||'';}}
   ],
@@ -139,6 +140,7 @@ const EXPORT_SPALTEN = {
     {key:'Herkunft', get:s=> s.herkunft_jahr||s.herkunft||''},
     {key:'Synonyme', get:s=> s.synonyme||''},
     {key:'Geschmack', def:false, get:s=> s.geschmack||''},
+    {key:'Eignung', def:false, get:s=> s.eignung||''},
     {key:'Eigenschaften', def:false, get:s=> s.eigenschaften||''},
     {key:'Frucht-Beschreibung', def:false, get:s=> s.frucht_beschreibung||''},
     {key:'Befruchtungspartner', def:false, get:s=> s.befruchtungspartner||''}
@@ -490,7 +492,8 @@ function exportBaumKartePDF(id){
   feldPaar('Erstmals tragend', t.erstmals_tragend, 'Lagerfähigkeit', merged.lagerfaehig);
   feldPaar('Herkunft', merged.herkunft_jahr||merged.herkunft, '', '');
 
-  if(merged.geschmack){ abschnitt('Geschmack / Nutzung'); absatz(merged.geschmack); }
+  if(merged.geschmack){ abschnitt('Geschmack'); absatz(merged.geschmack); }
+  if(merged.eignung){ abschnitt('Eignung'); absatz(merged.eignung); }
   if(merged.frucht_beschreibung){ abschnitt('Frucht'); absatz(merged.frucht_beschreibung); }
   if(merged.eigenschaften || merged.standort_anspruch){
     abschnitt('Eigenschaften / Standortansprüche');
@@ -549,7 +552,8 @@ function exportSortenKartePDF(sorteName){
   feldPaar('Anzahl Bäume', (s.baum_ids||[]).length + ' (' + (s.baum_ids||[]).join(', ') + ')', 'Synonyme', s.synonyme);
 
   if(s.frucht_beschreibung){ abschnitt('Frucht'); absatz(s.frucht_beschreibung); }
-  if(s.geschmack){ abschnitt('Geschmack / Nutzung'); absatz(s.geschmack); }
+  if(s.geschmack){ abschnitt('Geschmack'); absatz(s.geschmack); }
+  if(s.eignung){ abschnitt('Eignung'); absatz(s.eignung); }
   if(s.eigenschaften || s.standort_anspruch){
     abschnitt('Eigenschaften / Standortansprüche');
     absatz(((s.eigenschaften||'')+' '+(s.standort_anspruch||'')).trim());
@@ -608,6 +612,7 @@ function exportSortenbeschreibungenPDF(){
     const metaLine = s.frucht + ((s.verwendung&&s.verwendung.length)? ' · '+s.verwendung.join(', ') : '');
     doc.text(metaLine, margin, y); y+=6;
     addParagraph('Geschmack', s.geschmack);
+    addParagraph('Eignung', s.eignung);
     addParagraph('Eigenschaften', s.eigenschaften);
     addParagraph('Frucht', s.beschreibung||s.frucht_beschreibung);
     y += 6;
@@ -1582,6 +1587,7 @@ function karteSorteInhalt(t, merged, sorteInfo){
     ${archeNoahLink(merged)}
     ${kartenZeilen([
       ['Geschmack', merged.geschmack],
+      ['Eignung', merged.eignung],
       ['Frucht', merged.frucht_beschreibung],
       ['Verwendung', merged.verwendung],
       ['Pflückreife', kartePflueckText(merged.pflueckzeitpunkt||merged.pflueck_reifezeit)],
@@ -2249,11 +2255,12 @@ function openSortenModal(sorteName){
       ['Anzahl Bäume', (s.baum_ids||[]).length + ' (' + (s.baum_ids||[]).join(', ') + ')'],
       ['Synonyme', s.synonyme]
     ])}
-    ${s.geschmack? `<div class="section-title">Geschmack / Nutzung</div><div class="field">${escHtml(s.geschmack)}</div>`:''}
+    ${s.geschmack? `<div class="section-title">Geschmack</div><div class="field">${escHtml(s.geschmack)}</div>`:''}
+    ${s.eignung? `<div class="section-title">Eignung</div><div class="field">${escHtml(s.eignung)}</div>`:''}
     ${s.frucht_beschreibung? `<div class="section-title">Frucht</div><div class="field">${escHtml(s.frucht_beschreibung)}</div>`:''}
     ${s.eigenschaften||s.standort_anspruch? `<div class="section-title">Eigenschaften / Standortansprüche</div><div class="field">${escHtml((s.eigenschaften||'')+(s.eigenschaften&&s.standort_anspruch?' ':'')+(s.standort_anspruch||''))}</div>`:''}
     ${s.frucht ? `<div class="section-title" style="cursor:pointer;color:var(--gruen);text-decoration:underline;text-decoration-style:dotted;text-underline-offset:3px;" onclick="showGuildPopup('${escAttr(s.sorte||s.name||'')}')">Begleitpflanzungen & Gilden</div><div class="field">${renderGuildSection(s.frucht)}</div>`:''}
-    ${!s.geschmack && !s.eigenschaften && !s.frucht_beschreibung ? '<p class="empty">Für diese Sorte liegt noch keine ausführliche Beschreibung vor.</p>':''}
+    ${!s.geschmack && !s.eignung && !s.eigenschaften && !s.frucht_beschreibung ?'<p class="empty">Für diese Sorte liegt noch keine ausführliche Beschreibung vor.</p>':''}
     ${s.recherchiert? `<div class="quelle-hinweis"><b>Quelle(n):</b> ${s.quelle}<br>Diese Angaben stammen aus einer Web-Recherche (nicht aus deiner Numbers-Tabelle) und sollten anhand der Bäume vor Ort verifiziert werden.</div>`:''}
   `;
   /* Kaufblock — dieselbe Funktion wie auf den Karten (S1). Im Modal ohne

@@ -256,7 +256,9 @@ const FELDER = [
   {key:'lagerfaehig',label:'Lagerfähigkeit',      full:false},
   {key:'ertrag',     label:'Ertrag',              full:false},
   {key:'befruchtungspartner',label:'Befruchtungspartner', full:false},
-  {key:'geschmack',  label:'Geschmack / Nutzung', full:true,  type:'textarea'},
+  {key:'geschmack',  label:'Geschmack',           full:true,  type:'textarea'},
+  /* nurSorte: gehört zur Sorte, nicht zum einzelnen Baum (v136) */
+  {key:'eignung',    label:'Eignung',             full:true,  type:'textarea', nurSorte:true},
   {key:'eigenschaften',label:'Eigenschaften / Standortansprüche', full:true, type:'textarea'},
   {key:'herkunft_jahr',label:'Herkunft & Jahr',   full:true},
   {key:'synonyme',   label:'Synonyme',            full:false},
@@ -279,7 +281,7 @@ function obstartVorschlaege(){
 function buildEditForm(t, isNew, isSort){
   const felder = isSort
     ? FELDER.filter(f => SORTEN_EDIT_KEYS.includes(f.key))
-    : FELDER;
+    : FELDER.filter(f => !f.nurSorte);
   return `
     <div class="edit-form">
       ${felder.map(f=>{
@@ -312,7 +314,7 @@ function buildEditForm(t, isNew, isSort){
 function formValues(formEl, isSort){
   const felder = isSort
     ? FELDER.filter(f => SORTEN_EDIT_KEYS.includes(f.key))
-    : FELDER;
+    : FELDER.filter(f => !f.nurSorte);
   const out = {};
   felder.forEach(f=>{
     if(f.type==='checkboxgroup'){
@@ -359,7 +361,7 @@ function openBaumAddForm(){
   initSorteAutocomplete();
 }
 
-const SORTEN_EDIT_KEYS = ['frucht','verwendung','pflueckzeitpunkt','genussreife','lagerfaehig','ertrag','befruchtungspartner','geschmack','eigenschaften','herkunft_jahr','synonyme','frucht_beschreibung','standort_anspruch','unterlage','veredelt','ausgepflanzt'];
+const SORTEN_EDIT_KEYS = ['frucht','verwendung','pflueckzeitpunkt','genussreife','lagerfaehig','ertrag','befruchtungspartner','geschmack','eignung','eigenschaften','herkunft_jahr','synonyme','frucht_beschreibung','standort_anspruch','unterlage','veredelt','ausgepflanzt'];
 function openSortenEditForm(sorteName){
   const s = getSorte(sorteName);
   if(!s) return;
