@@ -406,6 +406,37 @@ const OBSTARTEN_STANDARD = {
 };
 const OBSTART_UNBEKANNT = { veredelung:false, mehrsorten:false, max_sorten:1 };
 
+/* Gruppen und Wuchsform für den Reiter Kataster (v127, Volkmar 27.10.2026).
+   Getrennt von OBSTARTEN_STANDARD, damit „bekannt“ dort (Bestellbarkeit)
+   nicht für jede hier genannte Art wahr wird. Abwandeln lässt es sich über
+   state.obstarten[art].gruppe bzw. .wuchs. */
+const OBST_GRUPPEN = [
+  { id:'kernobst', titel:'Kernobst' }, { id:'steinobst', titel:'Steinobst' },
+  { id:'schalenobst', titel:'Schalenobst' }, { id:'beeren', titel:'Beeren' },
+  { id:'wildobst', titel:'Wildobst' }, { id:'waerme', titel:'Wärmeliebend & Ranken' },
+  { id:'sonstige', titel:'Sonstige' }
+];
+const OBST_WUCHS = { baum:'Bäume', strauch:'Sträucher', kletter:'Ranken' };
+const OBSTART_GRUPPE = {
+  'apfel':['kernobst','baum'], 'birne':['kernobst','baum'], 'quitte':['kernobst','baum'], 'mispel':['kernobst','baum'], 'nashi':['kernobst','baum'],
+  'kirsche':['steinobst','baum'], 'weichsel':['steinobst','baum'], 'zwetschke':['steinobst','baum'], 'pflaume':['steinobst','baum'],
+  'marille':['steinobst','baum'], 'pfirsich':['steinobst','baum'], 'mirabelle':['steinobst','baum'], 'ringlotte':['steinobst','baum'], 'kriecherl':['steinobst','baum'],
+  'walnuss':['schalenobst','baum'], 'haselnuss':['schalenobst','strauch'], 'maroni':['schalenobst','baum'], 'edelkastanie':['schalenobst','baum'], 'mandel':['schalenobst','baum'],
+  'johannisbeere':['beeren','strauch'], 'ribisel':['beeren','strauch'], 'stachelbeere':['beeren','strauch'], 'himbeere':['beeren','strauch'],
+  'brombeere':['beeren','strauch'], 'aronia':['beeren','strauch'], 'kamtschatka-beere':['beeren','strauch'], 'kamtschatkabeere':['beeren','strauch'],
+  'haskap':['beeren','strauch'], 'heidelbeere':['beeren','strauch'], 'jostabeere':['beeren','strauch'],
+  'dirndl':['wildobst','strauch'], 'kornelkirsche':['wildobst','strauch'], 'felsenbirne':['wildobst','strauch'], 'elsbeere':['wildobst','baum'],
+  'sanddorn':['wildobst','strauch'], 'ölweide':['wildobst','strauch'], 'speierling':['wildobst','baum'], 'holunder':['wildobst','strauch'],
+  'weintraube':['waerme','kletter'], 'wein':['waerme','kletter'], 'kiwi':['waerme','kletter'], 'feige':['waerme','strauch'],
+  'granatapfel':['waerme','strauch'], 'paw paw':['waerme','baum'], 'maulbeere':['waerme','baum'], 'che':['waerme','baum'], 'kaki':['waerme','baum']
+};
+function obstartGruppe(frucht){
+  const k = obstartSchluessel(frucht);
+  const eigen = (typeof state !== 'undefined' && state && state.obstarten && state.obstarten[k]) || {};
+  const std = OBSTART_GRUPPE[k] || [];
+  return { gruppe:eigen.gruppe || std[0] || 'sonstige', wuchs:eigen.wuchs || std[1] || 'baum' };
+}
+
 function obstartSchluessel(frucht){ return String(frucht || '').trim().toLowerCase(); }
 
 /* Liefert immer ein vollständiges Regelobjekt, nie undefined.
@@ -753,5 +784,6 @@ function toggleSortenSichtbar(key, visible){
 function refreshFilterOptions(){
   const alle = getAllTrees();
   const fruchtArten = [...new Set(alle.map(t=>t.frucht).filter(Boolean))].sort();
-  fillSelect(document.getElementById('baum-filter-frucht'), fruchtArten);
+  const sel = document.getElementById('baum-filter-frucht');
+  if(sel) fillSelect(sel, fruchtArten);
 }

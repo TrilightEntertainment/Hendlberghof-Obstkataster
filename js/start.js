@@ -45,11 +45,14 @@ function tiefenVerweisOeffnen(){
 function applyEditModeUI(){
   const on = isEditMode();
   const admin = isAdmin();
+  /* Anmelden ist ein Symbol (v127); angemeldet zeigt ein goldener Punkt das an –
+     der grüne Balken darüber ist weggefallen. */
   document.querySelectorAll('.btn-login-toggle').forEach(b=>{
-    b.textContent = on ? (admin ? 'Admin abmelden' : 'Abmelden') : 'Anmelden';
+    const text = on ? (admin ? 'Angemeldet als Admin – abmelden' : 'Angemeldet – abmelden') : 'Anmelden';
+    b.title = text; b.setAttribute('aria-label', text);
+    b.classList.toggle('angemeldet', on);
   });
   document.getElementById('btn-add-baum').style.display = admin ? '' : 'none';
-  document.getElementById('edit-banner').style.display = on ? '' : 'none';
   document.getElementById('tab-btn-daten').style.display = admin ? '' : 'none';
   document.getElementById('tab-btn-pruefung').style.display = on ? '' : 'none';
   if(typeof renderPruefung === 'function') renderPruefung();   /* leert den Reiter beim Abmelden */
@@ -57,8 +60,6 @@ function applyEditModeUI(){
   if(cardPl) cardPl.style.display = admin ? '' : 'none';
   const cardBh = document.getElementById('card-bestellhistorie');
   if(cardBh) cardBh.style.display = admin ? '' : 'none';
-  const banner = document.getElementById('edit-banner');
-  if(on) banner.innerHTML = (admin ? 'Bearbeitungsmodus (Admin)' : 'Bearbeitungsmodus (Mitarbeiter:in)') + ' — Änderungen werden lokal gespeichert &nbsp;';
   /* Frühstart: Firebase meldet die Anmeldung oft, bevor die Grunddaten geladen
      sind und initState() gelaufen ist. Ohne state brach renderBaumTable() hier
      mit „reading 'customTrees'“ ab — und alles danach blieb ungetan. Knöpfe und

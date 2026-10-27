@@ -57,14 +57,20 @@ function getVerwendung(t){
   return s? (s.verwendung||[]) : [];
 }
 
+/* Auswahl im Reiter Kataster (v127): Suche, gewählte Obstart (oder die
+   Sonderliste „ohne Standort“) und Wuchsform. Exporte nehmen dieselbe
+   Auswahl – ohne Auswahl alle Bäume. */
+let _katArt = '';          /* '' = Übersicht, sonst frucht oder '__ohne' */
+let _katWuchs = '';
+function katOhneStandort(t){ return !(state.satPositions || {})[t.id] && !(state.positions || {})[t.id]; }
 function getFilteredBaumRows(){
-  const q = document.getElementById('baum-search').value.toLowerCase();
-  const fFrucht = document.getElementById('baum-filter-frucht').value;
-  const fVerwendung = document.getElementById('baum-filter-verwendung').value;
+  const feld = document.getElementById('baum-search');
+  const q = feld ? feld.value.trim().toLowerCase() : '';
   let rows = getAllTrees().filter(t=>{
-    if(fFrucht && t.frucht!==fFrucht) return false;
-    if(fVerwendung && !getVerwendung(t).includes(fVerwendung)) return false;
-    const hay = (t.id+' '+(t.sorte||'')+' '+(t.standort_zeile||'')).toLowerCase();
+    if(_katWuchs && obstartGruppe(t.frucht).wuchs !== _katWuchs) return false;
+    if(_katArt === '__ohne'){ if(!katOhneStandort(t)) return false; }
+    else if(_katArt && !q && t.frucht !== _katArt) return false;
+    const hay = `${t.id} ${t.sorte || ''} ${t.frucht || ''} ${t.standort_zeile || ''}`.toLowerCase();
     return !q || hay.includes(q);
   });
   return sortRows(rows, baumSort);
@@ -214,12 +220,137 @@ function runExport(){
   exportContext = null;
 }
 
+/* ---------- Reiter Kataster (v127) ----------
+   Einstieg über die Obstarten, nach Gruppen (Kernobst, Steinobst …). Große
+   Arten bekommen eine eigene Zeile, kleine teilen sich eine. In einer Obstart
+   stehen die Bäume nach Sorte; am Rechner zusätzlich die breite Tabelle.
+   Angemeldet oben „Zuletzt geöffnet“ und „Ohne Standort“. */
+const KAT_ZULETZT_KEY = 'hendlberghof_zuletzt_baeume';
+const KAT_GROSS = 5;
+function katZuletztMerken(id){
+  try {
+    const l = JSON.parse(localStorage.getItem(KAT_ZULETZT_KEY) || '[]').filter(x => x !== id);
+    l.unshift(id);
+    localStorage.setItem(KAT_ZULETZT_KEY, JSON.stringify(l.slice(0, 8)));
+  } catch(e){}
+}
+function katZuletzt(){
+  try { return JSON.parse(localStorage.getItem(KAT_ZULETZT_KEY) || '[]').map(getTree).filter(Boolean).slice(0, 6); }
+  catch(e){ return []; }
+}
+function katArtWaehlen(art){
+  _katArt = art || '';
+  renderBaumTable();
+  const sec = document.getElementById('tab-baumkataster');
+  if(sec && sec.getBoundingClientRect().top < 0) sec.scrollIntoView({block:'start'});
+}
+function katWuchsWaehlen(w){ _katWuchs = w || ''; renderBaumTable(); }
+const SVG_WEITER = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><polyline points="9 6 15 12 9 18"/></svg>`;
+const SVG_ZURUECK = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><polyline points="15 6 9 12 15 18"/></svg>`;
+
+function katBaumZeile(t, mitSorte){
+  const teile = [mitSorte ? t.sorte : '', mitSorte ? t.frucht : '', t.standort_zeile,
+    t.pflueckzeitpunkt || t.pflueck_reifezeit ? `Pflücken ${kartePflueckText(t.pflueckzeitpunkt || t.pflueck_reifezeit)}` : '']
+    .filter(Boolean).map(escHtml).join(' · ');
+  return `<button type="button" class="kat-baum" onclick="openBaumModal('${escAttr(t.id)}')">
+      <span class="kat-id">${t.id_placeholder ? '–' : escHtml(t.id)}</span><span class="kat-baum-text">${teile || '<i>keine Angaben</i>'}</span>${SVG_WEITER}
+    </button>`;
+}
+
+function renderKatUebersicht(alle){
+  const angemeldet = isEditMode();
+  const nachArt = {};
+  alle.forEach(t => { const a = t.frucht || 'Ohne Obstart'; (nachArt[a] = nachArt[a] || []).push(t); });
+  const gruppen = OBST_GRUPPEN.map(g => {
+    const arten = Object.keys(nachArt).filter(a => obstartGruppe(a).gruppe === g.id)
+      .sort((a, b) => nachArt[b].length - nachArt[a].length || a.localeCompare(b, 'de'));
+    if(!arten.length) return '';
+    const gross = arten.filter(a => nachArt[a].length >= KAT_GROSS);
+    const klein = arten.filter(a => nachArt[a].length < KAT_GROSS);
+    const summe = arten.reduce((n, a) => n + nachArt[a].length, 0);
+    return `<div class="kat-gruppe">
+        <div class="kat-gruppe-kopf"><span>${escHtml(g.titel)}</span><span>${summe}</span></div>
+        ${gross.map(a => {
+          const sorten = new Set(nachArt[a].map(t => t.sorte).filter(Boolean)).size;
+          return `<button type="button" class="kat-art" onclick="katArtWaehlen('${escAttr(a)}')">
+              <span class="kat-art-name">${escHtml(a)}</span>
+              <span class="kat-art-zahl">${nachArt[a].length} ${nachArt[a].length === 1 ? 'Baum' : 'Bäume'} · ${sorten} ${sorten === 1 ? 'Sorte' : 'Sorten'}</span>${SVG_WEITER}
+            </button>`;
+        }).join('')}
+        ${klein.length ? `<div class="kat-klein">${klein.map(a => `<button type="button" class="kat-chip" onclick="katArtWaehlen('${escAttr(a)}')">${escHtml(a)} <span>${nachArt[a].length}</span></button>`).join('')}</div>` : ''}
+      </div>`;
+  }).join('');
+  let oben = '';
+  if(angemeldet){
+    const zuletzt = katZuletzt();
+    const ohne = alle.filter(katOhneStandort).length;
+    oben = `<div class="kat-schnell">
+        ${zuletzt.length ? `<div class="kat-schnell-titel">Zuletzt geöffnet</div>
+        <div class="kat-klein">${zuletzt.map(t => `<button type="button" class="kat-chip" onclick="openBaumModal('${escAttr(t.id)}')">${escHtml(t.id)} <span>${escHtml(t.sorte || '')}</span></button>`).join('')}</div>` : ''}
+        ${ohne ? `<button type="button" class="kat-art kat-ohne" onclick="katArtWaehlen('__ohne')">
+            <span class="kat-art-name">Ohne Standort</span><span class="kat-art-zahl">${ohne} ${ohne === 1 ? 'Baum' : 'Bäume'} noch nicht im Lageplan</span>${SVG_WEITER}</button>` : ''}
+      </div>`;
+  }
+  return oben + (gruppen || '<div class="empty">Keine Bäume.</div>');
+}
+
+function renderKatListe(rows, titel, untertitel){
+  const nachSorte = {};
+  rows.forEach(t => { const s = t.sorte || 'Sorte offen'; (nachSorte[s] = nachSorte[s] || []).push(t); });
+  const sorten = Object.keys(nachSorte).sort((a, b) => (a === 'Sorte offen') - (b === 'Sorte offen') || a.localeCompare(b, 'de'));
+  const flach = !!(document.getElementById('baum-search') || {}).value || _katArt === '__ohne';
+  return `<div class="kat-kopf">
+      <button type="button" class="kat-zurueck" onclick="katArtWaehlen('')">${SVG_ZURUECK}<span>Alle Obstarten</span></button>
+      <h2 class="kat-titel">${escHtml(titel)}</h2>
+      <div class="kat-untertitel">${untertitel}</div>
+    </div>
+    <div class="kat-liste">
+      ${!rows.length ? '<div class="empty">Keine Treffer.</div>' : flach
+        ? rows.map(t => katBaumZeile(t, true)).join('')
+        : sorten.map(s => `<div class="kat-sorte">
+            <div class="kat-sorte-kopf"><span>${escHtml(s)}</span><span>${nachSorte[s].length}</span></div>
+            ${nachSorte[s].map(t => katBaumZeile(t, false)).join('')}
+          </div>`).join('')}
+    </div>`;
+}
+
 function renderBaumTable(){
   const tbody = document.getElementById('baum-tbody');
-  const editing = isEditMode();
+  const inhalt = document.getElementById('kat-inhalt');
+  const tabelle = document.getElementById('kat-tabelle');
+  if(!tbody || !inhalt) return;
+  const feld = document.getElementById('baum-search');
+  const q = feld ? feld.value.trim() : '';
+  const alle = getAllTrees();
+  /* Wuchs-Auswahl nur, wenn es mehr als eine Wuchsform gibt */
+  const formen = [...new Set(alle.map(t => obstartGruppe(t.frucht).wuchs))];
+  const wuchsBox = document.getElementById('kat-wuchs');
+  if(wuchsBox){
+    if(formen.length < 2){ wuchsBox.hidden = true; _katWuchs = ''; }
+    else {
+      wuchsBox.hidden = false;
+      wuchsBox.innerHTML = [['', 'Alle']].concat(Object.keys(OBST_WUCHS).filter(w => formen.includes(w)).map(w => [w, OBST_WUCHS[w]]))
+        .map(([w, l]) => `<button type="button" class="${_katWuchs === w ? 'aktiv' : ''}" onclick="katWuchsWaehlen('${w}')">${l}</button>`).join('');
+    }
+  }
+  const reset = document.getElementById('kat-suche-leeren');
+  if(reset) reset.hidden = !q;
+  const rows = getFilteredBaumRows();
+  const uebersicht = !q && !_katArt;
+  if(uebersicht){
+    const sicht = _katWuchs ? alle.filter(t => obstartGruppe(t.frucht).wuchs === _katWuchs) : alle;
+    inhalt.innerHTML = renderKatUebersicht(sicht);
+  } else {
+    const titel = q ? `Suche „${q}“` : _katArt === '__ohne' ? 'Ohne Standort' : _katArt;
+    const sorten = new Set(rows.map(t => t.sorte).filter(Boolean)).size;
+    const unter = `${rows.length} ${rows.length === 1 ? 'Baum' : 'Bäume'}${q ? '' : ` · ${sorten} ${sorten === 1 ? 'Sorte' : 'Sorten'}`}${_katArt === '__ohne' ? ' – im Lageplan mit „Position setzen“ eintragen' : ''}`;
+    inhalt.innerHTML = renderKatListe(rows, titel, unter);
+  }
+  if(tabelle) tabelle.hidden = uebersicht;
+  /* Breite Tabelle (am Rechner sichtbar, siehe CSS) */
   tbody.innerHTML = '';
   updateSortHeaders();
-  const rows = getFilteredBaumRows();
+  if(uebersicht) return;
   if(rows.length===0){
     tbody.innerHTML = `<tr><td colspan="5" class="empty">Keine Treffer.</td></tr>`;
     return;
@@ -234,16 +365,12 @@ function renderBaumTable(){
     tbody.appendChild(tr);
   });
 }
-['baum-search','baum-filter-frucht','baum-filter-verwendung'].forEach(id=>{
-  document.getElementById(id).addEventListener('input', debounce(renderBaumTable, 200));
-  document.getElementById(id).addEventListener('change', renderBaumTable);
-});
-document.getElementById('btn-baum-search-reset').addEventListener('click', ()=>{
-  document.getElementById('baum-search').value = '';
-  document.getElementById('baum-filter-frucht').value = '';
-  document.getElementById('baum-filter-verwendung').value = '';
-  renderBaumTable();
-});
+(function(){
+  const feld = document.getElementById('baum-search');
+  if(feld) feld.addEventListener('input', debounce(renderBaumTable, 200));
+  const leeren = document.getElementById('kat-suche-leeren');
+  if(leeren) leeren.addEventListener('click', ()=>{ feld.value = ''; renderBaumTable(); feld.focus(); });
+})();
 
 /* ---------- Export / Import / Reset ---------- */
 function neuePdfKarte(){
@@ -1542,6 +1669,7 @@ function karteErnteInfo(id){
 function openBaumModal(id){
   const t = getTree(id);
   if(!t) return;
+  katZuletztMerken(id);
   const sorteInfo = getSorte(t.sorte);
   const merged = mitSorte(sorteInfo, t); // Baum-eigene Werte haben Vorrang, sonst Sorten-Fallback
   const angemeldet = isEditMode();

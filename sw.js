@@ -1,18 +1,18 @@
-const CACHE_NAME = 'hendlberghof-v126';
+const CACHE_NAME = 'hendlberghof-v127';
 const CORE_ASSETS = [
   './',
   './index.html',
   /* Seit der Dateitrennung (F6) liegt der Code in eigenen Dateien. Fehlen sie
      im Vorrat, startet die App offline nicht — index.html allein genuegt nicht.
      Reihenfolge hier ohne Belang; bindend ist sie nur in index.html. */
-  './js/kern.js?v=126',
-  './js/kataster.js?v=126',
-  './js/lageplan.js?v=126',
-  './js/start.js?v=126',
-  './js/berater.js?v=126',
-  './js/shop.js?v=126',
-  './js/konfigurator.js?v=126',
-  './js/pruefung.js?v=126',
+  './js/kern.js?v=127',
+  './js/kataster.js?v=127',
+  './js/lageplan.js?v=127',
+  './js/start.js?v=127',
+  './js/berater.js?v=127',
+  './js/shop.js?v=127',
+  './js/konfigurator.js?v=127',
+  './js/pruefung.js?v=127',
   './assets/images/lageplan.jpg',
   './data/baum_data.json',
   './data/sorten_data.json',
