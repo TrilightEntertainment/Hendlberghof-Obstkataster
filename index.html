@@ -789,6 +789,22 @@
 #tab-pruefung .pr-angaben summary{cursor:pointer;padding:11px 0;font-size:.85rem;font-weight:600;color:var(--waldrand);}
 #tab-pruefung .pr-angaben[open] summary{border-bottom:1px solid var(--border);margin-bottom:10px;}
 #tab-pruefung .pr-angaben-raster{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding-bottom:12px;}
+/* Im Topf, Neu erfassen (v126) */
+#tab-pruefung .pr-ansicht{margin-bottom:12px;}
+#tab-pruefung .pr-verkauf{display:inline-flex;align-items:center;gap:6px;font-size:.82rem;color:var(--muted);min-height:36px;cursor:pointer;}
+#tab-pruefung .pr-verkauf input{width:18px;height:18px;margin:0;accent-color:var(--waldrand);}
+#tab-pruefung .pr-fund-angaben{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin:6px 0 10px;}
+#tab-pruefung .pr-herkunft-info{font-size:.8rem;color:var(--waldrand);min-height:1.2em;margin:-4px 0 8px;}
+#tab-pruefung .pr-topf-kopf{font-size:.92rem;margin:4px 0 10px;}
+#tab-pruefung .pr-topf-art{background:var(--card-bg);border:1px solid var(--border);border-radius:12px;padding:10px 14px;margin-bottom:10px;}
+#tab-pruefung .pr-topf-art h3{display:flex;justify-content:space-between;font-family:Georgia,serif;font-weight:400;color:var(--ackerde);font-size:1.1rem;margin:0 0 4px;}
+#tab-pruefung .pr-topf-art h3 span{font-family:inherit;color:var(--muted);font-size:.95rem;}
+#tab-pruefung .pr-topf-sorte{border-top:1px solid var(--rand);padding:6px 0;}
+#tab-pruefung .pr-topf-sortenkopf{display:flex;justify-content:space-between;font-size:.9rem;color:var(--waldrand);font-weight:600;}
+#tab-pruefung .pr-topf-sorte ul{list-style:none;margin:2px 0 0;padding:0;}
+#tab-pruefung .pr-topf-eintrag{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;}
+#tab-pruefung .pr-topf-text{background:none;border:none;padding:6px 0;text-align:left;font:inherit;font-size:.82rem;color:var(--muted);cursor:pointer;flex:1;min-width:0;min-height:36px;}
+#tab-pruefung .pr-topf-text:hover{color:var(--waldrand);}
 #tab-pruefung .pr-feld{display:flex;flex-direction:column;gap:4px;font-size:.72rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;min-width:0;}
 #tab-pruefung .pr-feld input,#tab-pruefung .pr-feld select{width:100%;min-width:0;text-transform:none;letter-spacing:0;font-weight:400;background:var(--card-bg);}
 #tab-pruefung .pr-feld.geaendert input,#tab-pruefung .pr-feld.geaendert select{border-color:var(--stroh);}
@@ -809,7 +825,9 @@
 .pu-fuss{display:flex;gap:10px;flex-wrap:wrap;}
 @media (max-width:420px){
   #tab-pruefung .pr-status-raster{grid-template-columns:1fr 1fr;}
-  #tab-pruefung .pr-fund-raster{grid-template-columns:1fr;}
+  #tab-pruefung .pr-fund-raster{grid-template-columns:1fr 1fr;}
+  #tab-pruefung .pr-fund-angaben{grid-template-columns:1fr 1fr;}
+  #tab-pruefung .pr-segment button{font-size:.8rem;}
   #tab-pruefung .pr-angaben-raster{grid-template-columns:1fr;}
   #tab-pruefung .pr-fuss .btn{flex:1 1 100%;}
 }
@@ -1343,10 +1361,10 @@
 
 <!-- Aus einem einzelnen Script-Block herausgeloest (F6). Reihenfolge ist
      bindend: Ueber Dateigrenzen hinweg gibt es kein Hoisting mehr. -->
-<script src="js/kern.js?v=125"></script>
-<script src="js/kataster.js?v=125"></script>
-<script src="js/lageplan.js?v=125"></script>
-<script src="js/start.js?v=125"></script>
+<script src="js/kern.js?v=126"></script>
+<script src="js/kataster.js?v=126"></script>
+<script src="js/lageplan.js?v=126"></script>
+<script src="js/start.js?v=126"></script>
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-app.js";
@@ -1513,9 +1531,9 @@
     });
   }
 </script>
-<script src="js/berater.js?v=125"></script>
-<script src="js/shop.js?v=125"></script>
-<script src="js/konfigurator.js?v=125"></script>
-<script src="js/pruefung.js?v=125"></script>
+<script src="js/berater.js?v=126"></script>
+<script src="js/shop.js?v=126"></script>
+<script src="js/konfigurator.js?v=126"></script>
+<script src="js/pruefung.js?v=126"></script>
 </body>
 </html>

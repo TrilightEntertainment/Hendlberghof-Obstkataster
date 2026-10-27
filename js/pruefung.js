@@ -2,7 +2,7 @@
    Bestandsprüfung — Prüfmodus mit Scanfeld
    =========================================================================
    Volkmars Numbers-Buch kennt rund 370 Bäume außerhalb des Katasters, vor
-   allem im Baumschulbeet. Was davon noch steht, weiß niemand sicher. Der
+   allem im Waldgarten (früher Baumschulbeet). Was davon noch steht, weiß niemand sicher. Der
    Prüfmodus geht die Liste Gebiet für Gebiet durch: Etikettnummer scannen,
    Status antippen, bei ausgepflanzten Bäumen GPS übernehmen.
 
@@ -58,7 +58,28 @@ const PRUEF_NOTIZ_VORSCHLAEGE = [
   'Unterlage ausgetrieben', 'Wühlmausschaden', 'Wildverbiss', 'Kümmert',
   'Zum Auspflanzen bereit', 'Etikett zeigt andere Sorte', 'Etikett zeigt andere Nummer'
 ];
-const PRUEF_BEET_GEBIETE = ['Baumschulbeet', 'Segment A', 'Segment B'];
+const PRUEF_BEET_GEBIETE = ['Waldgarten', 'Segment A', 'Segment B'];
+/* Umbenennungen (Volkmar 27.10.2026): Das frühere Baumschulbeet heißt
+   Waldgarten. Gilt für Liste und Funde, egal von welchem Gerät sie kommen. */
+const PRUEF_GEBIET_NEU = { 'Baumschulbeet':'Waldgarten' };
+/* Wo steht er? Intern bleibt „beet“ für den Topf, damit ältere Ergebnisse
+   gültig bleiben. Eingewurzelt = Topf durchgewurzelt, bleibt stehen, wird
+   als Waldgarten-Baum geführt und kann ins Kataster. */
+const PRUEF_ORTE = [
+  { id:'beet', label:'Im Topf' },
+  { id:'eingewurzelt', label:'Eingewurzelt' },
+  { id:'ausgepflanzt', label:'Ausgepflanzt' }
+];
+const PRUEF_ORTE_KATASTER = ['ausgepflanzt', 'eingewurzelt'];
+const PRUEF_VERMEHRUNG = ['Veredelung', 'Steckling', 'Sämling', 'Ableger', 'Zukauf'];
+function pruefOrtLabel(id){ return (PRUEF_ORTE.find(o=> o.id === id) || {}).label || ''; }
+function pruefNormalisieren(p){
+  if(!p) return p;
+  Object.values(p.liste || {}).concat(Object.values(p.funde || {})).forEach(e=>{
+    if(e && PRUEF_GEBIET_NEU[e.gebiet]) e.gebiet = PRUEF_GEBIET_NEU[e.gebiet];
+  });
+  return p;
+}
 
 /* Unterlagen in einer Schreibweise, nach Häufigkeit im Bestand geordnet.
    Die Tabelle kennt dieselbe Unterlage teils dreifach („BA 29“, „Q BA 29“,
@@ -82,13 +103,14 @@ let pruefSichtbar = PRUEF_SEITE;
 let pruefFundForm = null;       /* null oder { etikett } — Formular „Fund ohne Eintrag“ */
 let pruefGpsLaeuft = null;       /* { pnr, watch, timer, bestes, start } während der Messung */
 let pruefSyncWarnung = false;
+let pruefEinzeln = null;        /* P-Nr, die aus „Im Topf“ heraus allein gezeigt wird */
 
 function pruefungLeer(){ return { liste:{}, listeStand:'', listeQuelle:'', ergebnisse:{}, funde:{} }; }
 
 function pruefungLaden(){
   try{
     const roh = localStorage.getItem(PRUEF_LS_KEY);
-    if(roh) pruefung = Object.assign(pruefungLeer(), JSON.parse(roh));
+    if(roh) pruefung = pruefNormalisieren(Object.assign(pruefungLeer(), JSON.parse(roh)));
   }catch(e){ console.warn('[pruefung] lokaler Stand unlesbar:', e); }
 }
 pruefungLaden();
@@ -119,7 +141,7 @@ function pruefungZusammenfuehren(lokal, fern){
     });
     aus[teil] = ziel;
   });
-  return aus;
+  return pruefNormalisieren(aus);
 }
 function applyRemotePruefung(fern){
   pruefung = pruefungZusammenfuehren(pruefung, fern);
@@ -141,8 +163,9 @@ window.pruefSyncFehler = pruefSyncFehler;
 function pruefJetzt(){ return new Date().toISOString(); }
 function pruefStatus(id){ return PRUEF_STATUS.find(s=>s.id===id); }
 function pruefFilter(){
-  try{ return Object.assign({ gebiet:'', status:'offen' }, JSON.parse(localStorage.getItem(PRUEF_FILTER_KEY) || '{}')); }
-  catch(e){ return { gebiet:'', status:'offen' }; }
+  const vorgabe = { gebiet:'', status:'offen', ansicht:'pruefen', topfBereich:'', topfVerkauf:false };
+  try{ return Object.assign(vorgabe, JSON.parse(localStorage.getItem(PRUEF_FILTER_KEY) || '{}')); }
+  catch(e){ return vorgabe; }
 }
 function pruefFilterSetzen(teil){
   const f = Object.assign(pruefFilter(), teil);
@@ -217,6 +240,42 @@ function pruefGebiete(){
   Object.values(pruefung.funde || {}).forEach(f=>{ if(f.gebiet && !reihe.includes(f.gebiet)) reihe.push(f.gebiet); });
   return reihe;
 }
+/* Bereiche zum Eintippen: was es beim Prüfen schon gibt, dazu die Namen der
+   Kartenobjekte im Lageplan – dieselben Namen für Karte und Prüfung. */
+function pruefBereiche(){
+  const karte = typeof kartenObjekte === 'function' && typeof FLAECHEN !== 'undefined' && FLAECHEN
+    ? kartenObjekte().filter(o=> o.ebene === 'bestand' && o.art !== 'Grundstücksgrenze').map(o=> o.name) : [];
+  return Array.from(new Set(pruefGebiete().filter(g=> g !== 'Laut Tabelle abgegeben').concat(['Waldgarten'], karte)));
+}
+/* Mutterbaum nachschlagen: zuerst im Kataster, dann in der Prüfliste. */
+function pruefHerkunft(nr){
+  const n = pruefNummer(String(nr || '').trim());
+  if(!n) return null;
+  const t = getTree(n);
+  if(t) return { quelle:'Kataster', sorte:t.sorte || '', frucht:t.frucht || '' };
+  const e = Object.values(pruefung.liste).find(x=> pruefNummer(x.alt_id) === n);
+  if(e){ const r = pruefung.ergebnisse[e.pnr]; return { quelle:'Prüfliste', sorte:pruefWert(e, r, 'sorte'), frucht:pruefWert(e, r, 'frucht') }; }
+  return null;
+}
+function pruefHerkunftAusfuellen(){
+  const info = document.getElementById('pr-fund-herkunft-info');
+  const nr = (document.getElementById('pr-fund-herkunft') || {}).value || '';
+  const verm = (document.getElementById('pr-fund-vermehrung') || {}).value || '';
+  if(!info) return;
+  const h = pruefHerkunft(nr);
+  if(!nr.trim()){ info.textContent = ''; return; }
+  if(!h){ info.textContent = `Baum ${nr.trim()} ist weder im Kataster noch in der Prüfliste.`; return; }
+  const setze = (id, wert) => {
+    const el = document.getElementById(id);
+    if(el && (!el.value || el.dataset.auto === '1')){ el.value = wert; el.dataset.auto = '1'; }
+  };
+  setze('pr-fund-art', h.frucht);
+  /* Ein Sämling ist nicht sortenecht – da bleibt die Sorte offen. */
+  if(verm === 'Sämling'){ const s = document.getElementById('pr-fund-sorte'); if(s && s.dataset.auto === '1'){ s.value = ''; } }
+  else setze('pr-fund-sorte', h.sorte);
+  info.textContent = `Baum ${nr.trim()} (${h.quelle}): ${[h.frucht, h.sorte].filter(Boolean).join(' · ') || 'ohne Angaben'}${verm === 'Sämling' ? ' – Sämling, Sorte bleibt offen' : ''}`;
+}
+
 function pruefErgebnis(e){ return e.fund ? e : (pruefung.ergebnisse[e.pnr] || null); }
 function pruefIstErledigt(e){
   const r = pruefErgebnis(e);
@@ -250,13 +309,26 @@ function renderPruefung(){
     return;
   }
   const filter = pruefFilter();
+  const umschalter = `<div class="pr-segment pr-ansicht" role="group" aria-label="Ansicht">
+      ${[['pruefen', 'Prüfen'], ['topf', 'Im Topf']].map(([v, l])=>
+        `<button type="button" class="${filter.ansicht===v?'aktiv':''}" data-pr="ansicht" data-ansicht="${v}">${l}</button>`).join('')}
+    </div>`;
+  if(filter.ansicht === 'topf'){
+    scan.style.display = 'none';
+    oben.innerHTML = umschalter;
+    wurzel.innerHTML = renderPruefTopf();
+    return;
+  }
   const alle = pruefAlleEintraege();
   const erledigt = alle.filter(pruefIstErledigt).length;
   const anteil = alle.length ? Math.round(erledigt / alle.length * 100) : 0;
 
   const begriffe = pruefSuchbegriffe(feld.value);
   let treffer;
-  if(begriffe.length){
+  if(pruefEinzeln){
+    treffer = alle.filter(e=> e.pnr === pruefEinzeln);
+    pruefOffen = pruefEinzeln;
+  } else if(begriffe.length){
     treffer = alle.filter(e=> e.alt_id && begriffe.includes(pruefNummer(e.alt_id)));
   } else {
     treffer = alle.filter(e=>{
@@ -288,7 +360,7 @@ function renderPruefung(){
     kopfTreffer = treffer.length
       ? `<div class="pr-trefferkopf">${treffer.length===1 ? 'Ein Eintrag' : `${treffer.length} Einträge`} mit Nummer ${escHtml(begriffe.join(', '))} — in allen Gebieten gesucht${treffer.length>1 ? '. Nimm den, der zu Sorte und Standort passt.' : ''}</div>`
       : `<div class="pr-trefferkopf pr-keintreffer">Keine Nummer ${escHtml(begriffe.join(', '))} auf der Liste.
-           <button class="btn" data-pr="fund-neu">Als Fund ohne Eintrag erfassen</button></div>`;
+           <button class="btn" data-pr="fund-neu">Neu erfassen</button></div>`;
   }
   /* Ein einzelner Treffer klappt gleich auf — ein Tippen weniger pro Baum. */
   if(begriffe.length && treffer.length===1) pruefOffen = treffer[0].pnr;
@@ -297,7 +369,8 @@ function renderPruefung(){
   const sichtbar = begriffe.length ? treffer : treffer.slice(0, pruefSichtbar);
   const mehr = treffer.length - sichtbar.length;
 
-  oben.innerHTML = `
+  if(pruefEinzeln) kopfTreffer = `<div class="pr-trefferkopf">Aus der Liste „Im Topf“ <button type="button" class="pr-link" data-pr="einzeln-aus">alle zeigen</button></div>`;
+  oben.innerHTML = `${umschalter}
     <div class="pr-fortschritt">
       <div class="pr-fortschritt-zeile"><div><b>${erledigt} von ${alle.length}</b> geprüft</div><span>${anteil} %</span></div>
       <div class="pr-balken"><div style="width:${anteil}%"></div></div>
@@ -305,7 +378,7 @@ function renderPruefung(){
     </div>
     ${pruefFundForm ? renderPruefFundForm() : ''}`;
   wurzel.innerHTML = `
-    ${begriffe.length ? '' : `
+    ${begriffe.length || pruefEinzeln ? '' : `
     <div class="pr-filter">
       <select id="pr-gebiet" aria-label="Suchgebiet"><option value="">Alle Gebiete</option>${gebietOptionen}</select>
       <select id="pr-status-filter" aria-label="Status">${statusOptionen}</select>
@@ -316,7 +389,7 @@ function renderPruefung(){
     </div>
     ${mehr > 0 ? `<button class="btn secondary pr-mehr" data-pr="mehr">${Math.min(mehr, PRUEF_SEITE)} weitere anzeigen (${mehr} übrig)</button>` : ''}
     <div class="pr-fuss">
-      <button class="btn secondary" data-pr="fund-neu">Fund ohne Eintrag</button>
+      <button class="btn secondary" data-pr="fund-neu">Neu erfassen</button>
       ${isAdmin() && bereitZahl ? `<button class="btn" data-pr="uebernahme">Ins Kataster übernehmen (${bereitZahl})</button>` : ''}
       <button class="btn secondary" data-pr="export">Ergebnisse als Excel</button>
       ${isAdmin() ? '<button class="btn secondary" data-pr="liste-laden">Prüfliste neu laden …</button>' : ''}
@@ -328,6 +401,86 @@ function renderPruefung(){
 
 /* Vorschlagslisten für „Angaben korrigieren“ — bereits Korrigiertes und
    Häufiges zuerst, wie überall im Hof (feedback: Meistgenutztes zuerst). */
+/* ---------- Im Topf ----------
+   Alles, was beim Prüfen „im Topf“ bestätigt oder neu erfasst wurde, nach
+   Obstart und Sorte, mit Stückzahl. Ein Eintrag kann mehrere gleiche Töpfe
+   meinen (Anzahl), etwa 12 Stecklinge vom selben Mutterbaum. */
+function pruefStueck(e){ return e.fund ? Math.max(1, parseInt(e.anzahl, 10) || 1) : 1; }
+function pruefTopfEintraege(){
+  return pruefAlleEintraege().filter(e=>{
+    const r = pruefErgebnis(e);
+    return r && r.ort === 'beet' && PRUEF_UEBERNAHME_STATUS.includes(r.status);
+  });
+}
+function renderPruefTopf(){
+  const filter = pruefFilter();
+  const alle = pruefTopfEintraege();
+  const summe = l => l.reduce((n, e)=> n + pruefStueck(e), 0);
+  const bereiche = Array.from(new Set(alle.map(e=> e.gebiet).filter(Boolean))).sort((a, b)=> a.localeCompare(b, 'de'));
+  const liste = alle.filter(e=> (!filter.topfBereich || e.gebiet === filter.topfBereich)
+    && (!filter.topfVerkauf || (pruefErgebnis(e) || {}).verkaufsfertig));
+  const gruppen = {};
+  liste.forEach(e=>{
+    const r = pruefErgebnis(e);
+    const art = pruefWert(e, r, 'frucht') || 'Ohne Obstart';
+    const sorte = pruefWert(e, r, 'sorte') || 'Sorte offen';
+    gruppen[art] = gruppen[art] || {};
+    (gruppen[art][sorte] = gruppen[art][sorte] || []).push(e);
+  });
+  const nachName = (a, b, letzter) => (a === letzter) - (b === letzter) || a.localeCompare(b, 'de');
+  const ungeprueft = pruefAlleEintraege().filter(e=> PRUEF_BEET_GEBIETE.includes(e.gebiet) && !(pruefErgebnis(e) || {}).status).length;
+  const verkauf = summe(alle.filter(e=> (pruefErgebnis(e) || {}).verkaufsfertig));
+  const zeile = e => {
+    const r = pruefErgebnis(e);
+    const w = feld => pruefWert(e, r, feld);
+    const teile = [e.alt_id ? `Nr. ${e.alt_id}` : 'ohne Nr.', w('unterlage'), /^\d{4}$/.test(w('veredelt')) ? w('veredelt') : '',
+      e.fund ? e.vermehrung : '', e.fund && e.herkunft ? `von ${e.herkunft}` : '', e.gebiet,
+      pruefStueck(e) > 1 ? `${pruefStueck(e)} Stück` : ''].filter(Boolean).map(escHtml).join(' · ');
+    return `<li class="pr-topf-eintrag">
+        <button type="button" class="pr-topf-text" data-pr="topf-oeffnen" data-pnr="${escAttr(e.pnr)}">${teile}</button>
+        <label class="pr-verkauf"><input type="checkbox" data-pr-verkauf="${escAttr(e.pnr)}"${r.verkaufsfertig ? ' checked' : ''}> verkaufsfertig</label>
+      </li>`;
+  };
+  const inhalt = Object.keys(gruppen).sort((a, b)=> nachName(a, b, 'Ohne Obstart')).map(art=>{
+    const sorten = gruppen[art];
+    return `<div class="pr-topf-art">
+        <h3>${escHtml(art)} <span>${summe(Object.values(sorten).flat())}</span></h3>
+        ${Object.keys(sorten).sort((a, b)=> nachName(a, b, 'Sorte offen')).map(sorte=> `
+          <div class="pr-topf-sorte">
+            <div class="pr-topf-sortenkopf"><span>${escHtml(sorte)}</span><span>${summe(sorten[sorte])}</span></div>
+            <ul>${sorten[sorte].map(zeile).join('')}</ul>
+          </div>`).join('')}
+      </div>`;
+  }).join('');
+  return `
+    <div class="pr-topf-kopf"><b>${summe(liste)} ${summe(liste) === 1 ? 'Pflanze' : 'Pflanzen'}</b> im Topf${filter.topfBereich || filter.topfVerkauf ? ' (Auswahl)' : ''} · ${verkauf} verkaufsfertig</div>
+    <div class="pr-filter">
+      <select id="pr-topf-bereich" aria-label="Bereich"><option value="">Alle Bereiche</option>
+        ${bereiche.map(b=>`<option value="${escAttr(b)}"${b===filter.topfBereich?' selected':''}>${escHtml(b)}</option>`).join('')}</select>
+      <label class="pr-verkauf"><input type="checkbox" id="pr-topf-verkauf"${filter.topfVerkauf ? ' checked' : ''}> nur verkaufsfertig</label>
+    </div>
+    ${inhalt || '<div class="pr-nichts">Noch nichts im Topf bestätigt oder erfasst.</div>'}
+    <p class="pr-scan-hinweis">Hier steht, was beim Prüfen „im Topf“ bestätigt oder neu erfasst wurde.${ungeprueft ? ` Im Waldgarten sind noch ${ungeprueft} Einträge der Liste ungeprüft.` : ''}</p>
+    <div class="pr-fuss">
+      <button class="btn secondary" data-pr="fund-neu">Neu erfassen</button>
+      <button class="btn secondary" data-pr="topf-export">Liste als Excel</button>
+    </div>`;
+}
+function pruefTopfExport(){
+  if(typeof XLSX === 'undefined'){ showToast('Excel-Export braucht Internet (SheetJS wird nachgeladen).', 'error', 5000); return; }
+  const zeilen = pruefTopfEintraege().map(e=>{
+    const r = pruefErgebnis(e);
+    const w = feld => pruefWert(e, r, feld);
+    return { 'Obstart': w('frucht'), 'Sorte': w('sorte'), 'Anzahl': pruefStueck(e), 'Etikett-Nr.': e.alt_id || '',
+      'Vermehrung': e.fund ? (e.vermehrung || '') : '', 'Herkunft': e.fund ? (e.herkunft || '') : '', 'Unterlage': w('unterlage'),
+      'Veredelt': w('veredelt'), 'Bereich': e.gebiet || '', 'Verkaufsfertig': r.verkaufsfertig ? 'ja' : '', 'Notiz': r.notiz || '',
+      'Geprüft am': pruefDatum(r.zeit) };
+  });
+  const mappe = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(mappe, XLSX.utils.json_to_sheet(zeilen), 'Im Topf');
+  XLSX.writeFile(mappe, `Im_Topf_${new Date().toISOString().slice(0,10)}.xlsx`);
+}
+
 function renderPruefVorschlaege(){
   const korr = pruefAlleKorrekturen();
   const liste = Object.values(pruefung.liste);
@@ -353,7 +506,10 @@ function renderPruefKarte(e){
   const meta = [w('frucht'), w('unterlage'),
     veredelt ? (/^\d{4}$/.test(veredelt) ? `veredelt ${veredelt}` : veredelt) : '',
     w('ausgepflanzt') ? `gepflanzt ${w('ausgepflanzt')}` : '', w('standort'),
-    e.fund ? 'Fund' : e.pnr]
+    e.fund && (e.anzahl || 1) > 1 ? `${e.anzahl} Stück` : '',
+    e.fund && e.vermehrung ? e.vermehrung : '', e.fund && e.herkunft ? `von ${e.herkunft}` : '',
+    r && r.status && r.ort ? pruefOrtLabel(r.ort) : '', r && r.verkaufsfertig ? 'verkaufsfertig' : '',
+    e.fund ? 'neu erfasst' : e.pnr]
     .filter(Boolean).map(escHtml).join(' · ');
   const korrigiert = ['sorte','frucht','unterlage','veredelt','ausgepflanzt','standort'].some(f=> pruefGeaendert(e, r, f));
   const hinweis = [e.gebiet, pruefPlanText(e), e.hinweis, e.wo && !e.gebiet.includes(e.wo) ? `Tabelle: ${e.wo}` : '']
@@ -393,11 +549,13 @@ function renderPruefDetail(e, r){
       <div class="pr-zeile">
         <span class="pr-zeile-label">Wo steht er?</span>
         <div class="pr-segment">
-          <button type="button" class="${ort==='beet'?'aktiv':''}" data-pr="ort" data-pnr="${pnr}" data-ort="beet">Baumschulbeet</button>
-          <button type="button" class="${ort==='ausgepflanzt'?'aktiv':''}" data-pr="ort" data-pnr="${pnr}" data-ort="ausgepflanzt">Ausgepflanzt</button>
+          ${PRUEF_ORTE.map(o=>`<button type="button" class="${ort===o.id?'aktiv':''}" data-pr="ort" data-pnr="${pnr}" data-ort="${o.id}">${o.label}</button>`).join('')}
         </div>
       </div>
-      ${ort==='ausgepflanzt' ? renderPruefGps(e, gps) : ''}
+      ${ort!=='beet' ? renderPruefGps(e, gps) : ''}
+      ${ort==='beet' ? `
+      <label class="pr-verkauf"><input type="checkbox" data-pr-verkauf="${pnr}"${r && r.verkaufsfertig ? ' checked' : ''}> verkaufsfertig</label>` : ''}
+      ${e.fund ? renderPruefFundAngaben(e) : ''}
       ${renderPruefAngaben(e, r)}
       <div class="pr-zeile pr-notiz">
         <label for="pr-notiz-${pnr}" class="pr-zeile-label">Notiz</label>
@@ -411,6 +569,17 @@ function renderPruefDetail(e, r){
         ${e.fund ? `<button type="button" class="pr-link" data-pr="fund-loeschen" data-pnr="${pnr}">Fund löschen</button>` : ''}
       </div>
     </div>`;
+}
+
+function renderPruefFundAngaben(e){
+  const pnr = escAttr(e.pnr);
+  return `
+      <div class="pr-fund-angaben">
+        <label class="pr-feld">Anzahl<input type="number" min="1" step="1" inputmode="numeric" data-pr-anzahl="${pnr}" value="${escAttr(String(e.anzahl || 1))}"></label>
+        <label class="pr-feld">Vermehrung<select data-pr-vermehrung="${pnr}">
+          ${[''].concat(PRUEF_VERMEHRUNG).map(v=>`<option value="${escAttr(v)}"${(e.vermehrung||'')===v?' selected':''}>${v ? escHtml(v) : '–'}</option>`).join('')}</select></label>
+        <label class="pr-feld">Herkunft (Baum-Nr.)<input type="text" data-pr-herkunft="${pnr}" value="${escAttr(e.herkunft || '')}" autocomplete="off" autocapitalize="characters"></label>
+      </div>`;
 }
 
 function renderPruefGps(e, gps){
@@ -479,23 +648,31 @@ function renderPruefFundForm(){
   const f = pruefFundForm;
   const sorten = Array.from(new Set(Object.values(pruefung.liste).map(e=>e.sorte)
     .concat(getAllTrees().map(t=>t.sorte)).filter(Boolean))).sort((a, b)=>a.localeCompare(b, 'de'));
-  const arten = Array.from(new Set(Object.values(pruefung.liste).map(e=>e.frucht).filter(Boolean))).sort();
+  const arten = Array.from(new Set(Object.values(pruefung.liste).map(e=>e.frucht)
+    .concat(getAllTrees().map(t=>t.frucht)).filter(Boolean))).sort((a, b)=>a.localeCompare(b, 'de'));
   const filter = pruefFilter();
-  const gebiete = pruefGebiete().filter(g=> g !== 'Laut Tabelle abgegeben');
+  const gebietVorgabe = filter.gebiet || 'Waldgarten';
   return `
     <div class="pr-fund">
-      <h3>Fund ohne Eintrag</h3>
-      <p class="pr-scan-hinweis">Ein Baum, der auf keiner Liste steht. Er wird mitgeprüft und später wie die anderen übernommen.</p>
+      <h3>Neu erfassen</h3>
+      <p class="pr-scan-hinweis">Ein Baum oder mehrere gleiche Töpfe, die auf keiner Liste stehen. Bei Stecklingen,
+        Ablegern und Veredelungen die Nummer des Mutterbaums eintragen – Obstart und Sorte füllen sich dann selbst.</p>
       <div class="pr-fund-raster">
-        <label>Etikett-Nr.<input type="text" id="pr-fund-etikett" value="${escAttr(f.etikett || '')}" autocomplete="off" autocapitalize="characters"></label>
-        <label>Sorte<input type="text" id="pr-fund-sorte" list="pr-fund-sorten" autocomplete="off" placeholder="leer lassen, wenn unbekannt"></label>
+        <label>Etikett-Nr.<input type="text" id="pr-fund-etikett" value="${escAttr(f.etikett || '')}" autocomplete="off" autocapitalize="characters" placeholder="falls vorhanden"></label>
+        <label>Vermehrung<select id="pr-fund-vermehrung">${[''].concat(PRUEF_VERMEHRUNG).map(v=>`<option value="${escAttr(v)}">${v ? escHtml(v) : '–'}</option>`).join('')}</select></label>
+        <label>Herkunft (Baum-Nr.)<input type="text" id="pr-fund-herkunft" autocomplete="off" autocapitalize="characters" placeholder="z. B. 922"></label>
+        <label>Anzahl<input type="number" id="pr-fund-anzahl" min="1" step="1" inputmode="numeric" value="1"></label>
         <label>Obstart<input type="text" id="pr-fund-art" list="pr-fund-arten" autocomplete="off"></label>
-        <label>Gebiet<select id="pr-fund-gebiet">${gebiete.map(g=>`<option ${g===(filter.gebiet||'Baumschulbeet')?'selected':''}>${escHtml(g)}</option>`).join('')}</select></label>
+        <label>Sorte<input type="text" id="pr-fund-sorte" list="pr-fund-sorten" autocomplete="off" placeholder="leer lassen, wenn unbekannt"></label>
+        <label>Bereich<input type="text" id="pr-fund-gebiet" list="pr-dl-bereiche" value="${escAttr(gebietVorgabe)}" autocomplete="off" placeholder="vorhandenen wählen oder neu eintippen"></label>
+        <label>Wo steht er?<select id="pr-fund-ort">${PRUEF_ORTE.map(o=>`<option value="${o.id}"${o.id === (PRUEF_BEET_GEBIETE.includes(gebietVorgabe) ? 'beet' : 'ausgepflanzt') ? ' selected' : ''}>${o.label}</option>`).join('')}</select></label>
       </div>
+      <div class="pr-herkunft-info" id="pr-fund-herkunft-info"></div>
       <datalist id="pr-fund-sorten">${sorten.map(s=>`<option value="${escAttr(s)}">`).join('')}</datalist>
       <datalist id="pr-fund-arten">${arten.map(s=>`<option value="${escAttr(s)}">`).join('')}</datalist>
+      <datalist id="pr-dl-bereiche">${pruefBereiche().map(s=>`<option value="${escAttr(s)}">`).join('')}</datalist>
       <div class="pr-detail-fuss">
-        <button type="button" class="btn" data-pr="fund-speichern">Fund anlegen</button>
+        <button type="button" class="btn" data-pr="fund-speichern">Speichern</button>
         <button type="button" class="btn secondary" data-pr="fund-abbrechen">Abbrechen</button>
       </div>
     </div>`;
@@ -619,12 +796,17 @@ function pruefFundSpeichern(){
   const wert = id => (document.getElementById(id) || {}).value || '';
   const id = `F-${Date.now().toString(36)}`;
   if(!pruefung.funde) pruefung.funde = {};
+  const gebiet = wert('pr-fund-gebiet').trim() || 'Waldgarten';
+  const anzahl = Math.max(1, parseInt(wert('pr-fund-anzahl'), 10) || 1);
+  const herkunft = pruefNummer(wert('pr-fund-herkunft').trim());
   pruefung.funde[id] = {
     id, etikett:wert('pr-fund-etikett').trim(), sorte:wert('pr-fund-sorte').trim(),
-    frucht:wert('pr-fund-art').trim(), gebiet:wert('pr-fund-gebiet'), unterlage:'', veredelt:'',
-    status:'', ort:'', notiz:'', zeit:pruefJetzt(), von:(window.__firebaseUser||{}).email || ''
+    frucht:wert('pr-fund-art').trim(), gebiet, unterlage:'', veredelt:'',
+    vermehrung:wert('pr-fund-vermehrung'), herkunft, anzahl,
+    /* Wer vor Ort neu erfasst, hat ihn gesehen: gilt als vorhanden. */
+    status:'stimmt', ort:wert('pr-fund-ort') || (PRUEF_BEET_GEBIETE.includes(gebiet) ? 'beet' : 'ausgepflanzt'),
+    notiz:'', zeit:pruefJetzt(), von:(window.__firebaseUser||{}).email || ''
   };
-  pruefung.funde[id].ort = PRUEF_BEET_GEBIETE.includes(pruefung.funde[id].gebiet) ? 'beet' : 'ausgepflanzt';
   pruefFundForm = null;
   pruefOffen = id;
   document.getElementById('pr-nummer').value = pruefung.funde[id].etikett;
@@ -666,6 +848,7 @@ function pruefListeWaehlen(){
       const liste = {};
       daten.eintraege.forEach(e=>{ liste[e.pnr] = e; });
       pruefung.liste = liste;
+      pruefNormalisieren(pruefung);
       pruefung.listeStand = pruefJetzt();
       pruefung.listeQuelle = `${daten.quelle || 'pruefliste.json'} vom ${daten.stand}`;
       pruefungSpeichern();
@@ -683,7 +866,8 @@ const PRUEF_UEBERNAHME_STATUS = ['stimmt', 'abweichend', 'ohneEtikett'];
 function pruefUebernahmeBereit(){
   return pruefAlleEintraege().filter(e=>{
     const r = pruefErgebnis(e);
-    return r && PRUEF_UEBERNAHME_STATUS.includes(r.status) && r.ort === 'ausgepflanzt' && !r.uebernommen;
+    return r && PRUEF_UEBERNAHME_STATUS.includes(r.status) && PRUEF_ORTE_KATASTER.includes(r.ort) && !r.uebernommen
+      && !(e.fund && (e.anzahl || 1) > 1);   /* Gruppen mehrerer Töpfe sind keine Einzelbäume */
   });
 }
 /* ID-Vorschlag: die Etikettnummer, denn die hängt am Baum. Ist sie vergeben —
@@ -706,7 +890,7 @@ function pruefIdVorschlag(e, vergeben){
 function pruefUebernahmeOeffnen(){
   if(!isAdmin()){ showToast('Übernehmen darf nur der Admin.', 'error', 4000); return; }
   const bereit = pruefUebernahmeBereit();
-  if(!bereit.length){ showToast('Nichts zu übernehmen — es fehlen bestätigte, ausgepflanzte Bäume.', 'info', 4000); return; }
+  if(!bereit.length){ showToast('Nichts zu übernehmen — es fehlen bestätigte, ausgepflanzte oder eingewurzelte Bäume.', 'info', 4000); return; }
   const vergeben = new Set(getAllTrees().map(t=> t.id));
   const zeilen = bereit.map(e=>{
     const r = pruefErgebnis(e);
@@ -733,7 +917,7 @@ function pruefUebernahmeOeffnen(){
   const html = `
     <button class="close" onclick="closeModal()" aria-label="Schließen"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true" focusable="false"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg></button>
     <h2>Ins Kataster übernehmen</h2>
-    <p class="snippet">${bereit.length === 1 ? 'Ein bestätigter, ausgepflanzter Baum' : `${bereit.length} bestätigte, ausgepflanzte Bäume`}.
+    <p class="snippet">${bereit.length === 1 ? 'Ein bestätigter, ausgepflanzter oder eingewurzelter Baum' : `${bereit.length} bestätigte, ausgepflanzte oder eingewurzelte Bäume`}.
       Die ID ist die Etikettnummer und lässt sich hier noch ändern. Angaben korrigierst du vorher in der Prüfkarte.</p>
     <div class="pu-liste">${zeilen}</div>
     <div id="pu-fehler" class="login-meldung fehler" style="display:none;"></div>
@@ -776,7 +960,9 @@ function pruefUebernahmeAusfuehren(){
     state.customTrees.push({
       id, sorte:w('sorte'), frucht:w('frucht'), unterlage:w('unterlage'),
       veredelt: veredelt === 'unbekannt' ? '' : veredelt,
-      ausgepflanzt:w('ausgepflanzt'), standort_zeile:w('standort'),
+      ausgepflanzt:w('ausgepflanzt'),
+      /* Eingewurzelte Töpfe werden als Waldgarten-Bäume geführt (Volkmar 27.10.2026). */
+      standort_zeile:w('standort') || (r.ort === 'eingewurzelt' ? 'Waldgarten' : ''),
       sukzession:[], ernten:[], position:null,
       quelle:'pruefung', pruefung:{ pnr, etikett:e.alt_id || '', datum:jetzt.slice(0, 10) }
     });
@@ -810,7 +996,9 @@ function pruefExport(){
     'Gepflanzt': pruefWert(e, r, 'ausgepflanzt'), 'Standort': pruefWert(e, r, 'standort'),
     'Korrigiert': Object.keys((r && r.korrektur) || {}).join(', '), 'Suchgebiet': e.gebiet || '',
     'Status': r ? status(r.status) : '', 'Durchgänge': r && r.status==='fehlt' ? (r.durchgaenge||1) : '',
-    'Wo': r && r.status ? (r.ort==='beet' ? 'Baumschulbeet' : 'ausgepflanzt') : '', 'Notiz': (r && r.notiz) || '',
+    'Wo': r && r.status ? pruefOrtLabel(r.ort) : '', 'Verkaufsfertig': r && r.verkaufsfertig ? 'ja' : '',
+    'Anzahl': e.fund ? (e.anzahl || 1) : 1, 'Vermehrung': e.fund ? (e.vermehrung || '') : '', 'Herkunft': e.fund ? (e.herkunft || '') : '',
+    'Notiz': (r && r.notiz) || '',
     'Breite': r && r.gps ? r.gps.lat : '', 'Länge': r && r.gps ? r.gps.lng : '', 'Genauigkeit (m)': r && r.gps ? r.gps.gpsAccuracy : '',
     'Geprüft am': r && r.status ? pruefDatum(r.zeit) : '', 'Im Kataster als': r && r.uebernommen ? r.uebernommen.id : '',
     'Warnzeichen': (e.warnungen||[]).join('; '), 'Tabellenblatt': e.blatt || ''
@@ -839,13 +1027,21 @@ function pruefExport(){
       case 'gps': pruefGps(pnr); break;
       case 'gps-stopp': pruefGpsStopp(); renderPruefung(); break;
       case 'uebernahme': pruefUebernahmeOeffnen(); break;
-      case 'naechster': pruefNaechster(); break;
+      case 'naechster': pruefEinzeln = null; pruefNaechster(); break;
       case 'zuruecksetzen':
         if(confirm('Ergebnis für diesen Baum löschen?')){ delete pruefung.ergebnisse[pnr]; pruefungSpeichern(); renderPruefung(); }
         break;
       case 'nummer-leeren': pruefNaechster(); break;
       case 'mehr': pruefSichtbar += PRUEF_SEITE; renderPruefung(); break;
+      case 'ansicht':
+        pruefFilterSetzen({ ansicht:el.dataset.ansicht }); pruefEinzeln = null; pruefFundForm = null; renderPruefung(); break;
+      case 'topf-oeffnen':
+        pruefFilterSetzen({ ansicht:'pruefen' }); pruefEinzeln = pnr; pruefOffen = pnr;
+        renderPruefung(); document.getElementById('tab-pruefung').scrollIntoView({ block:'start' }); break;
+      case 'einzeln-aus': pruefEinzeln = null; pruefOffen = null; renderPruefung(); break;
+      case 'topf-export': pruefTopfExport(); break;
       case 'fund-neu':
+        pruefFilterSetzen({ ansicht:'pruefen' }); pruefEinzeln = null;
         pruefFundForm = { etikett:document.getElementById('pr-nummer').value.trim() };
         renderPruefung();
         document.querySelector('.pr-fund') && document.querySelector('.pr-fund').scrollIntoView({ block:'start' });
@@ -859,14 +1055,48 @@ function pruefExport(){
   });
   /* Bei jeder Eingabe neu suchen — Live Text setzt den Wert auf einmal ein. */
   tab.addEventListener('input', ev=>{
-    if(ev.target.id !== 'pr-nummer') return;
+    const t = ev.target;
+    if(t.id === 'pr-fund-herkunft'){ pruefHerkunftAusfuellen(); return; }
+    if(t.id === 'pr-fund-art' || t.id === 'pr-fund-sorte'){ delete t.dataset.auto; return; }
+    if(t.id !== 'pr-nummer') return;
     pruefOffen = null;
+    pruefEinzeln = null;
     renderPruefung();
   });
   tab.addEventListener('change', ev=>{
     const t = ev.target;
     if(t.id === 'pr-gebiet'){ pruefFilterSetzen({ gebiet:t.value }); pruefSichtbar = PRUEF_SEITE; pruefOffen = null; renderPruefung(); }
     else if(t.id === 'pr-status-filter'){ pruefFilterSetzen({ status:t.value }); pruefSichtbar = PRUEF_SEITE; pruefOffen = null; renderPruefung(); }
+    else if(t.id === 'pr-topf-bereich'){ pruefFilterSetzen({ topfBereich:t.value }); renderPruefung(); }
+    else if(t.id === 'pr-topf-verkauf'){ pruefFilterSetzen({ topfVerkauf:t.checked }); renderPruefung(); }
+    else if(t.id === 'pr-fund-vermehrung'){ pruefHerkunftAusfuellen(); }
+    else if(t.id === 'pr-fund-gebiet'){
+      const ort = document.getElementById('pr-fund-ort');
+      if(ort) ort.value = PRUEF_BEET_GEBIETE.includes(t.value.trim()) ? 'beet' : ort.value;
+    }
+    else if(t.dataset.prVerkauf){
+      pruefSetze(t.dataset.prVerkauf, { verkaufsfertig:t.checked });
+      if(pruefFilter().ansicht === 'topf') renderPruefung();
+    }
+    else if(t.dataset.prAnzahl){
+      pruefSetze(t.dataset.prAnzahl, { anzahl:Math.max(1, parseInt(t.value, 10) || 1) });
+    }
+    else if(t.dataset.prVermehrung !== undefined && t.tagName === 'SELECT'){
+      pruefSetze(t.dataset.prVermehrung, { vermehrung:t.value });
+    }
+    else if(t.dataset.prHerkunft !== undefined){
+      const pnr = t.dataset.prHerkunft;
+      const herkunft = pruefNummer(t.value.trim());
+      const aenderung = { herkunft };
+      const e = pruefEintrag(pnr);
+      const h = pruefHerkunft(herkunft);
+      if(h && e){
+        if(!e.frucht) aenderung.frucht = h.frucht;
+        if(!e.sorte && e.vermehrung !== 'Sämling') aenderung.sorte = h.sorte;
+      }
+      pruefSetze(pnr, aenderung);
+      renderPruefung();
+    }
     else if(t.dataset.prKorr === 'ausgepflanzt'){
       /* Pflanzjahr aus zwei Auswahlfeldern: Jahr und Jahreszeit */
       const block = t.closest('.pr-doppel');
