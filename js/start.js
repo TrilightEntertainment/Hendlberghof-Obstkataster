@@ -56,6 +56,11 @@ function applyEditModeUI(){
   document.getElementById('tab-btn-daten').style.display = admin ? '' : 'none';
   document.getElementById('tab-btn-pruefung').style.display = on ? '' : 'none';
   if(typeof renderPruefung === 'function') renderPruefung();   /* leert den Reiter beim Abmelden */
+  /* Arche-Noah-Sorten und der Quellen-Filter nur für den Admin (v132). */
+  if(typeof _sortenCache !== 'undefined') _sortenCache = null;
+  const qSel = document.getElementById('sb-filter-quelle');
+  if(qSel){ qSel.hidden = !admin; if(!admin) qSel.value = ''; }
+  if(typeof renderBaumfinder === 'function') renderBaumfinder();
   const cardPl = document.getElementById('card-preislisten');
   if(cardPl) cardPl.style.display = admin ? '' : 'none';
   const cardBh = document.getElementById('card-bestellhistorie');

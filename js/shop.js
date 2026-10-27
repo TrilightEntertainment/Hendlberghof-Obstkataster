@@ -166,7 +166,7 @@ function renderBestellModalContent() {
       <label for="bk-ausfall" style="color:var(--muted);">Falls eine Veredelung nicht anwächst:</label>
       <select id="bk-ausfall" style="font-size:.8rem;padding:3px 6px;border:1px solid var(--border);border-radius:4px;margin-top:3px;width:100%;">
         <option value="ruecksprache"${regel==='ruecksprache'?' selected':''}>Rücksprache — gemeinsam entscheiden</option>
-        <option value="ersatzsorte"${regel==='ersatzsorte'?' selected':''}>Ersatzsorte nach Ihrer Wahl</option>
+        <option value="ersatzsorte"${regel==='ersatzsorte'?' selected':''}>Ersatzsorte nach deiner Wahl</option>
         <option value="folgejahr"${regel==='folgejahr'?' selected':''}>Nachlieferung im Folgejahr</option>
         <option value="storno"${regel==='storno'?' selected':''}>Storno dieser Position</option>
       </select>

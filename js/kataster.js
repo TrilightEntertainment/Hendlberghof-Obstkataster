@@ -1017,7 +1017,7 @@ function getBestellbarkeit(sorteName, info){
     erg.eigenproduktion = false;
     erg.lieferanten = [];
     erg.zustand = 'pausiert';
-    erg.grund = 'Bestellungen pausieren derzeit — Merken ist weiterhin möglich.';
+    erg.grund = 'Derzeit nur Beratung — Bestellungen sind gerade nicht möglich.';
     return erg;
   }
 
@@ -1082,16 +1082,9 @@ function renderShopBlock(sorteName, kontext){
   if(b.zustand === 'nur_beratung')
     return rahmen(`<span class="shop-hinweis">Nur zur Beratung — Arche-Noah-Sorten sind nicht käuflich.</span>`);
 
-  /* Saisonpause: Kaufen aus, Merken an. Wer im Sommer nach Bestellschluss
-     kommt, soll nicht verlorengehen — er soll vorgemerkt werden. */
-  if(b.zustand === 'pausiert'){
-    return rahmen(
-      `<div class="shop-zeile">
-         <span class="shop-hinweis">${escHtml(b.grund)}</span>
-         <button class="btn secondary shop-btn"
-                 onclick="event.stopPropagation();merkEigenHinzu('${sn}')">Merken</button>
-       </div>`);
-  }
+  /* Verkauf aus (v132, Volkmar 27.10.2026): nur Beratung – kein Preis, keine
+     Merkliste. Wer bestellen möchte, findet im Baumfinder „Beratung anfragen“. */
+  if(b.zustand === 'pausiert') return '';
 
   const teile = [];
 

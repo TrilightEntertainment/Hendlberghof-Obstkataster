@@ -373,7 +373,22 @@ function getBetrieb(){
   const modus = BETRIEBSMODI[b.modus] ? b.modus : 'A';
   /* shop_aktiv fehlt = aktiv. Ein neuer Betrieb soll verkaufen können, ohne
      erst einen Schalter zu finden. */
-  return Object.assign({ modus, shop_aktiv: b.shop_aktiv !== false }, BETRIEBSMODI[modus]);
+  const schalter = b.shop_aktiv !== false;
+  /* Bestellzeitraum (v132): Mit Bestellbeginn und -schluss ruht der Verkauf
+     außerhalb von selbst. Ohne Bestellbeginn zählt nur der Schalter. */
+  const imZeitraum = (typeof getProduktion === 'function') ? imBestellzeitraum(getProduktion().saison) : true;
+  return Object.assign({ modus, shop_aktiv: schalter && imZeitraum, shop_schalter: schalter,
+                         adresse: b.adresse || '' }, BETRIEBSMODI[modus]);
+}
+
+function imBestellzeitraum(saison, heute){
+  const s = saison || {};
+  const tag = v => { const m = String(v || '').match(/^(\d{1,2})-(\d{1,2})$/); return m ? Number(m[1]) * 100 + Number(m[2]) : null; };
+  const von = tag(s.bestellbeginn), bis = tag(s.bestellschluss);
+  if(von === null || bis === null) return true;
+  const d = heute || new Date();
+  const jetzt = (d.getMonth() + 1) * 100 + d.getDate();
+  return von <= bis ? (jetzt >= von && jetzt <= bis) : (jetzt >= von || jetzt <= bis);   /* über den Jahreswechsel */
 }
 
 /* ---------- Obstart-Regeln ----------
@@ -534,7 +549,8 @@ function activateTab(tabName){
     else renderPins();
   }
   if(tabName==='pruefung' && typeof renderPruefung==='function') renderPruefung();
-  if(tabName==='sortenberater' && typeof renderPhaenoBox==='function') renderPhaenoBox();
+  if(tabName==='daten' && typeof renderPhaenoBox==='function') renderPhaenoBox();   /* seit v132 im Reiter Daten */
+  if(tabName==='sortenberater' && typeof renderBaumfinder==='function') renderBaumfinder();
   if(tabName==='daten'){
     renderPreislistenAdmin();
     renderBestellhistorie();

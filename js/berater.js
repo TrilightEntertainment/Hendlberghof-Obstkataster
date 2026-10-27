@@ -216,7 +216,8 @@ function getAllSorten(){
   }
   const seen=new Map();
   result.forEach(s=>{const key=s.name.toLowerCase();if(!seen.has(key)) seen.set(key,s);else{const existing=seen.get(key);if(s.quelle==='hof') seen.set(key,s);}});
-  const deduped=[...seen.values()];
+  /* Kunden sehen nur Hofsorten (Volkmar 27.10.2026); Arche-Noah-Sorten bleiben für den Admin. */
+  const deduped=[...seen.values()].filter(s=> s.quelle!=='arche' || (typeof isAdmin==='function' && isAdmin()));
   if(state.sortenSichtbar && Object.keys(state.sortenSichtbar).length>0){
     _sortenCache=deduped.filter(s=>{const key=s.quelle==='arche'?'arche':s.quelle==='hof'?'hof':s.quelle;return state.sortenSichtbar[key]!==false;});
     return _sortenCache;
@@ -389,8 +390,7 @@ const ROOTSTOCK_INFO = {
     label: 'Walnuss-Unterlagen',
     intro: 'Walnuesse werden selten veredelt — die meisten Baeume wachsen direkt aus Samen. Edelunterlagen sind fuer hochwertige Sorten noetig.',
     items: [
-      {code:'Sämling', name:'Sämling', stärke:'Volle Staerke', beschreibung:'Direkt aus dem Samen gewachsen. Baum wird 10–15m, traegt ab 8–12 Jahren. Laengste Jugendphase, aber laanglebig und robust.'},
-      {code:'Baumpfirsich', name:'Baumpfirsich (Prunus persica)', stärke:'Edelunterlage', beschreibung:'Fuer veredelte Walnusssorten. Reduziert Wuchsstaerke, fuehrt zu frueherem Ertrag. Noch nicht weit verbreitet in Europa.'}
+      {code:'Sämling', name:'Sämling', stärke:'Volle Staerke', beschreibung:'Direkt aus dem Samen gewachsen. Baum wird 10–15m, traegt ab 8–12 Jahren. Laengste Jugendphase, aber laanglebig und robust.'}
     ]
   }
 };

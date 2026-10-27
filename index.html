@@ -568,6 +568,51 @@
 .toast.info{background:var(--ackerde);}
 /* ===== Sortenberater (integriert, an App-Design angepasst) ===== */
 #tab-sortenberater{max-width:1300px;margin:0 auto;--gruen:#2E3F2A;--gruen-hell:#eaf3de;--gruen-mid:#6E8A4E;--braun:#854F0B;--braun-hell:#FAEEDA;--rand:#E2DACB;--blau:#185FA5;--blau-hell:#E6F1FB;--lila:#993556;--lila-hell:#FBEAF0;--rot:#b91c1c;--rot-hell:#fef2f2;--text:#2A231D;--text-mid:#5F5E5A;--text-leicht:#7A7168;--weiss:#ffffff;--stroh:#D9B458;--radius:10px}
+/* Baumfinder (v132): Linien statt Flächen, Gold für die Auswahl */
+#tab-sortenberater .bf{margin-bottom:16px;}
+#tab-sortenberater .bf-karte{background:var(--weiss);border:1px solid var(--rand);border-radius:var(--radius);padding:16px;max-width:640px;margin:0 auto;}
+#tab-sortenberater .bf-start{text-align:center;padding:24px 16px;}
+#tab-sortenberater .bf-baum{color:var(--stroh);margin-bottom:6px;}
+#tab-sortenberater .bf-titel{font-family:var(--font-heading);font-weight:400;color:var(--gruen);font-size:1.35rem;margin:4px 0 8px;line-height:1.3;}
+#tab-sortenberater .bf-text{color:var(--text);font-size:.92rem;line-height:1.5;margin:0 0 10px;}
+#tab-sortenberater .bf-leise{color:var(--muted);font-size:.8rem;margin:4px 0 10px;}
+#tab-sortenberater .bf-knoepfe{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;}
+#tab-sortenberater .bf-start .bf-knoepfe{justify-content:center;}
+#tab-sortenberater .bf-kopf{display:flex;align-items:center;gap:8px;font-size:.78rem;color:var(--muted);margin-bottom:6px;}
+#tab-sortenberater .bf-passen{margin-left:auto;}
+#tab-sortenberater .bf-zurueck{border:1px solid var(--rand);background:var(--weiss);border-radius:50%;width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;color:var(--gruen);cursor:pointer;padding:0;}
+#tab-sortenberater .bf-balken{height:2px;background:var(--rand);margin-bottom:14px;}
+#tab-sortenberater .bf-balken i{display:block;height:2px;background:var(--stroh);}
+#tab-sortenberater .bf-frage{font-family:var(--font-heading);font-size:1.15rem;color:var(--gruen);margin:0 0 12px;}
+#tab-sortenberater .bf-unterfrage{font-size:.72rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin:14px 0 6px;}
+#tab-sortenberater .bf-wahl{display:flex;align-items:center;gap:12px;width:100%;text-align:left;border:1px solid var(--rand);background:var(--weiss);border-radius:var(--radius);padding:10px 12px;margin-bottom:8px;font:inherit;color:var(--text);cursor:pointer;min-height:48px;}
+#tab-sortenberater .bf-wahl svg{color:var(--gruen);flex:none;}
+#tab-sortenberater .bf-wahl.aktiv{border:1.5px solid var(--stroh);padding:9.5px 11.5px;}
+#tab-sortenberater .bf-wahl.aktiv svg{color:var(--stroh);}
+#tab-sortenberater .bf-wahl-text small{display:block;color:var(--muted);font-size:.78rem;margin-top:2px;}
+#tab-sortenberater .bf-chips{display:flex;flex-wrap:wrap;gap:6px;}
+#tab-sortenberater .bf-chip{border:1px solid var(--rand);background:var(--weiss);border-radius:20px;padding:7px 12px;font:inherit;font-size:.85rem;color:var(--text);cursor:pointer;min-height:36px;}
+#tab-sortenberater .bf-chip.aktiv{border:1.5px solid var(--stroh);padding:6.5px 11.5px;color:var(--gruen);font-weight:600;}
+#tab-sortenberater .bf-feld{display:flex;flex-direction:column;gap:6px;font-size:.85rem;color:var(--muted);}
+#tab-sortenberater .bf-feld b{color:var(--gruen);font-weight:600;}
+#tab-sortenberater .bf-feld input[type=range]{width:100%;accent-color:var(--stroh);}
+#tab-sortenberater .bf-sorten{display:flex;flex-direction:column;gap:6px;margin:10px 0;}
+#tab-sortenberater .bf-sorte{display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;border:none;border-bottom:1px solid var(--rand);background:none;padding:8px 0;font:inherit;color:var(--text);cursor:pointer;}
+#tab-sortenberater .bf-sorte-name{font-family:var(--font-heading);font-size:1.02rem;color:var(--gruen);}
+#tab-sortenberater .bf-sorte-reife,#tab-sortenberater .bf-gruende{font-size:.8rem;color:var(--muted);}
+#tab-sortenberater .bf-gruende{color:var(--wiesengras);}
+#tab-sortenberater .bf-hinweise{margin:8px 0;padding-left:18px;font-size:.85rem;line-height:1.45;color:var(--text);}
+#tab-sortenberater .bf-hinweise li{margin-bottom:4px;}
+#tab-sortenberater .bf-sofort{font-size:.85rem;border-left:2px solid var(--stroh);padding:4px 10px;margin:10px 0;}
+#tab-sortenberater .bf-preis{font-family:var(--font-heading);font-size:1.25rem;color:var(--gruen);margin-top:12px;}
+#tab-sortenberater .bf-preis small{display:block;font-family:'DM Sans',sans-serif;font-size:.78rem;color:var(--muted);}
+#tab-sortenberater .bf-anfrage{font-size:.75rem;border:1px solid var(--stroh);border-radius:10px;padding:1px 7px;color:var(--ackerde);}
+#tab-sortenberater .bf-beratung{border-top:1px solid var(--rand);margin-top:14px;padding-top:12px;}
+#tab-sortenberater .bf-beratung-titel{font-family:var(--font-heading);font-size:1.1rem;color:var(--gruen);margin:0 0 6px;}
+#tab-sortenberater .bf-pdf{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-top:12px;font-size:.85rem;color:var(--muted);}
+#tab-sortenberater #sb-filter-quelle[hidden]{display:none;}
+#tab-sortenberater .bf-stoebern{max-width:640px;margin:8px auto 0;}
+#tab-sortenberater .bf-stoebern[open]{max-width:none;}
 #tab-sortenberater .sbr-tabs{display:flex;background:var(--weiss);border:1px solid var(--rand);border-radius:var(--radius);overflow:hidden;margin-bottom:8px}
 #tab-sortenberater .sbr-tab{flex:1;padding:12px 10px;text-align:center;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:500;color:var(--text-mid);cursor:pointer;border-bottom:2px solid transparent;transition:all .15s;user-select:none}
 #tab-sortenberater .sbr-tab:hover{color:var(--gruen)}
@@ -1009,6 +1054,12 @@
 
   <!-- DATEN & SICHERUNG -->
   <section id="tab-daten" style="display:none;">
+    <div style="max-width:640px;margin-bottom:16px;">
+<details class="karte-abschnitt phaeno-box" id="phaeno-box" data-merk="phaeno" hidden>
+  <summary><span class="ka-kopf"><span class="ka-titel">Phänologie</span><span class="ka-info">für die Vorhersage<span class="ka-pfeil"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><polyline points="6 9 12 15 18 9"/></svg></span></span></span></summary>
+  <div class="ka-inhalt"></div>
+</details>
+    </div>
     <div class="card" style="max-width:640px;margin-bottom:16px;">
       <h3>Kataster exportieren</h3>
       <p class="snippet">Exportiert die Bäume, die im Reiter Kataster gerade gezeigt werden (Obstart, Suche) – ohne Auswahl alle Bäume.</p>
@@ -1117,6 +1168,10 @@
 
   <section id="tab-sortenberater" style="display:none;">
 
+<div id="baumfinder" class="bf"></div>
+
+<details class="karte-abschnitt phaeno-box bf-stoebern" id="bf-stoebern">
+<summary><span class="ka-kopf"><span class="ka-titel">Selbst stöbern</span><span class="ka-info">alle Hofsorten mit Beschreibung<span class="ka-pfeil"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><polyline points="6 9 12 15 18 9"/></svg></span></span></span></summary>
 <div class="toolbar" style="flex-direction:column;align-items:stretch;gap:8px;">
   <div class="sbr-tabs">
     <div class="sbr-tab active" data-tab="sorten" onclick="sbrShowTab('sorten')">Sortenberater</div>
@@ -1168,12 +1223,10 @@
   </div>
 </div>
 
-<details class="karte-abschnitt phaeno-box" id="phaeno-box" data-merk="phaeno" hidden>
-  <summary><span class="ka-kopf"><span class="ka-titel">Phänologie</span><span class="ka-info">für die Vorhersage<span class="ka-pfeil"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><polyline points="6 9 12 15 18 9"/></svg></span></span></span></summary>
-  <div class="ka-inhalt"></div>
-</details>
+
 <div id="sb-count" style="font-family:'DM Sans',sans-serif;font-size:12px;color:var(--text-leicht);margin-bottom:12px"></div>
 <div id="res"><div class="sb-leer">Sorten suchen oder Standort-Berater aktivieren.</div></div>
+</details>
 
   </section>
 
@@ -1405,10 +1458,10 @@
 
 <!-- Aus einem einzelnen Script-Block herausgeloest (F6). Reihenfolge ist
      bindend: Ueber Dateigrenzen hinweg gibt es kein Hoisting mehr. -->
-<script src="js/kern.js?v=131"></script>
-<script src="js/kataster.js?v=131"></script>
-<script src="js/lageplan.js?v=131"></script>
-<script src="js/start.js?v=131"></script>
+<script src="js/kern.js?v=132"></script>
+<script src="js/kataster.js?v=132"></script>
+<script src="js/lageplan.js?v=132"></script>
+<script src="js/start.js?v=132"></script>
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-app.js";
@@ -1575,9 +1628,10 @@
     });
   }
 </script>
-<script src="js/berater.js?v=131"></script>
-<script src="js/shop.js?v=131"></script>
-<script src="js/konfigurator.js?v=131"></script>
-<script src="js/pruefung.js?v=131"></script>
+<script src="js/berater.js?v=132"></script>
+<script src="js/shop.js?v=132"></script>
+<script src="js/konfigurator.js?v=132"></script>
+<script src="js/pruefung.js?v=132"></script>
+<script src="js/baumfinder.js?v=132"></script>
 </body>
 </html>

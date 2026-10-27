@@ -723,6 +723,33 @@ function pruefSetze(pnr, aenderung){
     pruefung.ergebnisse[pnr] = Object.assign({}, alt, aenderung, { zeit:pruefJetzt(), von:(window.__firebaseUser||{}).email || '' });
   }
   pruefungSpeichern();
+  pruefSofortVeroeffentlichen();
+}
+
+/* „Sofort verfügbar“ im Baumfinder (v132): Die Prüfliste ist privat, Kunden
+   sehen nur, was verkaufsfertig im Topf steht – Obstart, Sorte, Unterlage und
+   Stückzahl, ohne Bereich oder Notiz. Geschrieben wird nur bei einer Änderung,
+   als Zeichenkette in state.produktion (öffentlich lesbar, nur Admin schreibt). */
+function pruefSofortVeroeffentlichen(){
+  if(typeof isAdmin !== 'function' || !isAdmin()) return;
+  const summe = {};
+  pruefTopfEintraege().forEach(e=>{
+    const r = pruefErgebnis(e);
+    if(!r || !r.verkaufsfertig) return;
+    const frucht = pruefWert(e, r, 'frucht'), sorte = pruefWert(e, r, 'sorte'), unterlage = pruefWert(e, r, 'unterlage');
+    if(!frucht) return;
+    const k = `${frucht}|${sorte}|${unterlage}`;
+    if(!summe[k]) summe[k] = { frucht, sorte, unterlage, anzahl:0 };
+    summe[k].anzahl += pruefStueck(e);
+  });
+  const liste = Object.values(summe).sort((a, b)=> `${a.frucht}${a.sorte}`.localeCompare(`${b.frucht}${b.sorte}`, 'de'));
+  const alt = (state.produktion && state.produktion.sofort) || '';
+  let altListe = '[]';
+  try { altListe = JSON.stringify((JSON.parse(alt || '{}').liste) || []); } catch(err){ /* alter Stand unlesbar – neu schreiben */ }
+  if(altListe === JSON.stringify(liste)) return;
+  if(!state.produktion) state.produktion = {};
+  state.produktion.sofort = JSON.stringify({ stand:new Date().toISOString(), liste });
+  saveState();
 }
 
 function pruefStatusSetzen(pnr, status){

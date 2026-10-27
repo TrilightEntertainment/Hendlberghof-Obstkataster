@@ -19,34 +19,153 @@
    hinterlegt", und die Oberflaeche schreibt dann "Preis mit dem Angebot" statt
    "0,00 EUR". Eine erfundene Null waere eine Preisauskunft, die niemand gegeben
    hat. */
+/* Unterlagen-Katalog (v132, Volkmar 27.10.2026): alle gängigen Unterlagen nach
+   LWG Bayern, Merkblatt 3101 und Faltblatt 3101b. Welche der Hof tatsächlich
+   bekommt, weiß Volkmar erst beim Bestellen – deshalb ist jede einzeln
+   aktivierbar (state.produktion.unterlagen_wahl[id] = { aktiv, preis }).
+   Ab Werk aktiv sind nur die sechs, die am Hof schon im Einsatz sind; ihre IDs
+   bleiben gleich, weil Merklisten auf sie verweisen.
+   wuchs: schwach | mittel | stark – danach wählt der Baumfinder.
+   formen: Stammformen, die die LWG für diese Unterlage nennt.
+   Bewusst nicht aufgenommen (LWG rät ab): Colt (in Bayern nicht ausreichend
+   frosthart), St. Julien 655/2 und Fereley (Frostrisse, Ausläufer), Quitte C. */
+const LWG_QUELLE = 'LWG Bayern, Merkblatt 3101 (2016) und Faltblatt 3101b (2021)';
+const UNTERLAGEN_KATALOG = [
+  { id:'m27', name:'M 27', fruechte:['Apfel'], wuchs:'schwach', formen:['busch'],
+    beschreibung:'Kleinste Apfelunterlage: Busch oder kleines Spalier, etwa 1,5–2 m hoch.',
+    boden:'durchlässig, humos, nährstoffreich', pfahl:'zeitlebens', ertrag:'früh, meist regelmäßig',
+    platz:'Abstand 1,5–2 m', hinweis:'bei Trockenheit wässern; Wühlmausschutz (Drahtkorb)' },
+  { id:'m9', name:'M 9', fruechte:['Apfel'], wuchs:'schwach', formen:['busch'],
+    beschreibung:'Schwachwachsend: Busch, Spindel, kleines Spalier, etwa 2,5 m hoch.',
+    boden:'durchlässig, humos, nährstoffreich', pfahl:'zeitlebens', ertrag:'früh, meist regelmäßig',
+    platz:'Abstand 1,75–2,25 m', hinweis:'bei Trockenheit wässern; Wühlmausschutz (Drahtkorb)' },
+  { id:'m26', name:'M 26', fruechte:['Apfel'], wuchs:'schwach', formen:['busch'], standard_aktiv:true,
+    beschreibung:'Kleinkronig, trägt früh, braucht einen Pfahl – für kleine Gärten.',
+    boden:'mittel', pfahl:'zeitlebens', ertrag:'früh, meist regelmäßig',
+    platz:'Abstand etwa 2,5 m', hinweis:'Wühlmausschutz (Drahtkorb)' },
+  { id:'mm106', name:'MM 106', fruechte:['Apfel'], wuchs:'mittel', formen:['saeule','busch','halb'], standard_aktiv:true,
+    beschreibung:'Halbstamm oder Busch, auch für Säulenäpfel – die Unterlage der meisten Hofbäume.',
+    boden:'mittlere Böden, auf leichten schwächer', pfahl:'ja (außer Säule)', ertrag:'mittelfrüh',
+    platz:'etwa 25 m²', platz_saeule:'Säule: 50–70 cm Abstand', hinweis:'blutlausresistent' },
+  { id:'m7', name:'M 7', fruechte:['Apfel'], wuchs:'mittel', formen:['saeule','busch','halb'],
+    beschreibung:'Mittelstark wie MM 106, kommt mit schweren und leichten Böden zurecht.',
+    boden:'schwer bis leicht', pfahl:'ja (außer Säule)', ertrag:'mittelfrüh',
+    platz:'etwa 25 m²', platz_saeule:'Säule: 50–70 cm Abstand', hinweis:'' },
+  { id:'mm111', name:'MM 111', fruechte:['Apfel'], wuchs:'mittel', formen:['halb'],
+    beschreibung:'Obere Grenze der mittelstarken Unterlagen, Halbstamm mit Rundkrone.',
+    boden:'', pfahl:'', ertrag:'', platz:'Abstand 6–8 m', hinweis:'' },
+  { id:'a2', name:'A 2', fruechte:['Apfel'], wuchs:'stark', formen:['halb','hoch'],
+    beschreibung:'Starkwachsend für Halb- und Hochstamm; höherer Ertrag als Sämling.',
+    boden:'gering, gut anpassungsfähig', pfahl:'', ertrag:'ab 4.–7. Standjahr',
+    platz:'etwa 65–70 m²; Abstand 8–10 m', hinweis:'frosthart' },
+  { id:'saemling', name:'Sämling', fruechte:['Apfel'], wuchs:'stark', formen:['halb','hoch'], standard_aktiv:true,
+    beschreibung:'Hochstamm, langlebig, standfest – für Streuobstwiese und Weide.',
+    boden:'gering, gut anpassungsfähig', pfahl:'', ertrag:'etwas später als A 2',
+    platz:'etwa 80 m²; Abstand 8–10 m', hinweis:'frosthart, virusfrei' },
+  { id:'quittea', name:'Quitte A', fruechte:['Birne','Quitte'], wuchs:'schwach', formen:['busch'],
+    beschreibung:'Schwachwachsend für Busch und Spalier; bessere Fruchtgröße.',
+    boden:'warm, gut durchlüftet, kalkempfindlich', pfahl:'ja', ertrag:'früh, meist regelmäßig',
+    platz:'', hinweis:'frostempfindlich in Holz und Wurzel; bei Birne oft mit Zwischenveredelung' },
+  { id:'quitteba29', name:'Quitte BA 29', fruechte:['Birne','Quitte'], wuchs:'schwach', formen:['busch'], standard_aktiv:true,
+    beschreibung:'Schwachwachsend, trägt früh, kalktolerant – nicht mit jeder Birnensorte verträglich.',
+    boden:'warm, gut durchlüftet; kalktolerant', pfahl:'ja', ertrag:'früh, meist regelmäßig',
+    platz:'', hinweis:'frostempfindlich in Holz und Wurzel; bei Birne oft mit Zwischenveredelung' },
+  { id:'pyrodwarf', name:'Pyrodwarf', fruechte:['Birne'], wuchs:'mittel', formen:['busch','halb'], standard_aktiv:true,
+    beschreibung:'Arteigene Birnenunterlage: stärker als Quitte, schwächer als Sämling, ohne Zwischenveredelung.',
+    boden:'kalktolerant', pfahl:'', ertrag:'', platz:'', hinweis:'weniger frostempfindlich als Quitte' },
+  { id:'birnensaemling', name:'Birnensämling', fruechte:['Birne'], wuchs:'stark', formen:['halb','hoch'], standard_aktiv:true,
+    beschreibung:'Hochstamm, langlebig, tiefwurzelnd (z. B. Kirchensaller Mostbirne).',
+    boden:'gering', pfahl:'nein (standfest)', ertrag:'spät, schwankend', platz:'', hinweis:'frosthart' },
+  { id:'stjuliena', name:'St. Julien A', fruechte:['Zwetschke','Pflaume','Mirabelle','Ringlotte','Pfirsich','Marille'], wuchs:'mittel', formen:['busch','halb'],
+    beschreibung:'Mittelstark für Busch und Halbstamm; kaum Ausläufer.',
+    boden:'guter Gartenboden, keine Staunässe', pfahl:'', ertrag:'früh, ab 2.–3. Standjahr',
+    platz:'', hinweis:'auf leichten Böden wässern' },
+  { id:'wavit', name:'WaVit', fruechte:['Zwetschke','Pflaume','Mirabelle','Ringlotte','Pfirsich','Marille'], wuchs:'mittel', formen:['busch','halb'],
+    beschreibung:'Mittelstark, kaum Ausläufer; bei Pfirsich und Marille frosthärter als St. Julien A.',
+    boden:'guter Gartenboden, keine Staunässe', pfahl:'', ertrag:'früh, ab 2.–3. Standjahr',
+    platz:'', hinweis:'' },
+  { id:'weiwa', name:'WeiWa', fruechte:['Zwetschke','Pflaume','Mirabelle','Ringlotte'], wuchs:'mittel', formen:['busch','halb'],
+    beschreibung:'Mittelstark für Busch und Halbstamm; kaum Ausläufer.',
+    boden:'guter Gartenboden, keine Staunässe', pfahl:'', ertrag:'früh, ab 2.–3. Standjahr',
+    platz:'', hinweis:'' },
+  { id:'brompton', name:'Bromptonpflaume', fruechte:['Zwetschke','Pflaume','Mirabelle','Ringlotte'], wuchs:'stark', formen:['busch','halb','hoch'],
+    beschreibung:'Starkwachsend, standfest, verträgt leichte und schwere Böden.',
+    boden:'leicht bis schwer', pfahl:'nein (standfest)', ertrag:'Halb-/Hochstamm ab 5. Standjahr',
+    platz:'', hinweis:'frosthart' },
+  { id:'myrobalane', name:'Myrobalane', fruechte:['Zwetschke','Pflaume','Mirabelle','Ringlotte'], wuchs:'stark', formen:['busch','halb','hoch'],
+    beschreibung:'Starkwachsend, standfest – nur für leichte Böden.',
+    boden:'nur leichte Böden', pfahl:'nein (standfest)', ertrag:'Halb-/Hochstamm ab 5. Standjahr',
+    platz:'', hinweis:'frosthart; ggf. Stockausschläge' },
+  { id:'pfirsichsaemling', name:'Pfirsich- bzw. Marillensämling', fruechte:['Pfirsich','Marille'], wuchs:'stark', formen:['busch','halb'],
+    beschreibung:'Starkwachsender Busch oder Halbstamm, robust und standfest.',
+    boden:'warm, leicht bis mittelschwer', pfahl:'', ertrag:'früh', platz:'', hinweis:'frosthart' },
+  { id:'gisela3', name:'GiSelA 3', fruechte:['Kirsche'], wuchs:'schwach', formen:['busch'],
+    beschreibung:'Etwa halb so groß wie auf Sämling, Spindel – einnetzbar gegen Kirschfruchtfliege.',
+    boden:'', pfahl:'nur die ersten Jahre', ertrag:'ab 3. Standjahr', platz:'', hinweis:'bei Trockenheit wässern; nicht für Weichsel' },
+  { id:'gisela5', name:'GiSelA 5', fruechte:['Kirsche','Weichsel'], wuchs:'mittel', formen:['busch'],
+    beschreibung:'Etwa 35–40 % kleiner als auf Sämling, Spindel – passt auch in kleinere Gärten.',
+    boden:'', pfahl:'nur die ersten Jahre', ertrag:'ab 3. Standjahr', platz:'', hinweis:'bei Trockenheit wässern' },
+  { id:'gisela6', name:'GiSelA 6', fruechte:['Kirsche','Weichsel'], wuchs:'mittel', formen:['busch'],
+    beschreibung:'Etwa 35–40 % kleiner als auf Sämling, Spindel.',
+    boden:'', pfahl:'nur die ersten Jahre', ertrag:'ab 3. Standjahr', platz:'', hinweis:'bei Trockenheit wässern' },
+  { id:'maxma14', name:'Maxma 14', fruechte:['Kirsche','Weichsel'], wuchs:'mittel', formen:['busch','halb'],
+    beschreibung:'Etwa 20–25 % schwächer als Sämling; Busch.',
+    boden:'', pfahl:'nur die ersten Jahre', ertrag:'ab 3. Standjahr', platz:'', hinweis:'' },
+  { id:'vogelkirsche', name:'Vogelkirsche (F 12/1)', fruechte:['Kirsche','Weichsel'], wuchs:'stark', formen:['busch','halb','hoch'],
+    beschreibung:'Herkömmliche Sämlingsunterlage für Halb- und Hochstamm, frosthart.',
+    boden:'', pfahl:'nur die ersten Jahre', ertrag:'5.–6. Standjahr', platz:'', hinweis:'auch für Weichsel' }
+];
+
 const PRODUKTION_STANDARD = {
-  unterlagen: [
-    { id:'saemling',   name:'Sämling',       frucht:'Apfel', wuchs:'stark',
-      beschreibung:'Hochstamm, langlebig, standfest — für Streuobstwiese und Weide.' },
-    { id:'mm106',      name:'MM 106',        frucht:'Apfel', wuchs:'mittelstark',
-      beschreibung:'Halb- bis Hochstamm, gut standfest — die Unterlage der meisten Hofbäume.' },
-    { id:'m26',        name:'M 26',          frucht:'Apfel', wuchs:'schwach',
-      beschreibung:'Kleinkronig, trägt früh, braucht einen Pfahl — für kleine Gärten.' },
-    { id:'birnensaemling', name:'Birnensämling', frucht:'Birne', wuchs:'stark',
-      beschreibung:'Hochstamm, langlebig, tiefwurzelnd.' },
-    { id:'pyrodwarf',  name:'Pyrodwarf',     frucht:'Birne', wuchs:'mittelstark',
-      beschreibung:'Mittelstark, gut verträglich mit allen Birnensorten.' },
-    { id:'quitteba29', name:'Quitte BA 29',  frucht:'Birne', wuchs:'schwach',
-      beschreibung:'Schwachwachsend, trägt früh — nicht mit jeder Sorte verträglich.' }
-  ],
+  unterlagen: UNTERLAGEN_KATALOG,
   stammformen: [
     { id:'busch', name:'Buschbaum',  aufpreis:null, beschreibung:'Krone ab ca. 60 cm' },
     { id:'halb',  name:'Halbstamm',  aufpreis:null, beschreibung:'Krone ab ca. 120 cm' },
-    { id:'hoch',  name:'Hochstamm',  aufpreis:null, beschreibung:'Krone ab ca. 180 cm — für Wiese und Weide' }
+    { id:'hoch',  name:'Hochstamm',  aufpreis:null, beschreibung:'Krone ab ca. 180 cm — für Wiese und Weide' },
+    { id:'saeule', name:'Säule', aufpreis:null, nur:['Apfel'], nur_saeulensorten:true,
+      beschreibung:'Schmal und ohne Seitenäste — nur mit Säulensorten (eigene Sorten wie die Ballerinas), für Topf, Terrasse und Balkon' }
   ],
   grundpreis: null,
   aufpreis_je_veredelung: null,
   saison: { bestellschluss:'12-31', lieferjahr_offset:2 }
 };
 
+/* Katalog plus Auswahl des Hofes. Ein früher gespeichertes, vollständiges
+   state.produktion.unterlagen (bis v131) zählt als Auswahl, damit nichts verloren geht. */
 function getProduktion(){
   const eigen = (typeof state !== 'undefined' && state && state.produktion) || {};
-  return Object.assign({}, PRODUKTION_STANDARD, eigen);
+  const p = Object.assign({}, PRODUKTION_STANDARD, eigen);
+  const wahl = Object.assign({}, eigen.unterlagen_wahl || {});
+  (Array.isArray(eigen.unterlagen) ? eigen.unterlagen : []).forEach(u=>{
+    if(u && u.id && !wahl[u.id]) wahl[u.id] = { aktiv: u.aktiv !== false, preis: u.preis == null ? null : u.preis };
+  });
+  p.unterlagen = UNTERLAGEN_KATALOG.map(u=>{
+    const w = wahl[u.id] || {};
+    return Object.assign({}, u, {
+      frucht: u.fruechte[0],
+      aktiv: w.aktiv === undefined ? !!u.standard_aktiv : !!w.aktiv,
+      preis: w.preis == null ? null : w.preis
+    });
+  });
+  p.stammformen = PRODUKTION_STANDARD.stammformen;
+  return p;
+}
+
+function unterlagePasst(u, frucht){
+  const f = obstartSchluessel(frucht);
+  return (u.fruechte || [u.frucht]).some(x => obstartSchluessel(x) === f);
+}
+
+/* Säule nur mit Säulensorten: Die schlanke Form ist eine Eigenschaft der Sorte,
+   keine Erziehung, die jede Sorte annimmt (LWG: Säulenäpfel/Ballerinas). */
+function istSaeulensorte(name){
+  const s = getSorte(name) || {};
+  return /säule|ballerina/i.test(`${name} ${s.eigenschaften || ''} ${s.synonyme || ''}`);
+}
+function stammformPasst(st, frucht, sorten){
+  if(st.nur && !st.nur.some(x => obstartSchluessel(x) === obstartSchluessel(frucht))) return false;
+  if(st.nur_saeulensorten) return (sorten || []).length > 0 && sorten.every(istSaeulensorte);
+  return true;
 }
 
 /* Lieferjahr: Edelreiser werden im Winter geschnitten, im Fruehjahr veredelt,
@@ -95,19 +214,22 @@ function _betriebSetzen(feld, wert){
 }
 
 function unterlageSetzen(id, feld, wert){
+  if(!UNTERLAGEN_KATALOG.some(u => u.id === id)) return;
+  if(!state.produktion) state.produktion = {};
   const p = getProduktion();
-  const liste = (state.produktion && state.produktion.unterlagen)
-    ? state.produktion.unterlagen
-    : JSON.parse(JSON.stringify(p.unterlagen));   /* beim ersten Ändern übernehmen */
-  const u = liste.find(x => x.id === id);
-  if(!u) return;
-  if(feld === 'aktiv') u.aktiv = !!wert;
+  /* Auswahl je Unterlage statt Kopie der ganzen Liste (v132): Texte aus dem
+     Katalog kommen so mit jedem Deploy an, die Auswahl des Hofes bleibt. */
+  const wahl = Object.assign({}, state.produktion.unterlagen_wahl || {});
+  p.unterlagen.forEach(u=>{ if(!wahl[u.id]) wahl[u.id] = { aktiv:u.aktiv, preis:u.preis }; });
+  const w = Object.assign({}, wahl[id]);
+  if(feld === 'aktiv') w.aktiv = !!wert;
   else if(feld === 'preis'){
     const t = String(wert).trim();
-    u.preis = (t === '') ? null : Number(t);
-  } else u[feld] = wert;
-  if(!state.produktion) state.produktion = {};
-  state.produktion.unterlagen = liste;
+    w.preis = (t === '') ? null : Number(t);
+  }
+  wahl[id] = w;
+  state.produktion.unterlagen_wahl = wahl;
+  delete state.produktion.unterlagen;
   saveState();
   renderProduktionAdmin();
 }
@@ -141,10 +263,21 @@ function renderProduktionAdmin(){
       Fremdlisten ${b.fremdliste ? 'ja' : 'nein'}
     </div>
     <div class="pa-zeile">
-      <label>Shop aktiv</label>
-      <input type="checkbox"${b.shop_aktiv ? ' checked' : ''}
+      <label>Verkauf aktiv</label>
+      <input type="checkbox"${b.shop_schalter ? ' checked' : ''}
              onchange="_betriebSetzen('shop_aktiv', this.checked)">
-      <span class="pa-erklaerung" style="margin:0;">Aus = Saisonpause: Merken bleibt, Bestellen ruht.</span>
+      <span class="pa-erklaerung" style="margin:0;">Aus = nur Beratung: keine Preise, keine Merkliste, keine Anfrage.</span>
+    </div>
+    ${b.shop_schalter && !b.shop_aktiv ? `<div class="pa-erklaerung">Derzeit außerhalb des Bestellzeitraums – der Verkauf ruht von selbst.</div>` : ''}
+    <div class="pa-zeile">
+      <label>Anfragen an</label>
+      <input type="email" value="${escAttr(p.email || HOF_EMAIL_STANDARD)}" placeholder="${escAttr(HOF_EMAIL_STANDARD)}"
+             onchange="_prodSetzen('email', this.value)">
+    </div>
+    <div class="pa-zeile">
+      <label>Adresse im PDF</label>
+      <input type="text" value="${escAttr(b.adresse || '')}" placeholder="Straße, PLZ Ort"
+             onchange="_betriebSetzen('adresse', this.value.trim())">
     </div>
 
     <div class="section-title">Preise Eigenproduktion</div>
@@ -164,6 +297,15 @@ function renderProduktionAdmin(){
     </div>
 
     <div class="section-title">Saison</div>
+    <div class="pa-zeile">
+      <label>Bestellbeginn (MM-TT)</label>
+      <input type="text" ${zahl(sai.bestellbeginn, 'leer = nur Schalter')}
+             onchange="_prodSetzen('saison.bestellbeginn', this.value)">
+    </div>
+    <div class="pa-erklaerung">
+      Mit Bestellbeginn und Bestellschluss geht der Verkauf zwischen beiden Tagen von selbst an
+      und danach wieder aus. Ohne Bestellbeginn zählt nur der Schalter oben.
+    </div>
     <div class="pa-zeile">
       <label>Bestellschluss (MM-TT)</label>
       <input type="text" ${zahl(sai.bestellschluss, '12-31')}
@@ -194,12 +336,14 @@ function renderProduktionAdmin(){
     </div>
 
     <div class="section-title">Unterlagen</div>
+    <div class="pa-erklaerung">Aktiv heißt: kann bestellt werden. Nicht aktive nennt der Baumfinder nur
+      „auf Anfrage“, wenn keine aktive passt. Angaben nach ${escHtml(LWG_QUELLE)}.</div>
     <table class="pa-tabelle">
       <thead><tr><th>Name</th><th>Obstart</th><th>Wuchs</th><th>Aufpreis</th><th>aktiv</th></tr></thead>
       <tbody>
         ${p.unterlagen.map(u => `<tr>
           <td>${escHtml(u.name)}</td>
-          <td>${escHtml(u.frucht || '')}</td>
+          <td>${escHtml((u.fruechte || [u.frucht]).join(', '))}</td>
           <td>${escHtml(u.wuchs || '')}</td>
           <td><input type="number" step="0.01" min="0" style="width:70px;"
                      ${zahl(u.preis, '0')} onchange="unterlageSetzen('${escAttr(u.id)}','preis',this.value)"></td>
@@ -232,7 +376,7 @@ function konfiguratorOeffnen(sorteName, vorhandeneId){
   /* Nur freigeschaltete Unterlagen anbieten — die Verwaltung kann welche
      stilllegen, ohne sie zu loeschen. */
   const unterlagen = getProduktion().unterlagen
-    .filter(u => u.frucht === frucht && u.aktiv !== false);
+    .filter(u => unterlagePasst(u, frucht) && u.aktiv !== false);
   _konfig = {
     id: vorhandeneId || `K${Date.now().toString(36)}`,
     frucht,
@@ -349,7 +493,7 @@ function renderKonfigurator(){
   if(!_konfig) return;
   const p = getProduktion();
   const max = maxSortenProBaum(_konfig.frucht);
-  const unterlagen = p.unterlagen.filter(u => u.frucht === _konfig.frucht && u.aktiv !== false);
+  const unterlagen = p.unterlagen.filter(u => unterlagePasst(u, _konfig.frucht) && u.aktiv !== false);
   const gewaehlteUnterlage = unterlagen.find(u => u.id === _konfig.unterlage) || {};
   const gewaehlteForm = p.stammformen.find(f => f.id === _konfig.stammform) || {};
   const waehlbar = konfigWaehlbareSorten();
@@ -393,7 +537,7 @@ function renderKonfigurator(){
 
       <div class="section-title">Stammform</div>
       <select class="kf-feld" onchange="konfigSetzen('stammform', this.value)">
-        ${p.stammformen.map(f => `<option value="${escAttr(f.id)}"${f.id === _konfig.stammform ? ' selected' : ''}>${escHtml(f.name)}</option>`).join('')}
+        ${p.stammformen.filter(f => stammformPasst(f, _konfig.frucht, _konfig.sorten)).map(f => `<option value="${escAttr(f.id)}"${f.id === _konfig.stammform ? ' selected' : ''}>${escHtml(f.name)}</option>`).join('')}
       </select>
       ${gewaehlteForm.beschreibung ? `<div class="kf-erklaerung">${escHtml(gewaehlteForm.beschreibung)}</div>` : ''}
 
