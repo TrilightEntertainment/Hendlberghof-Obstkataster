@@ -540,6 +540,15 @@
   .kat-td-setzen{display:flex;align-items:center;justify-content:space-between;gap:8px;}
   .ka-info .kat-nadel{margin-left:4px;}
   @media (pointer:fine){ .nur-finger{display:none;} }   /* GPS nur am Handy (v137) */
+  /* Standorte prüfen (v139): auch am Rechner als Liste, nicht als Tabelle */
+  .kat-std-liste{background:var(--weiss);border:1px solid var(--rand);border-radius:var(--radius);padding:2px 14px;}
+  .kat-sorte>.kat-zeile+.kat-zeile{border-top:1px solid var(--rand);}
+  .kat-std-hinweis{font-size:.78rem;color:var(--muted);padding:0 0 4px;}
+  .kat-std-warn{color:var(--dachziegel);}
+  .kat-std-form{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:6px 0;}
+  .kat-std-form input{flex:1 1 180px;min-width:0;font:inherit;font-size:16px;padding:8px 10px;border:1px solid var(--stroh);border-radius:8px;background:#fff;}
+  .kat-std-baum{padding:6px 0;font-size:.88rem;color:var(--waldrand);}
+  .kat-std-liste .ka-link{display:block;margin:2px 0 4px;}
   .kat-tabelle{margin-top:14px;}
   @media (max-width:899px){ .kat-tabelle{display:none!important;} }
   @media (min-width:900px){ .kat-liste{display:none;} }
@@ -1496,10 +1505,10 @@
 
 <!-- Aus einem einzelnen Script-Block herausgeloest (F6). Reihenfolge ist
      bindend: Ueber Dateigrenzen hinweg gibt es kein Hoisting mehr. -->
-<script src="js/kern.js?v=138"></script>
-<script src="js/kataster.js?v=138"></script>
-<script src="js/lageplan.js?v=138"></script>
-<script src="js/start.js?v=138"></script>
+<script src="js/kern.js?v=139"></script>
+<script src="js/kataster.js?v=139"></script>
+<script src="js/lageplan.js?v=139"></script>
+<script src="js/start.js?v=139"></script>
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-app.js";
@@ -1666,10 +1675,10 @@
     });
   }
 </script>
-<script src="js/berater.js?v=138"></script>
-<script src="js/shop.js?v=138"></script>
-<script src="js/konfigurator.js?v=138"></script>
-<script src="js/pruefung.js?v=138"></script>
-<script src="js/baumfinder.js?v=138"></script>
+<script src="js/berater.js?v=139"></script>
+<script src="js/shop.js?v=139"></script>
+<script src="js/konfigurator.js?v=139"></script>
+<script src="js/pruefung.js?v=139"></script>
+<script src="js/baumfinder.js?v=139"></script>
 </body>
 </html>

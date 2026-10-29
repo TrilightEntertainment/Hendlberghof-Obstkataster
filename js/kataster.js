@@ -240,6 +240,7 @@ function katNadelKnopf(id, ausListe){
 }
 function katArtWaehlen(art){
   _katArt = art || '';
+  _katStdEdit = null;
   renderBaumTable();
   const sec = document.getElementById('tab-baumkataster');
   if(sec && sec.getBoundingClientRect().top < 0) sec.scrollIntoView({block:'start'});
@@ -284,9 +285,13 @@ function renderKatUebersicht(alle){
   let oben = '';
   if(angemeldet){
     const ohne = alle.filter(katOhneStandort).length;
-    oben = !ohne ? '' : `<div class="kat-schnell">
-        ${ohne ?`<button type="button" class="kat-art kat-ohne" onclick="katArtWaehlen('__ohne')">
+    const namen = new Set(alle.map(t => katStdName(t.standort_zeile)).filter(Boolean)).size;
+    const ohneName = alle.filter(t => !katStdName(t.standort_zeile)).length;
+    oben = `<div class="kat-schnell">
+        ${ohne ? `<button type="button" class="kat-art kat-ohne" onclick="katArtWaehlen('__ohne')">
             <span class="kat-art-name">Ohne Standort</span><span class="kat-art-zahl">${ohne} ${ohne === 1 ? 'Baum' : 'Bäume'} noch nicht im Lageplan</span>${SVG_WEITER}</button>` : ''}
+        <button type="button" class="kat-art" onclick="katArtWaehlen('__standorte')">
+            <span class="kat-art-name">Standorte prüfen</span><span class="kat-art-zahl">${namen} Standorte${ohneName ? ` · ${ohneName} ohne Namen` : ''}</span>${SVG_WEITER}</button>
       </div>`;
   }
   return oben + (gruppen || '<div class="empty">Keine Bäume.</div>');
@@ -312,6 +317,122 @@ function renderKatListe(rows, titel, untertitel){
     </div>`;
 }
 
+/* ---------- Standorte prüfen (v139) ----------
+   Alle Bäume nach Standortname gruppiert, damit Tippfehler und doppelte
+   Schreibweisen auffallen („Swale“ neben „Swale Oben“). Der Stift ändert
+   einen Baum, „Alle umbenennen“ die ganze Gruppe – beides als baumEdit, mit
+   Rückgängig. „Ohne Standortname“ steht oben, dort ist am meisten zu tun. */
+let _katStdEdit = null;   /* null | {art:'baum'|'gruppe', key} */
+const _katStdAlle = new Set();   /* Gruppen, die ganz aufgeklappt sind */
+const SVG_STIFT = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 20l4-1 11-11-3-3L5 16z"/><line x1="14" y1="7" x2="17" y2="10"/></svg>`;
+function katStdName(s){ return String(s || '').replace(/\s+/g, ' ').trim(); }
+const _katStdSchl = s => katStdName(s).toLowerCase().replace(/\s+/g, '');
+
+/* Vorschläge: vorhandene Standorte (häufigste zuerst), dann eigene Kartenflächen */
+function katStdVorschlaege(){
+  const n = {};
+  getAllTrees().forEach(t => { const s = katStdName(t.standort_zeile); if(s) n[s] = (n[s] || 0) + 1; });
+  const liste = Object.keys(n).sort((a, b) => n[b] - n[a] || a.localeCompare(b, 'de'));
+  if(typeof kartenObjekte === 'function' && typeof FLAECHEN !== 'undefined' && FLAECHEN){
+    kartenObjekte().filter(o => o.ebene === 'bestand' && o.typ === 'flaeche' && o.art !== 'Grundstücksgrenze')
+      .forEach(o => { if(!liste.some(x => _katStdSchl(x) === _katStdSchl(o.name))) liste.push(o.name); });
+  }
+  return liste;
+}
+
+/* baumEdits hängen an der ursprünglichen ID (NEU-1 kann per Edit W20 heißen) */
+function katBaumEditSchluessel(id){
+  const edits = state.baumEdits || {};
+  const quelle = BAUM_DATA.concat(state.customTrees || []).find(t => edits[t.id] && edits[t.id].id === id);
+  return quelle ? quelle.id : id;
+}
+
+function katStdFormular(wert){
+  return `<form class="kat-std-form" onsubmit="event.preventDefault();katStdSpeichern()">
+      <input type="text" id="kat-std-eingabe" list="kat-std-dl" value="${escAttr(wert)}" placeholder="Standort, z. B. Böschung 3" autocomplete="off" aria-label="Standort">
+      <datalist id="kat-std-dl">${katStdVorschlaege().map(s => `<option value="${escAttr(s)}">`).join('')}</datalist>
+      <button type="submit" class="btn">Speichern</button>
+      <button type="button" class="btn secondary" onclick="katStdBearbeiten(null)">Abbrechen</button>
+    </form>`;
+}
+
+function renderKatStandorte(){
+  const gruppen = {};
+  getAllTrees().forEach(t => { const s = katStdName(t.standort_zeile); (gruppen[s] = gruppen[s] || []).push(t); });
+  const namen = Object.keys(gruppen).sort((a, b) => (a !== '') - (b !== '') || a.localeCompare(b, 'de', {numeric: true}));
+  const benannt = namen.filter(Boolean);
+  const aehnlich = s => benannt.filter(x => x !== s
+    && (_katStdSchl(x) === _katStdSchl(s) || _katStdSchl(x).startsWith(_katStdSchl(s)) || _katStdSchl(s).startsWith(_katStdSchl(x))));
+  const mitFlaeche = (typeof FLAECHEN !== 'undefined' && FLAECHEN && typeof kartenObjekte === 'function')
+    ? new Set(kartenObjekte().filter(o => o.geo).map(o => _katStdSchl(o.name))) : null;
+  if(!mitFlaeche && typeof ladeLageDaten === 'function') ladeLageDaten().then(() => { if(_katArt === '__standorte') renderBaumTable(); });
+  const e = _katStdEdit || {};
+  const gruppeHtml = s => {
+    const baeume = gruppen[s].slice().sort((a, b) => String(a.id).localeCompare(String(b.id), 'de', {numeric: true}));
+    const hinweise = [
+      s && baeume.length === 1 ? 'nur 1 Baum – Tippfehler?' : '',
+      s && aehnlich(s).length ? `ähnlich: ${aehnlich(s).join(', ')}` : ''
+    ].filter(Boolean).map(h => `<span class="kat-std-warn">${escHtml(h)}</span>`);
+    if(s && mitFlaeche && mitFlaeche.has(_katStdSchl(s))) hinweise.push('<span>Fläche auf der Karte</span>');
+    /* lange Gruppen erst 10 Bäume */
+    const alle = _katStdAlle.has(s) || baeume.length <= 10;
+    const zeigen = alle ? baeume : baeume.slice(0, 10);
+    const kopf = e.art === 'gruppe' && e.key === s ? katStdFormular(s)
+      : `<div class="kat-sorte-kopf"><span>${s ? escHtml(s) : '<i>Ohne Standortname</i>'}</span><span>${baeume.length}</span></div>`;
+    return `<div class="kat-sorte">
+        ${kopf}
+        ${hinweise.length ? `<div class="kat-std-hinweis">${hinweise.join(' · ')}</div>` : ''}
+        ${zeigen.map(t => e.art === 'baum' && e.key === t.id
+          ? `<div class="kat-std-baum"><span class="kat-id">${escHtml(t.id)}</span> ${escHtml(t.sorte || '')}${katStdFormular(s)}</div>`
+          : `<div class="kat-zeile">
+              <button type="button" class="kat-baum" onclick="openBaumModal('${escAttr(t.id)}')">
+                <span class="kat-id">${escHtml(t.id)}</span><span class="kat-baum-text">${[t.sorte, t.frucht].filter(Boolean).map(escHtml).join(' · ') || '<i>keine Angaben</i>'}</span>
+              </button>
+              <button type="button" class="kat-nadel" title="Standort ändern" aria-label="Standort von ${escAttr(t.id)} ändern" onclick="katStdBearbeiten('baum', '${escAttr(t.id)}')">${SVG_STIFT}</button>
+            </div>`).join('')}
+        ${alle ? '' : `<button type="button" class="ka-link" onclick="_katStdAlle.add('${escAttr(s)}');renderBaumTable()">Alle ${baeume.length} zeigen</button>`}
+        ${e.art ? '' : `<button type="button" class="ka-link" onclick="katStdBearbeiten('gruppe', '${escAttr(s)}')">${s ? 'Alle umbenennen' : 'Allen einen Standort geben'}</button>`}
+      </div>`;
+  };
+  return `<div class="kat-kopf">
+      <button type="button" class="kat-zurueck" onclick="katArtWaehlen('')">${SVG_ZURUECK}<span>Alle Obstarten</span></button>
+      <h2 class="kat-titel">Standorte prüfen</h2>
+      <div class="kat-untertitel">${benannt.length} Standorte · ${getAllTrees().length} Bäume – Stift ändert einen Baum, „Alle umbenennen“ die ganze Gruppe</div>
+    </div>
+    <div class="kat-std-liste">${namen.map(gruppeHtml).join('')}</div>`;
+}
+
+function katStdBearbeiten(art, key){
+  _katStdEdit = art ? {art, key} : null;
+  renderBaumTable();
+  const f = document.getElementById('kat-std-eingabe');
+  if(f){ f.scrollIntoView({block: 'center'}); f.focus(); }
+}
+function katStdSpeichern(){
+  const e = _katStdEdit;
+  const f = document.getElementById('kat-std-eingabe');
+  if(!e || !f || !isEditMode()) return;
+  const neu = katStdName(f.value);
+  const ids = e.art === 'baum' ? [e.key] : getAllTrees().filter(t => katStdName(t.standort_zeile) === e.key).map(t => t.id);
+  if(!state.baumEdits) state.baumEdits = {};
+  const vorher = {};
+  let n = 0;
+  ids.forEach(id => {
+    const t = getTree(id);
+    if(!t || katStdName(t.standort_zeile) === neu) return;
+    const k = katBaumEditSchluessel(id);
+    vorher[k] = state.baumEdits[k] ? Object.assign({}, state.baumEdits[k]) : null;
+    state.baumEdits[k] = Object.assign({}, state.baumEdits[k] || {}, {standort_zeile: neu});
+    n++;
+  });
+  _katStdEdit = null;
+  if(n){
+    saveState();
+    setUndo('baumEdits', {vorher}, `${n} ${n === 1 ? 'Baum' : 'Bäume'} geändert — `);
+  }
+  renderBaumTable();
+}
+
 function renderBaumTable(){
   const tbody = document.getElementById('baum-tbody');
   const inhalt = document.getElementById('kat-inhalt');
@@ -333,6 +454,12 @@ function renderBaumTable(){
   }
   const reset = document.getElementById('kat-suche-leeren');
   if(reset) reset.hidden = !q;
+  if(_katArt === '__standorte' && !q){
+    inhalt.innerHTML = renderKatStandorte();
+    if(tabelle) tabelle.hidden = true;
+    tbody.innerHTML = '';
+    return;
+  }
   const rows = getFilteredBaumRows();
   const uebersicht = !q && !_katArt;
   if(uebersicht){

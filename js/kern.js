@@ -72,7 +72,7 @@ function debounce(fn, ms){ let t; return function(){ clearTimeout(t); t = setTim
 let _undoBuf = null;
 let _undoTimer = null;
 let _undoEl = null;
-function setUndo(type, data){
+function setUndo(type, data, text){
   if(_undoEl && _undoEl.parentElement) _undoEl.remove();
   clearTimeout(_undoTimer);
   _undoBuf = {type, data};
@@ -81,7 +81,7 @@ function setUndo(type, data){
   const el=document.createElement('div');
   el.className='toast info';
   el.style.cssText='display:flex;gap:8px;align-items:center;cursor:pointer;min-width:0;';
-  const txt=document.createElement('span'); txt.textContent='Gelöscht — '; el.appendChild(txt);
+  const txt=document.createElement('span'); txt.textContent=text || 'Gelöscht — '; el.appendChild(txt);
   const btn=document.createElement('span'); btn.textContent='Rückgängig (30s)'; btn.style.cssText='color:var(--dachziegel,#B2543A);font-weight:600;white-space:nowrap;'; el.appendChild(btn);
   el.onclick=()=>{ doUndo(); if(el.parentElement) el.remove(); };
   c.appendChild(el);
@@ -110,6 +110,13 @@ function doUndo(){
     else state.karte[data.id] = data.vorher;
     saveState();
     if(typeof zeichneKarte === 'function'){ zeichneKarte(); renderLageFilter(); }
+  } else if(type==='baumEdits'){
+    /* Standorte prüfen (v139): vorherige baumEdits je Schlüssel, null = keiner */
+    Object.keys(data.vorher).forEach(k => {
+      if(data.vorher[k] === null) delete state.baumEdits[k];
+      else state.baumEdits[k] = data.vorher[k];
+    });
+    saveState(); renderBaumTable();
   } else if(type==='baum'){
     state.customTrees.push(data.tree);
     if(data.pos) state.positions[data.id] = data.pos;
