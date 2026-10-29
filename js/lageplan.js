@@ -110,6 +110,7 @@ if(sel2) ['input', 'change'].forEach(ereignis => sel2.addEventListener(ereignis,
   selectedForPlacement = id;
   if(selectedForPlacement){
     placeMode = true;
+    setzZoom(id);
     if(satMap) satMap.dragging.disable();
     document.getElementById('place-mode-label').textContent = 'Baum setzen';
     document.getElementById('place-status').textContent = 'Auf Karte klicken, um den Baum zu positionieren.';
@@ -135,9 +136,33 @@ function setzKnopfZeigen(){
   if(k) k.style.display = _setzListe && _setzOffen().length > 1 ? '' : 'none';
 }
 function setzListeBeenden(){ setzKnopfZeigen(); }
-function baumZumSetzen(id, vorweg){
+
+/* Zoom auf den Standort beim Setzen (v138, statt Zuordnungstabelle):
+   gleichnamige Kartenfläche → schon gesetzte Bäume mit demselben Standort
+   → ganzer Hof. Eine Fläche „Böschung 3“ einzeichnen genügt also. */
+const _stdName = s => String(s || '').toLowerCase().replace(/\s+/g, ' ').trim();
+function setzZoom(id){
+  if(typeof L === 'undefined' || mapLayer !== 'sat') return;
+  ladeLageDaten().then(() => {
+    initSatMap();
+    if(!satMap) return;
+    _satErstmals = false;
+    const t = getTree(id);
+    const name = _stdName(t && t.standort_zeile);
+    const flaeche = name && kartenObjekte().find(o => o.geo && _stdName(o.name) === name);
+    if(flaeche){ satMap.fitBounds(flaeche.geo, {padding: [24, 24], maxZoom: 20}); return; }
+    const nachbarn = !name ? [] : getAllTrees()
+      .filter(b => b.id !== id && _stdName(b.standort_zeile) === name)
+      .map(b => kartenPos(b.id)).filter(Boolean);
+    if(nachbarn.length){ satMap.fitBounds(nachbarn.map(p => [p.lat, p.lng]), {padding: [40, 40], maxZoom: 20}); return; }
+    lageGanzerHof();
+  });
+}
+
+function baumZumSetzen(id, vorweg, ohneZoom){
   const t = getTree(id);
   if(!t) return;
+  if(!ohneZoom) setzZoom(id);
   selectedForPlacement = id;
   placeMode = true;
   if(satMap) satMap.dragging.disable();
@@ -180,7 +205,10 @@ function nachDemSetzen(gesetzt, meldung){
     /* der nächste nach dem gesetzten, in der Reihenfolge der Liste */
     const ab = _setzListe.indexOf(gesetzt);
     const reihe = _setzListe.slice(ab + 1).concat(_setzListe.slice(0, ab + 1));
-    baumZumSetzen(reihe.find(x => offen.includes(x)), meldung);
+    const naechster = reihe.find(x => offen.includes(x));
+    /* gleicher Standort: Ausschnitt lassen, man hat vielleicht näher herangezoomt */
+    const gleich = _stdName((getTree(gesetzt) || {}).standort_zeile) === _stdName((getTree(naechster) || {}).standort_zeile);
+    baumZumSetzen(naechster, meldung, gleich);
     return;
   }
   const alleGesetzt = !getAllTrees().some(katOhneStandort);
