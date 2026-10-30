@@ -718,7 +718,11 @@ function analysiereOverlays(){
     const kat = katSorte[name];
     const edit = state.sortenEdits[name] || {};
     if(!kat){
-      funde.push({ art:'sorteWaise', name, titel:name, grund:'Sorte gibt es im Katalog nicht' });
+      /* Sorte nur in der App (aus der Prüfung oder neu angelegt): Das Overlay ist hier der
+         einzige Ort für ihre Angaben. Weg darf es nur, wenn es leer ist. Bis v143 wurden
+         solche Sorten auch mit Inhalt angeboten — „Entfernen“ hätte Daten gelöscht. */
+      const leer = !Object.values(edit).some(w=> Array.isArray(w) ? w.length : w);
+      if(leer) funde.push({ art:'sorteWaise', name, titel:name, grund:'leerer Eintrag ohne Inhalt' });
       return;
     }
     const gleiche = Object.keys(edit).filter(f=> overlayWertGleich(kat[f], edit[f]));
@@ -761,8 +765,8 @@ function overlaysAufraeumen(){
   const funde = analysiereOverlays();
   if(!funde.length) return;
   if(!confirm(funde.length + ' überflüssige Overlays entfernen?\n\n'
-    + 'Die Daten selbst bleiben erhalten — sie stehen im Katalog. Entfernt wird nur '
-    + 'die Überlagerung, die den Katalog bisher verdeckt hat.')) return;
+    + 'Die Daten selbst bleiben erhalten. Entfernt werden nur leere Einträge und '
+    + 'Überlagerungen, die den Katalog bisher verdeckt haben.')) return;
 
   funde.forEach(f=>{
     if(f.art === 'baum'){
@@ -799,7 +803,7 @@ function overlaysAufraeumen(){
   renderResults();
   renderUnplacedSelect();
   renderOverlayPruefung();
-  showToast(funde.length + ' Overlays entfernt — Katalog und App sind jetzt deckungsgleich.', 'success', 4000);
+  showToast(funde.length + ' Overlays entfernt.', 'success', 4000);
 }
 
 function renderSortenlistenSichtbar(){

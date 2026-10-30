@@ -253,7 +253,12 @@ let _lageDatenPromise = null;
 let _flaechenEbene = null;
 let _flaecheAktiv = null;   /* ID des markierten Kartenobjekts */
 
-const KARTEN_FARBEN = {apfel:'#dc2626', birne:'#22c55e', walnuss:'#b98e1a', zwetschke:'#6b21a8', kirsch:'#be185d', kirsche:'#be185d', weichsel:'#be185d', marille:'#f59e0b', quitte:'#84cc16', pflaume:'#7c3aed', sonstige:'#888'};
+/* Farbe je Obstart (v144, Volkmar): gedämpft, damit die weiße Nummer darauf lesbar bleibt.
+   Gilt für Stecknadeln, Legende und Suchtreffer im Kataster. */
+const KARTEN_FARBE_SONST = '#6E6257';
+const KARTEN_FARBEN = {apfel:'#A8322D', birne:'#3F7D3F', walnuss:'#8A6A1E', hasel:'#8A6A1E', nuss:'#8A6A1E', maroni:'#8A6A1E',
+  zwetschke:'#5E3A86', pflaume:'#5E3A86', ringlotte:'#5E3A86', kirsch:'#A8406A', kirsche:'#A8406A', weichsel:'#A8406A',
+  quitte:'#B8991F', marille:'#C47A1E', pfirsich:'#C47A1E', che:KARTEN_FARBE_SONST, mispel:KARTEN_FARBE_SONST, maulbeere:KARTEN_FARBE_SONST, sonstige:KARTEN_FARBE_SONST};
 const FLAECHEN_FARBEN = {
   'Agroforst':'#E8A33D', 'Extensive Obstfläche / Grünland':'#E6D35A', 'Grünland':'#8FD16A',
   'Acker / Wechselwiese':'#D98A5F', 'Acker, Garten, terrassiert':'#C7835E', 'Bewirtschaftungsstreifen':'#D49AE6',
@@ -436,10 +441,13 @@ function initSatMap(){
     }))().addTo(satMap);
     renderEbenenKnopf();
     /* Aus der Ferne kleinere Punkte, sonst decken sich die Reihen zu. */
-    /* Aus der Nähe goldener Ring mit Nummer (v143), aus der Ferne Punkt in der Farbe der Obstart. */
+    /* Überall goldener Ring, gefüllt in der Farbe der Obstart (v144). Er wächst mit dem
+       Zoom, die Nummer kommt dazu, sobald sie Platz hat: Bäume stehen rund 5 m auseinander. */
     const fernKlasse = () => {
       const c = satMap.getContainer(), z = satMap.getZoom();
+      c.classList.toggle('lp-weit', z < 18);
       c.classList.toggle('lp-fern', z < 19);
+      c.classList.toggle('lp-mittel', z >= 19 && z < 19.5);
       c.classList.toggle('lp-nah', z >= 19.5);
     };
     satMap.on('zoomend', fernKlasse);
@@ -668,6 +676,22 @@ const SWALE_NACHZIEHEN = {
   '849':[48.0704891,15.8439508,48.0704925,15.8439506],
   '865':[48.0703583,15.8432293,48.0702405,15.8432866]
 };
+/* Legende: was auf der Karte steht, Häufigstes zuerst. Antippen filtert, nochmal hebt auf. */
+function renderObstartLegende(filter){
+  const box = document.getElementById('lp-leg-arten');
+  if(!box) return;
+  const zahl = {};
+  getAllTrees().forEach(t => { if(t.frucht && kartenPos(t.id)) zahl[t.frucht] = (zahl[t.frucht] || 0) + 1; });
+  box.innerHTML = Object.keys(zahl).sort((a, b) => zahl[b] - zahl[a] || a.localeCompare(b, 'de')).map(a =>
+    `<button type="button" class="lp-leg-art${a === filter ? ' aktiv' : ''}" aria-pressed="${a === filter}" onclick="lageArtFilter('${escAttr(a)}')"><span class="kp" style="--kp:${KARTEN_FARBEN[a.toLowerCase()] || KARTEN_FARBE_SONST}"></span>${escHtml(a)} ${zahl[a]}</button>`).join('');
+}
+function lageArtFilter(art){
+  const sel = document.getElementById('lp-obstart');
+  if(!sel) return;
+  sel.value = sel.value === art ? '' : art;
+  renderSatMarkers();
+}
+
 function swaleOffen(){
   const pos = state.satPositions || {};
   return Object.keys(SWALE_NACHZIEHEN).filter(id => {
@@ -715,7 +739,7 @@ function renderSatMarkers(){
     if(!pos) return;
     if(filter && t.frucht !== filter) return;
     const id = t.id;
-    const farbe = KARTEN_FARBEN[(t.frucht||'').toLowerCase()] || '#B2543A';
+    const farbe = KARTEN_FARBEN[(t.frucht||'').toLowerCase()] || KARTEN_FARBE_SONST;
     const icon = L.divIcon({className: 'kp-huelle', html: `<span class="kp${pos.ungefaehr ? ' ungefaehr' : ''}" style="--kp:${farbe}"><span class="kp-nr">${escHtml(id)}</span></span>`, iconSize: [22, 22], iconAnchor: [11, 11]});
     const m = L.marker([pos.lat, pos.lng], {icon, draggable: darfZiehen, keyboard: false});
     m.bindTooltip(`${escHtml(id)} — ${escHtml(t.sorte || '')}${pos.ungefaehr ? ' · Lage ungefähr' : ''}`, {direction: 'top', offset: [0, -8]});
@@ -751,6 +775,7 @@ function renderSatMarkers(){
     satMarkers.push(m);
   });
   swaleKnopfZeigen();
+  renderObstartLegende(filter);
   const legendeFrei = document.getElementById('lp-leg-frei');
   if(legendeFrei) legendeFrei.hidden = !frei.length;
   if(_satErstmals && FLAECHEN){

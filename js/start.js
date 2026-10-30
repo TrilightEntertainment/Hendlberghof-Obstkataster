@@ -541,7 +541,8 @@ function saveBaumEdit(id){
   const vals = formValues(form);
   if(!state.baumEdits) state.baumEdits = {};
   state.baumEdits[id] = Object.assign({}, state.baumEdits[id] || {}, vals);
-  if(vals.sorte && vals.verwendung){
+  /* Kein leerer Eintrag für Sorten ohne Verwendung: Daher kamen die „verwaisten“ Overlays. */
+  if(vals.sorte && vals.verwendung && (vals.verwendung.length || (state.sortenEdits || {})[vals.sorte])){
     if(!state.sortenEdits) state.sortenEdits = {};
     if(!state.sortenEdits[vals.sorte]) state.sortenEdits[vals.sorte] = {};
     state.sortenEdits[vals.sorte].verwendung = vals.verwendung;
@@ -571,7 +572,8 @@ function saveNewBaum(mitSetzen){
   vals.quelle = 'app';
   if(!state.customTrees) state.customTrees = [];
   state.customTrees.push(vals);
-  if(vals.sorte && vals.verwendung){
+  /* Kein leerer Eintrag für Sorten ohne Verwendung: Daher kamen die „verwaisten“ Overlays. */
+  if(vals.sorte && vals.verwendung && (vals.verwendung.length || (state.sortenEdits || {})[vals.sorte])){
     if(!state.sortenEdits) state.sortenEdits = {};
     if(!state.sortenEdits[vals.sorte]) state.sortenEdits[vals.sorte] = {};
     state.sortenEdits[vals.sorte].verwendung = vals.verwendung;
