@@ -1271,7 +1271,7 @@ function normalizeFrucht(f){
 function showImportResult(result){
   const container=document.getElementById('import-result');
   let html='<div style="text-align:center;padding:1rem;">';
-  html+='<div style="font-size:2rem;margin-bottom:0.5rem;">✅</div>';
+  html+='<div style="margin-bottom:0.5rem;color:var(--gruen);"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9"/><polyline points="8 12.5 11 15.5 16 9.5"/></svg></div>';
   html+='<h4 style="margin:0 0 0.5rem;">Import abgeschlossen</h4>';
   
   if(result.imported>0&&result.updated>0){
@@ -1435,7 +1435,7 @@ function renderImportLog(){
         '<span>'+entry.anzahl+' Bäume &middot; '+datum+'</span>'+
       '</div>'+
       '<div class="import-log-actions" onclick="event.stopPropagation();">'+
-        '<button class="btn secondary" onclick="undoImport(\''+entry.id+'\')" title="Rückgängig">↩ Undo</button>'+
+        '<button class="btn secondary" onclick="undoImport(\''+entry.id+'\')" title="Rückgängig">Rückgängig</button>'+
         '<button class="btn secondary" onclick="deleteImport(\''+entry.id+'\')" title="Import löschen">✕ Löschen</button>'+
       '</div>'+
     '</div>';
@@ -1915,7 +1915,7 @@ function previewPreisImport() {
   html += '<tr style="background:var(--gruen-hell);position:sticky;top:0;"><td style="padding:4px 6px;font-weight:600;">Sorte (CSV)</td><td style="padding:4px 6px;">Unterl.</td><td style="padding:4px 6px;">Preis</td><td style="padding:4px 6px;">MWST</td><td style="padding:4px 6px;">Vorbest.</td><td style="padding:4px 6px;">Match</td></tr>';
   preview.forEach(r => {
     const matchColor = r.match ? (r.match.exact ? 'var(--gruen)' : 'var(--waldrand)') : 'var(--dachziegel)';
-    const matchText = r.match ? (r.match.exact ? '✓ '+r.match.name : '~ '+r.match.name+' ('+r.match.dist+')') : '⚠ nicht zugeordnet';
+    const matchText = r.match ? (r.match.exact ? '✓ '+r.match.name : '~ '+r.match.name+' ('+r.match.dist+')') : 'nicht zugeordnet';
     html += '<tr style="border-top:1px solid var(--border);">';
     html += '<td style="padding:3px 6px;">'+r.sorte+'</td>';
     html += '<td style="padding:3px 6px;">'+r.unterlage+'</td>';
@@ -1928,7 +1928,7 @@ function previewPreisImport() {
   html += '</table></div>';
 
   const unmatched = preview.filter(r=>!r.match).length;
-  if(unmatched > 0) html += '<p style="font-size:.8rem;color:var(--dachziegel);margin-top:6px;">⚠ '+unmatched+' Zeile(n) konnten keiner Sorte zugeordnet werden.</p>';
+  if(unmatched > 0) html += '<p style="font-size:.8rem;color:var(--dachziegel);margin-top:6px;">'+unmatched+' Zeile(n) konnten keiner Sorte zugeordnet werden.</p>';
 
   html += '<div style="display:flex;gap:8px;margin-top:12px;">';
   html += '<button class="btn" onclick="executePreisImport()">Import ausführen (ersetzt alle Preise)</button>';

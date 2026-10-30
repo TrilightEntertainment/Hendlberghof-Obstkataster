@@ -181,7 +181,7 @@ function openExportDialog(typ, format){
     <p style="font-size:.82rem;color:var(--muted);">Exportiert wird die aktuell gefilterte Auswahl. Die Spaltenauswahl wird für das nächste Mal gemerkt.</p>
     <div style="columns:2;column-gap:24px;margin:14px 0;">${boxes}</div>
     <div class="edit-actions">
-      <button class="btn" onclick="runExport()">⬇ Exportieren</button>
+      <button class="btn" onclick="runExport()">Exportieren</button>
       <button class="btn secondary" onclick="closeModal()">Abbrechen</button>
     </div>`;
   document.getElementById('modal-content').innerHTML = html;
@@ -2320,7 +2320,7 @@ function openSortenModal(sorteName){
   let predictionHtml = '';
   if(prediction){
     const sign = prediction.abweichungTage>0 ? '+' : '';
-    predictionHtml = `<div style="margin-top:4px;font-size:.82rem;"><b>📊 Vorhersage ${new Date().getFullYear()}:</b> <b style="color:var(--waldrand);">${prediction.wert}</b> ${pfluckWertToText(prediction.wert)} <span style="color:var(--text-mid,#6B7280);font-size:.75rem;">(${sign}${prediction.abweichungTage} Tage vs. Standard)</span></div>`;
+    predictionHtml = `<div style="margin-top:4px;font-size:.82rem;"><b>Vorhersage ${new Date().getFullYear()}:</b> <b style="color:var(--waldrand);">${prediction.wert}</b> ${pfluckWertToText(prediction.wert)} <span style="color:var(--text-mid,#6B7280);font-size:.75rem;">(${sign}${prediction.abweichungTage} Tage vs. Standard)</span></div>`;
   }
   const html = `
     <button class="close" onclick="closeModal()" aria-label="Schließen"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true" focusable="false"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg></button>
@@ -2347,7 +2347,7 @@ function openSortenModal(sorteName){
         <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
       </svg>
     </button>
-    ${s.recherchiert? `<div class="badge-recherche">🔍 Web-recherchiert – bitte prüfen</div>
+    ${s.recherchiert? `<div class="badge-recherche">Web-recherchiert – bitte prüfen</div>
       <button class="btn-verify" onclick="toggleVerifiziert('${escAttr(s.sorte)}')">✓ Als verifiziert markieren</button>`
       : (state.verifiziert[s.sorte]? `<div class="badge-verifiziert">✓ Verifiziert am ${state.verifiziert[s.sorte]}</div>
       <button class="btn-verify done" onclick="toggleVerifiziert('${escAttr(s.sorte)}')">Verifizierung zurücknehmen</button>` : '')}

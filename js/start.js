@@ -255,13 +255,13 @@ const FELDER = [
   {key:'genussreife',label:'Genussreife',         full:false},
   {key:'lagerfaehig',label:'Lagerfähigkeit',      full:false},
   {key:'ertrag',     label:'Ertrag',              full:false},
-  {key:'befruchtungspartner',label:'Befruchtungspartner', full:false},
+  {key:'befruchtungspartner',label:'Befruchtungspartner', full:true},
   {key:'geschmack',  label:'Geschmack',           full:true,  type:'textarea'},
   /* nurSorte: gehört zur Sorte, nicht zum einzelnen Baum (v136) */
   {key:'eignung',    label:'Eignung',             full:true,  type:'textarea', nurSorte:true},
   {key:'eigenschaften',label:'Eigenschaften / Standortansprüche', full:true, type:'textarea'},
   {key:'herkunft_jahr',label:'Herkunft & Jahr',   full:true},
-  {key:'synonyme',   label:'Synonyme',            full:false},
+  {key:'synonyme',   label:'Synonyme',            full:true},
 ];
 
 /* Obstart als Eingabe mit Vorschlägen statt fester Liste (v129): Die Liste
@@ -276,6 +276,84 @@ function obstartVorschlaege(){
   Object.keys(OBSTART_GRUPPE).filter(k=> !k.includes('-')).sort((a, b)=> a.localeCompare(b, 'de')).forEach(k=> liste.push(gross(k)));
   const gesehen = new Set();
   return liste.filter(f=>{ const k = obstartSchluessel(f); if(gesehen.has(k)) return false; gesehen.add(k); return true; });
+}
+
+/* Vorschläge für die Felder im Formular (v140, Volkmar 30.10.2026): was bei
+   Bäumen und Sorten schon steht, Häufigstes zuerst, gleiche Schreibweise nur einmal. */
+function feldZaehlen(werte){
+  const zahl = new Map();
+  werte.forEach(wert=>{
+    const w = String(wert == null ? '' : wert).trim();
+    if(!w) return;
+    const k = w.toLowerCase();
+    const z = zahl.get(k) || {w, n:0};
+    z.n++;
+    zahl.set(k, z);
+  });
+  return Array.from(zahl.values()).sort((a, b)=> b.n - a.n || a.w.localeCompare(b.w, 'de')).map(z=> z.w);
+}
+function feldWerte(key){
+  return getAllTrees().map(t=> t[key])
+    .concat(SORTEN_DATA.map(s=> s[key]))
+    .concat(Object.values(state.sortenEdits || {}).map(s=> s && s[key]));
+}
+function feldVorschlaege(key){
+  if(key === 'standort_zeile') return katStdVorschlaege();
+  const werte = feldWerte(key);
+  return feldZaehlen(key === 'unterlage' ? werte.concat(PRUEF_UNTERLAGEN) : werte).slice(0, 300);
+}
+/* Lange Textfelder: eine <datalist> gibt es dort nicht, und ganze Beschreibungen
+   helfen nicht weiter. Vorgeschlagen werden die einzelnen Begriffe, passend zum
+   gerade getippten Wortanfang; tolerant gegenüber Umlauten und Mehrzahl. */
+const _feldSuchform = s => String(s).toLowerCase().replace(/ä|ae/g, 'a').replace(/ö|oe/g, 'o').replace(/ü|ue/g, 'u').replace(/ß/g, 'ss');
+function feldBegriffe(key){
+  const teile = [];
+  feldWerte(key).forEach(w=> String(w == null ? '' : w).split(/[,;]|\.\s/).forEach(t=>{
+    const b = t.trim().replace(/\.$/, '');
+    if(b.length >= 3 && b.length <= 40 && !/\s{2}/.test(b)) teile.push(b);
+  }));
+  return feldZaehlen(teile);
+}
+function initFeldBegriffe(){
+  const form = document.getElementById('baum-edit-form');
+  if(!form) return;
+  form.querySelectorAll('textarea').forEach(feld=>{
+    const begriffe = feldBegriffe(feld.name);
+    const wrap = document.createElement('div');
+    wrap.className = 'sorte-ac-wrap';
+    feld.parentNode.insertBefore(wrap, feld);
+    wrap.appendChild(feld);
+    const list = document.createElement('div');
+    list.className = 'sorte-ac-list';
+    wrap.appendChild(list);
+    const zu = () => { list.classList.remove('open'); list.innerHTML = ''; };
+    const anfang = () => feld.value.slice(0, feld.selectionStart).match(/[^,;]*$/)[0];
+    feld.addEventListener('input', ()=>{
+      const roh = anfang().trim();
+      if(roh.length < 2){ zu(); return; }
+      const q = _feldSuchform(roh).replace(/(en|e|n|s)$/, '');
+      const passend = begriffe.filter(b=> _feldSuchform(b).includes(q) && b.toLowerCase() !== roh.toLowerCase());
+      /* Was so anfängt wie das Getippte, kommt zuerst. */
+      const treffer = passend.filter(b=> _feldSuchform(b).startsWith(q)).concat(passend.filter(b=> !_feldSuchform(b).startsWith(q))).slice(0, 8);
+      if(!treffer.length){ zu(); return; }
+      list.innerHTML = treffer.map(b=> `<div class="sorte-ac-item">${escHtml(b)}</div>`).join('');
+      list.classList.add('open');
+    });
+    /* mousedown statt click: Der Fokus bleibt im Feld, die Tastatur bleibt offen. */
+    list.addEventListener('mousedown', ev=>{
+      const item = ev.target.closest('.sorte-ac-item');
+      if(!item) return;
+      ev.preventDefault();
+      const pos = feld.selectionStart;
+      const vorn = feld.value.slice(0, pos - anfang().length);
+      const luecke = vorn && !/\s$/.test(vorn) ? ' ' : '';
+      const neu = `${vorn}${luecke}${item.textContent}, `;
+      feld.value = neu + feld.value.slice(pos);
+      feld.setSelectionRange(neu.length, neu.length);
+      zu();
+    });
+    feld.addEventListener('blur', ()=> setTimeout(zu, 150));
+  });
 }
 
 function buildEditForm(t, isNew, isSort){
@@ -297,7 +375,7 @@ function buildEditForm(t, isNew, isSort){
           return `<div class="${cls}"><label>${f.label}</label><select name="${f.key}"><option value="">– wählen –</option>${opts}</select></div>`;
         } else if(f.type==='vorschlag'){
           const dl = `dl-edit-${f.key}`;
-          return `<div class="${cls}"><label>${f.label}</label><input type="text" name="${f.key}" list="${dl}" autocomplete="off" value="${escAttr(String(val))}" placeholder="wählen oder eintippen"><datalist id="${dl}">${f.vorschlaege().map(o=>`<option value="${escAttr(o)}">`).join('')}</datalist></div>`;
+          return `<div class="${cls}"><label>${f.label}</label><input type="text" name="${f.key}" list="${dl}" autocomplete="off" value="${escAttr(String(val))}" placeholder="z. B. Apfel"><datalist id="${dl}">${f.vorschlaege().map(o=>`<option value="${escAttr(o)}">`).join('')}</datalist></div>`;
         } else if(f.type==='checkboxgroup'){
           const current = (t && t[f.key]) || [];
           const boxes = f.opts.map(o=>`<label style="margin-right:12px;font-weight:400;display:inline-block;">
@@ -305,7 +383,11 @@ function buildEditForm(t, isNew, isSort){
           </label>`).join('');
           return `<div class="${cls}"><label>${f.label}</label><div>${boxes}</div></div>`;
         } else {
-          return `<div class="${cls}"><label>${f.label}</label><input type="text" name="${f.key}" value="${escAttr(String(val))}"></div>`;
+          /* Nicht bei der ID (sie muss neu sein) und nicht bei der Sorte im
+             Neu-Formular: Dort füllt die eigene Liste auch die übrigen Felder. */
+          const ohneListe = f.key === 'id' || (f.key === 'sorte' && isNew);
+          const dl = `dl-edit-${f.key}`;
+          return `<div class="${cls}"><label>${f.label}</label><input type="text" name="${f.key}"${ohneListe ? '' : ` list="${dl}" autocomplete="off"`} value="${escAttr(String(val))}">${ohneListe ? '' : `<datalist id="${dl}">${feldVorschlaege(f.key).map(o=>`<option value="${escAttr(o)}">`).join('')}</datalist>`}</div>`;
         }
       }).join('')}
     </div>`;
@@ -334,31 +416,34 @@ function openBaumEditForm(id){
   const tForForm = Object.assign({}, t, { verwendung: getVerwendung(t) });
   const html = `
     <button class="close" onclick="closeModal()" aria-label="Schließen"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true" focusable="false"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg></button>
-    <h2>✏️ Baum bearbeiten <span class="idbadge">${t.id_placeholder? 'ID noch offen' : 'ID '+t.id}</span></h2>
+    <h2>Baum bearbeiten <span class="idbadge">${t.id_placeholder? 'ID noch offen' : 'ID '+t.id}</span></h2>
     <p style="font-size:.82rem;color:var(--muted);">Änderungen werden lokal gespeichert — Original-Importdaten bleiben erhalten.</p>
     <form id="baum-edit-form">${buildEditForm(tForForm, false)}</form>
     <div class="edit-actions">
-      <button class="btn" onclick="saveBaumEdit('${id}')">💾 Speichern</button>
+      <button class="btn" onclick="saveBaumEdit('${id}')">Speichern</button>
       <button class="btn secondary" onclick="closeModal()">Abbrechen</button>
-      ${t.id_placeholder ? '' : `<button class="btn danger" onclick="confirmDeleteBaum('${id}')">🗑 Baum löschen</button>`}
+      ${t.id_placeholder ? '' : `<button class="btn danger" onclick="confirmDeleteBaum('${id}')">Baum löschen</button>`}
     </div>`;
   document.getElementById('modal-content').innerHTML = html;
   document.getElementById('overlay').classList.add('open');
+  initFeldBegriffe();
 }
 
 function openBaumAddForm(){
   const html = `
     <button class="close" onclick="closeModal()" aria-label="Schließen"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true" focusable="false"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg></button>
-    <h2><img src="icons/seedling.svg" width="20" height="20" style="vertical-align:-4px;margin-right:4px;" alt="">Neuen Baum hinzufügen</h2>
+    <h2>Neuen Baum hinzufügen</h2>
     <p style="font-size:.82rem;color:var(--muted);">Der neue Baum wird lokal gespeichert und erscheint sofort im Kataster. Bei Eingabe einer bekannten Sorte werden die Felder automatisch ausgefüllt.</p>
     <form id="baum-edit-form">${buildEditForm(null, true)}</form>
     <div class="edit-actions">
-      <button class="btn" onclick="saveNewBaum()"><img src="icons/tree.svg" width="13" height="13" style="vertical-align:-2px;margin-right:4px;" alt="">Baum anlegen</button>
+      <button class="btn btn-breit" onclick="saveNewBaum(true)">Anlegen und <span class="nur-finger">per GPS</span><span class="nur-maus">auf der Karte</span> setzen</button>
+      <button class="btn secondary" onclick="saveNewBaum()">Nur anlegen</button>
       <button class="btn secondary" onclick="closeModal()">Abbrechen</button>
     </div>`;
   document.getElementById('modal-content').innerHTML = html;
   document.getElementById('overlay').classList.add('open');
   initSorteAutocomplete();
+  initFeldBegriffe();
 }
 
 const SORTEN_EDIT_KEYS = ['frucht','verwendung','pflueckzeitpunkt','genussreife','lagerfaehig','ertrag','befruchtungspartner','geschmack','eignung','eigenschaften','herkunft_jahr','synonyme','frucht_beschreibung','standort_anspruch','unterlage','veredelt','ausgepflanzt'];
@@ -368,15 +453,16 @@ function openSortenEditForm(sorteName){
   const editData = Object.assign({}, s, state.sortenEdits[sorteName]||{});
   const html = `
     <button class="close" onclick="closeModal()" aria-label="Schließen"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true" focusable="false"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg></button>
-    <h2>✏️ Sorte bearbeiten <span style="font-size:.82rem;color:var(--muted);font-weight:400;">${escHtml(sorteName)}</span></h2>
+    <h2>Sorte bearbeiten <span style="font-size:.82rem;color:var(--muted);font-weight:400;">${escHtml(sorteName)}</span></h2>
     <p style="font-size:.82rem;color:var(--muted);">Änderungen werden lokal gespeichert — Original-Importdaten bleiben erhalten.</p>
     <form id="sorten-edit-form">${buildEditForm(editData, false, true)}</form>
     <div class="edit-actions">
-      <button class="btn" onclick="saveSortenEdit('${escAttr(sorteName)}')">💾 Speichern</button>
+      <button class="btn" onclick="saveSortenEdit('${escAttr(sorteName)}')">Speichern</button>
       <button class="btn secondary" onclick="closeModal()">Abbrechen</button>
     </div>`;
   document.getElementById('modal-content').innerHTML = html;
   document.getElementById('overlay').classList.add('open');
+  initFeldBegriffe();
 }
 function saveSortenEdit(sorteName){
   const form = document.getElementById('sorten-edit-form');
@@ -460,7 +546,9 @@ function saveBaumEdit(id){
   renderBaumTable();
 }
 
-function saveNewBaum(){
+/* mitSetzen: gleich danach in den Lageplan — am Handy mit GPS-Messung, die bei
+   mehr als ±15 m nachfragt, am Rechner zum Klicken auf die Karte (v140). */
+function saveNewBaum(mitSetzen){
   const form = document.getElementById('baum-edit-form');
   if(!form) return;
   const vals = formValues(form);
@@ -484,6 +572,9 @@ function saveNewBaum(){
   closeModal();
   refreshFilterOptions();
   renderBaumTable();
+  if(!mitSetzen) return;
+  positionSetzen(vals.id, false);
+  if(_mitFinger()) document.getElementById('btn-gps-place').click();
 }
 
 function confirmDeleteBaum(id){

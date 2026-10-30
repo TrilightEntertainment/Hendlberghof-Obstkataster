@@ -678,6 +678,23 @@ function lageMarkerWaehlen(id, blinken){
   el.addEventListener('animationend', () => { el.classList.remove('blink'); el.classList.add('selected'); }, {once: true});
 }
 
+/* Prüfrunde: eine Stelle aus dem Foto zeigen, an der noch kein Baum im Kataster steht. */
+let _lagePunkt = null;
+function lagePunktWeg(){ if(_lagePunkt){ _lagePunkt.remove(); _lagePunkt = null; } }
+function lagePunktZeigen(lat, lng, text){
+  if(typeof L === 'undefined'){ showToast('Die Karte braucht Internet.', 'error'); return; }
+  ladeLageDaten().then(() => {
+    if(mapLayer !== 'sat') setMapLayer('sat'); else initSatMap();
+    _satErstmals = false;
+    if(!_ebenenWahl.foto) ebeneSetzen('foto', true);
+    lagePunktWeg();
+    _lagePunkt = L.marker([lat, lng], {interactive: false, zIndexOffset: 2000, icon: L.divIcon({
+      className: '', html: `<div class="lp-punkt">${escHtml(text)}</div>`, iconSize: [40, 40], iconAnchor: [20, 20]
+    })}).addTo(satMap);
+    satMap.setView([lat, lng], 20);
+  });
+}
+
 /* Aus der Baumkarte: auf der Karte zeigen, sonst auf dem alten Foto. */
 function lageZeigen(id){
   if(typeof L !== 'undefined'){

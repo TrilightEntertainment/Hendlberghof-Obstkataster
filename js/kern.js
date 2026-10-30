@@ -134,7 +134,7 @@ function _shareText(title, text){
 }
 function shareBaum(id){
   const t = getTree(id); if(!t) return;
-  const lines = ['🌳 '+(t.sorte||'Unbekannt')+' (ID: '+t.id+')'];
+  const lines = [(t.sorte||'Unbekannt')+' (ID: '+t.id+')'];
   if(t.frucht) lines.push('Obstart: '+t.frucht);
   if(t.pflueckzeitpunkt||t.pflueck_reifezeit) lines.push('Pflückzeit: '+(t.pflueckzeitpunkt||t.pflueck_reifezeit));
   if(t.standort_zeile) lines.push('Standort: '+t.standort_zeile);
@@ -143,7 +143,7 @@ function shareBaum(id){
 }
 function shareSorte(name){
   const s = getSorte(name); if(!s) return;
-  const lines = ['🍎 '+s.sorte];
+  const lines = [s.sorte];
   if(s.frucht) lines.push('Obstart: '+s.frucht);
   if(s.pflueckzeitpunkt||s.pflueck_reifezeit) lines.push('Pflückzeit: '+(s.pflueckzeitpunkt||s.pflueck_reifezeit||'–'));
   if(s.genussreife) lines.push('Genussreife: '+s.genussreife);
@@ -543,7 +543,7 @@ function getTree(id){ return getTreeMap().get(id); }
    Lageplan“ tippt, bekommt unter der Karte eine Leiste „Zurück zu …“. Sie
    öffnet die Karte wieder und kehrt in den Reiter zurück, aus dem man kam.
    Wer selbst einen anderen Reiter wählt, braucht sie nicht mehr. */
-let _lageplanZurueck = null;   /* null oder { id, tab } oder { liste:true, tab } */
+let _lageplanZurueck = null;   /* null oder { id, tab } oder { liste:true, tab } oder { runde:true, nr, pnr, tab } */
 /* Setzliste (v137): Wer aus „Ohne Standort“ kommt, setzt der Reihe nach –
    IDs in der Reihenfolge der Liste, sonst null. Gilt nur im Lageplan. */
 let _setzListe = null;
@@ -590,18 +590,19 @@ function showOnLageplan(id, vonKarte){
 function renderLageplanZurueck(){
   const sec = document.getElementById('tab-lageplan');
   let leiste = document.getElementById('lageplan-zurueck');
-  if(!_lageplanZurueck || !sec){ if(leiste) leiste.remove(); return; }
+  if(!_lageplanZurueck || !sec){ if(leiste) leiste.remove(); if(typeof lagePunktWeg === 'function') lagePunktWeg(); return; }
   if(!leiste){
     leiste = document.createElement('button');
     leiste.type = 'button';
     leiste.id = 'lageplan-zurueck';
     leiste.className = 'lageplan-zurueck';
     leiste.addEventListener('click', lageplanZurueck);
-    sec.appendChild(leiste);   /* unter der Karte (Volkmar 26.10.2026) */
+    sec.prepend(leiste);   /* ganz oben und klebend, damit niemand scrollen muss (Volkmar 30.10.2026) */
   }
-  const t = _lageplanZurueck.liste ? null : getTree(_lageplanZurueck.id);
+  const t = _lageplanZurueck.id ? getTree(_lageplanZurueck.id) : null;
   leiste.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><polyline points="15 6 9 12 15 18"/></svg>
     ${_lageplanZurueck.liste ? '<span>Zurück zur Liste <span class="lz-sorte">Ohne Standort</span></span>'
+      : _lageplanZurueck.runde ? `<span>Zurück zur <span class="lz-sorte">Prüfrunde</span> · ${escHtml(String(_lageplanZurueck.nr))}</span>`
       : `<span>Zurück zu <span class="lz-sorte">${escHtml((t && t.sorte) || 'Baum')}</span> · ${escHtml(String(_lageplanZurueck.id))}</span>`}`;
 }
 function lageplanZurueck(){
@@ -610,6 +611,7 @@ function lageplanZurueck(){
   _lageplanZurueck = null;
   renderLageplanZurueck();
   if(z.liste){ activateTab(z.tab || 'baumkataster'); katArtWaehlen('__ohne'); return; }
+  if(z.runde){ activateTab(z.tab); pruefRundeZurueck(z.pnr, z.nr); return; }
   if(z.tab) activateTab(z.tab);
   openBaumModal(z.id);
 }
