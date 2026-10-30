@@ -422,6 +422,7 @@ function openBaumEditForm(id){
     <div class="edit-actions">
       <button class="btn" onclick="saveBaumEdit('${id}')">Speichern</button>
       <button class="btn secondary" onclick="closeModal()">Abbrechen</button>
+      ${t.id_placeholder ? '' : `<button class="btn secondary" onclick="baumAbsterbenForm('${id}')">Baum ist abgestorben</button>`}
       ${t.id_placeholder ? '' : `<button class="btn danger" onclick="confirmDeleteBaum('${id}')">Baum löschen</button>`}
     </div>`;
   document.getElementById('modal-content').innerHTML = html;
@@ -429,15 +430,20 @@ function openBaumEditForm(id){
   initFeldBegriffe();
 }
 
-function openBaumAddForm(){
+/* platzId: Nachpflanzen auf einem freien Platz. Nummer und Standort stehen schon fest,
+   die Stecknadel bleibt, deshalb entfällt dort das Setzen. */
+function openBaumAddForm(platzId){
+  const frueher = platzId ? ((state.fruehereBaeume[platzId] || [])[0] || {}).baum || {} : null;
+  const vorgabe = platzId ? { id:platzId, standort_zeile:frueher.standort_zeile || '' } : null;
+  const hatLage = platzId && kartenPos(platzId);
   const html = `
     <button class="close" onclick="closeModal()" aria-label="Schließen"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true" focusable="false"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg></button>
-    <h2>Neuen Baum hinzufügen</h2>
+    <h2>${platzId ? `Platz ${escHtml(platzId)} neu bepflanzen` : 'Neuen Baum hinzufügen'}</h2>
     <p style="font-size:.82rem;color:var(--muted);">Der neue Baum wird lokal gespeichert und erscheint sofort im Kataster. Bei Eingabe einer bekannten Sorte werden die Felder automatisch ausgefüllt.</p>
-    <form id="baum-edit-form">${buildEditForm(null, true)}</form>
+    <form id="baum-edit-form">${buildEditForm(vorgabe, true)}</form>
     <div class="edit-actions">
-      <button class="btn btn-breit" onclick="saveNewBaum(true)">Anlegen und <span class="nur-finger">per GPS</span><span class="nur-maus">auf der Karte</span> setzen</button>
-      <button class="btn secondary" onclick="saveNewBaum()">Nur anlegen</button>
+      ${hatLage ? `<button class="btn" onclick="saveNewBaum()">Baum anlegen</button>` : `<button class="btn btn-breit" onclick="saveNewBaum(true)">Anlegen und <span class="nur-finger">per GPS</span><span class="nur-maus">auf der Karte</span> setzen</button>
+      <button class="btn secondary" onclick="saveNewBaum()">Nur anlegen</button>`}
       <button class="btn secondary" onclick="closeModal()">Abbrechen</button>
     </div>`;
   document.getElementById('modal-content').innerHTML = html;
@@ -560,7 +566,9 @@ function saveNewBaum(mitSetzen){
     while(existing.includes('NEU-'+n)) n++;
     vals.id = 'NEU-'+n;
   }
+  if(getTree(vals.id)){ alert(`Die Nummer ${vals.id} ist schon vergeben (${getTree(vals.id).sorte || 'ohne Sorte'}).`); return; }
   vals.id_placeholder = false;
+  vals.quelle = 'app';
   if(!state.customTrees) state.customTrees = [];
   state.customTrees.push(vals);
   if(vals.sorte && vals.verwendung){
@@ -575,6 +583,52 @@ function saveNewBaum(mitSetzen){
   if(!mitSetzen) return;
   positionSetzen(vals.id, false);
   if(_mitFinger()) document.getElementById('btn-gps-place').click();
+}
+
+/* ---------- Baum ist abgestorben (v142) ---------- */
+function baumAbsterbenForm(id){
+  const t = getTree(id);
+  if(!t) return;
+  const gruende = feldZaehlen(Object.values(state.fruehereBaeume || {}).flat().map(f=> f.grund)
+    .concat(['Wühlmäuse', 'Frost', 'Trockenheit', 'Wildverbiss', 'Krankheit', 'Sturm']));
+  document.getElementById('modal-content').innerHTML = `
+    <button class="close" onclick="closeModal()" aria-label="Schließen"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true" focusable="false"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg></button>
+    <h2>${escHtml(t.sorte || 'Baum')} · ${escHtml(id)} ist abgestorben</h2>
+    <p style="font-size:.82rem;color:var(--muted);">Die Nummer und die Stecknadel bleiben am Ort, der Platz wird frei. Der Baum wandert mit Ernten und Beobachtungen in „Früher an diesem Platz“.</p>
+    <div class="edit-form">
+      <div><label>Jahr</label><input type="text" id="tot-jahr" inputmode="numeric" value="${new Date().getFullYear()}"></div>
+      <div><label>Grund (optional)</label><input type="text" id="tot-grund" list="tot-gruende" autocomplete="off"><datalist id="tot-gruende">${gruende.map(g=>`<option value="${escAttr(g)}">`).join('')}</datalist></div>
+    </div>
+    <div class="edit-actions">
+      <button class="btn" onclick="baumAbsterben('${escAttr(id)}')">Platz freigeben</button>
+      <button class="btn secondary" onclick="openBaumEditForm('${escAttr(id)}')">Abbrechen</button>
+    </div>`;
+}
+function baumAbsterben(id){
+  const t = getTree(id);
+  if(!t) return;
+  const schluessel = katBaumEditSchluessel(id);
+  const custom = (state.customTrees || []).find(c=> c.id === schluessel) || null;
+  const edit = (state.baumEdits || {})[schluessel] || null;
+  const ernten = state.ernten[id] || [], sukzession = state.sukzession[id] || [];
+  if(!state.fruehereBaeume) state.fruehereBaeume = {};
+  state.fruehereBaeume[id] = [{
+    baum:JSON.parse(JSON.stringify(t)), schluessel,
+    jahr:document.getElementById('tot-jahr').value.trim(), grund:document.getElementById('tot-grund').value.trim(),
+    ernten, sukzession, zeit:new Date().toISOString()
+  }].concat(state.fruehereBaeume[id] || []);
+  state.customTrees = (state.customTrees || []).filter(c=> c.id !== schluessel);
+  if(edit) delete state.baumEdits[schluessel];
+  /* leere Liste statt löschen: Sonst brächte der Abgleich die alten Einträge zurück */
+  state.ernten[id] = [];
+  state.sukzession[id] = [];
+  _mittelCache = null;
+  saveState();
+  refreshFilterOptions();
+  renderBaumTable();
+  renderSatMarkers();
+  openPlatzModal(id);
+  setUndo('baumTot', { id, schluessel, custom, edit, ernten, sukzession }, `Platz ${id} ist frei — `);
 }
 
 function confirmDeleteBaum(id){
@@ -609,13 +663,14 @@ function startApp(){
   const baumIds = new Set(BAUM_DATA.map(b=>b.id));
   let changed = false;
   /* customTrees die nicht mehr in BAUM_DATA stehen oder blacklisted sind —
-     Übernahmen aus der Prüfung ausgenommen (siehe istPruefUebernahme). */
+     in der App angelegte Bäume und Übernahmen ausgenommen (siehe istEigenerBaum). */
   if(state.customTrees && state.customTrees.length){
     const before = state.customTrees.length;
-    state.customTrees = state.customTrees.filter(c=>!BLACKLIST.has(c.id) && (baumIds.has(c.id) || c.id.startsWith('NEU-') || istPruefUebernahme(c)));
+    state.customTrees = state.customTrees.filter(c=>!BLACKLIST.has(c.id) && (baumIds.has(c.id) || c.id.startsWith('NEU-') || istEigenerBaum(c)));
     if(state.customTrees.length !== before) changed = true;
   }
-  (state.customTrees || []).filter(istPruefUebernahme).forEach(c=> baumIds.add(c.id));
+  (state.customTrees || []).filter(istEigenerBaum).forEach(c=> baumIds.add(c.id));
+  Object.keys(state.fruehereBaeume || {}).forEach(id=> baumIds.add(id));   /* freie Plätze behalten ihre Stecknadel */
   /* baumEdits für nicht mehr existierende IDs */
   if(state.baumEdits){
     for(const k of Object.keys(state.baumEdits)){

@@ -424,6 +424,11 @@
   .lp-filter select{flex:1;min-width:0;}
   .kp-huelle{background:none;border:none;}
   .kp{display:block;width:14px;height:14px;margin:4px;border-radius:50%;box-sizing:border-box;background:var(--kp);border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.45);transition:transform .3s ease;}
+  .kp.frei{background:rgba(255,255,255,.2);border:2px dashed var(--stroh);box-shadow:0 0 0 1px rgba(40,54,42,.7);}
+  .kat-frueher{padding:8px 0;border-top:1px solid var(--rand);}
+  .kat-frueher-titel{font-size:.75rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-top:12px;}
+  .kat-frueher-sorte{font-family:Georgia,serif;font-size:1rem;color:var(--ackerde);}
+  .kat-frueher-text{font-size:.84rem;color:var(--muted);}
   .kp.ungefaehr{background:rgba(255,255,255,.35);border:3px solid var(--kp);box-shadow:0 0 0 1.5px #fff, 0 1px 4px rgba(0,0,0,.45);}
   .lp-fern .kp{width:9px;height:9px;margin:6.5px;border-width:1.5px;}
   .lp-fern .kp.ungefaehr{border-width:2px;}
@@ -439,6 +444,7 @@
   .lp-fl-info{font-size:.78rem;color:var(--muted);line-height:1.4;}
   .lp-legende{display:flex;gap:6px 16px;flex-wrap:wrap;align-items:center;font-size:.78rem;color:var(--muted);margin-top:8px;}
   .lp-legende > span{display:inline-flex;align-items:center;gap:4px;}
+  .lp-legende > span[hidden]{display:none;}
   .lp-legende .kp{margin:0;}
   .lp-bearbeiten .kp-huelle{pointer-events:none;opacity:.45;}
   .lp-ebenen{background:var(--weiss);border:1px solid var(--rand);border-radius:var(--radius);box-shadow:0 1px 6px rgba(0,0,0,.18);color:var(--waldrand);}
@@ -928,6 +934,8 @@
 #tab-pruefung .pr-fund-raster{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:10px 0 12px;}
 #tab-pruefung .pr-fund-raster label{display:flex;flex-direction:column;gap:4px;font-size:.75rem;color:var(--muted);}
 #tab-pruefung .pr-fund-raster input,#tab-pruefung .pr-fund-raster select{width:100%;min-width:0;}
+#tab-pruefung .pr-fund-breit{grid-column:1/-1;}
+#tab-pruefung .pr-fund-raster [hidden],#tab-pruefung #pr-fund-gps-zeile[hidden]{display:none;}
 #tab-pruefung .pr-geaendert{display:inline-block;font-size:.68rem;font-weight:600;color:#8a6d1f;border:1px solid var(--stroh);border-radius:20px;padding:0 7px;margin-left:4px;vertical-align:1px;}
 #tab-pruefung .pr-kataster{font-size:.76rem;color:var(--waldrand);font-weight:600;margin-top:3px;}
 #tab-pruefung .pr-gps.grob{color:var(--dachziegel);}
@@ -1107,6 +1115,7 @@ Keine Internetverbindung — Offline-Modus
     <div class="lp-legende" id="lp-legende">
       <span><span class="kp" style="--kp:var(--muted)"></span>Lage gesetzt</span>
       <span><span class="kp ungefaehr" style="--kp:var(--muted)"></span>Lage ungefähr</span>
+      <span id="lp-leg-frei" hidden><span class="kp frei"></span>Platz frei</span>
       <span>Ebenen: Knopf oben rechts in der Karte</span>
     </div>
   </section>
@@ -1515,10 +1524,10 @@ Keine Internetverbindung — Offline-Modus
 
 <!-- Aus einem einzelnen Script-Block herausgeloest (F6). Reihenfolge ist
      bindend: Ueber Dateigrenzen hinweg gibt es kein Hoisting mehr. -->
-<script src="js/kern.js?v=141"></script>
-<script src="js/kataster.js?v=141"></script>
-<script src="js/lageplan.js?v=141"></script>
-<script src="js/start.js?v=141"></script>
+<script src="js/kern.js?v=142"></script>
+<script src="js/kataster.js?v=142"></script>
+<script src="js/lageplan.js?v=142"></script>
+<script src="js/start.js?v=142"></script>
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-app.js";
@@ -1685,10 +1694,10 @@ Keine Internetverbindung — Offline-Modus
     });
   }
 </script>
-<script src="js/berater.js?v=141"></script>
-<script src="js/shop.js?v=141"></script>
-<script src="js/konfigurator.js?v=141"></script>
-<script src="js/pruefung.js?v=141"></script>
-<script src="js/baumfinder.js?v=141"></script>
+<script src="js/berater.js?v=142"></script>
+<script src="js/shop.js?v=142"></script>
+<script src="js/konfigurator.js?v=142"></script>
+<script src="js/pruefung.js?v=142"></script>
+<script src="js/baumfinder.js?v=142"></script>
 </body>
 </html>

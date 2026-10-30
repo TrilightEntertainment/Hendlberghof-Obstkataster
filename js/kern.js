@@ -117,6 +117,14 @@ function doUndo(){
       else state.baumEdits[k] = data.vorher[k];
     });
     saveState(); renderBaumTable();
+  } else if(type==='baumTot'){
+    state.fruehereBaeume[data.id] = state.fruehereBaeume[data.id].slice(1);
+    if(data.custom) state.customTrees.push(data.custom);
+    if(data.edit) state.baumEdits[data.schluessel] = data.edit;
+    state.ernten[data.id] = data.ernten;
+    state.sukzession[data.id] = data.sukzession;
+    _mittelCache = null;
+    saveState(); closeModal(); refreshFilterOptions(); renderBaumTable(); renderSatMarkers();
   } else if(type==='baum'){
     state.customTrees.push(data.tree);
     if(data.pos) state.positions[data.id] = data.pos;
@@ -211,6 +219,7 @@ function initState(){
   if(!state.produktion) state.produktion = {};
   if(!state.betrieb) state.betrieb = {};
   if(!state.karte) state.karte = {};   /* Kartenobjekte aus der App (v123), Vorrang vor data/flaechen.json */
+  if(!state.fruehereBaeume) state.fruehereBaeume = {};
   invalidateTreeCache();
 }
 
@@ -252,7 +261,8 @@ function applyRemoteState(remote){
   /* Stale customTrees/Edits/Positions DES REMOTE bereinigen BEVOR merge */
   const baumIds = new Set(BAUM_DATA.map(b=>b.id));
   const uebernahmeIds = new Set((state.customTrees||[]).concat(remote.customTrees||[])
-    .filter(istPruefUebernahme).map(c=>c.id));
+    .filter(istEigenerBaum).map(c=>c.id));
+  Object.keys(Object.assign({}, state.fruehereBaeume, remote.fruehereBaeume)).forEach(id=> uebernahmeIds.add(id));
   const isAlive = (id)=> !BLACKLIST.has(id) && (baumIds.has(id) || id.startsWith('NEU-') || uebernahmeIds.has(id));
   if(remote.customTrees && Array.isArray(remote.customTrees)){
     remote.customTrees = remote.customTrees.filter(c=> isAlive(c.id));
@@ -300,6 +310,7 @@ function applyRemoteState(remote){
   state.produktion = _mergeObj(state.produktion, remote.produktion);
   state.betrieb = _mergeObj(state.betrieb, remote.betrieb);
   state.karte = _mergeObj(state.karte, remote.karte);
+  state.fruehereBaeume = _mergeObj(state.fruehereBaeume, remote.fruehereBaeume);
   /* Merklisten NUR im angemeldeten Zustand zusammenfuehren. Ohne diese Bedingung
      bekaeme ein Besucher am Hof die Merkliste des Betriebs ins Geraet gespielt -
      seine eigene liegt seit A3 in einem getrennten, geraetelokalen Topf. */
@@ -348,6 +359,7 @@ function applyRemoteState(remote){
   if(!state.produktion) state.produktion = {};
   if(!state.betrieb) state.betrieb = {};
   if(!state.karte) state.karte = {};
+  if(!state.fruehereBaeume) state.fruehereBaeume = {};
   localStorage.setItem(LS_KEY, JSON.stringify(state));
   /* Arbeitskopie der Merklisten nachziehen, sonst zeigt dieses Gerät weiter den
      Stand von vor der Synchronisierung. */
@@ -511,7 +523,18 @@ let _treeMap = null, _treeList = null;
    eine zweite würde nur verwirren. Das Aufräumen beim Start und beim Abgleich
    verwirft sonst jedes Overlay, dessen ID weder im Katalog steht noch mit
    NEU- beginnt — samt Stecknadel. Diese Kennung nimmt sie davon aus. */
-function istPruefUebernahme(c){ return !!(c && c.quelle === 'pruefung'); }
+/* Dasselbe gilt für alles, was in der App angelegt wird (quelle:'app', seit v142).
+   Bis dahin verschwand ein neuer Baum mit eigener Nummer beim nächsten Abgleich
+   (682 am 29./30.10.2026): nur die Stecknadel blieb übrig. */
+function istEigenerBaum(c){ return !!(c && (c.quelle === 'pruefung' || c.quelle === 'app')); }
+/* Abgestorbene Bäume (v142): Die Nummer bleibt am Ort, der Baum wandert samt
+   Ernten und Beobachtungen nach state.fruehereBaeume[id] (neuester zuerst).
+   Steht unter der Nummer kein lebender Baum, ist der Platz frei. */
+function freiePlaetze(){
+  return Object.keys(state.fruehereBaeume || {})
+    .filter(id=> (state.fruehereBaeume[id] || []).length && !getTree(id))
+    .sort((a, b)=> a.localeCompare(b, 'de', {numeric:true}));
+}
 function invalidateTreeCache(){ _treeMap = null; _treeList = null; }
 
 function getTreeMap(){
@@ -522,7 +545,9 @@ function getTreeMap(){
      Schritt stünde er doppelt in der Liste, sobald er auch im Katalog steht.
      Das Overlay gewinnt, weil es den neueren Stand trägt. */
   const nachId = new Map();
-  BAUM_DATA.concat(custom).forEach(t=>{
+  /* Abgestorbene Katalogbäume stehen weiter in der Datei, zählen aber nicht mehr. */
+  const tot = new Set(Object.values(state.fruehereBaeume || {}).flat().map(f=> f.schluessel));
+  BAUM_DATA.filter(t=> !tot.has(t.id)).concat(custom).forEach(t=>{
     if(BLACKLIST.has(t.id)) return;
     const edit = (state.baumEdits && state.baumEdits[t.id]) || {};
     const merged = Object.assign({}, t, edit);

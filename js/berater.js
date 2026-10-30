@@ -775,10 +775,12 @@ function calcPfluckMittel(sorteName){
   if(!_mittelCache) _mittelCache={};
   if(_mittelCache[sorteName]!==undefined) return _mittelCache[sorteName];
   const baeume=getAllTrees().filter(t=>t.sorte===sorteName);
-  if(!baeume.length) return null;
+  /* Abgestorbene Bäume zählen weiter für die Sorte, nur nicht für den Nachfolger */
+  const frueher=Object.values(state.fruehereBaeume||{}).flat().filter(f=>f.baum&&f.baum.sorte===sorteName);
+  if(!baeume.length&&!frueher.length) return null;
   const werte=[];
-  baeume.forEach(b=>{
-    (state.ernten[b.id]||[]).forEach(e=>{
+  baeume.map(b=>({id:b.id,ernten:state.ernten[b.id]||[]})).concat(frueher.map(f=>({id:f.baum.id,ernten:f.ernten||[]}))).forEach(b=>{
+    b.ernten.forEach(e=>{
       if(!e.datum) return;
       const jahr=parseInt(e.datum.substring(0,4));
       const pw=ernteToPfluckwert(e.datum);

@@ -238,6 +238,45 @@ function katNadelKnopf(id, ausListe){
   return `<button type="button" class="kat-nadel" title="Position setzen" aria-label="Position setzen"
       onclick="event.stopPropagation();positionSetzen('${escAttr(id)}', ${ausListe ? 'true' : 'false'})">${nadel}</button>`;
 }
+/* ---------- Freie Plätze (v142) ---------- */
+function renderKatFreiePlaetze(){
+  const ids = freiePlaetze();
+  return `<div class="kat-kopf">
+      <button type="button" class="kat-zurueck" onclick="katArtWaehlen('')">${SVG_ZURUECK}<span>Alle Obstarten</span></button>
+      <h2 class="kat-titel">Freie Plätze</h2>
+      <div class="kat-untertitel">Nummer und Stecknadel bleiben, bis dort ein neuer Baum steht</div>
+    </div>
+    <div class="kat-std-liste">${ids.map(id=>{
+      const f = state.fruehereBaeume[id][0];
+      const text = [(f.baum || {}).sorte, f.jahr ? `abgestorben ${f.jahr}` : ''].filter(Boolean).map(escHtml).join(' · ');
+      return `<button type="button" class="kat-baum" onclick="openPlatzModal('${escAttr(id)}')"><span class="kat-id">${escHtml(id)}</span><span class="kat-baum-text">${text}</span>${SVG_WEITER}</button>`;
+    }).join('') || '<div class="empty">Kein Platz frei.</div>'}</div>`;
+}
+function renderFruehereBaeume(id){
+  return ((state.fruehereBaeume || {})[id] || []).map(f=>{
+    const b = f.baum || {};
+    const n = (f.ernten || []).length;
+    const angaben = [b.frucht, b.unterlage, b.ausgepflanzt ? `gepflanzt ${b.ausgepflanzt}` : '',
+      f.jahr ? `abgestorben ${f.jahr}` : '', f.grund, n ? `${n} ${n === 1 ? 'Ernte' : 'Ernten'}` : ''].filter(Boolean).map(escHtml).join(' · ');
+    return `<div class="kat-frueher"><div class="kat-frueher-sorte">${escHtml(b.sorte || 'Sorte offen')}</div><div class="kat-frueher-text">${angaben}</div></div>`;
+  }).join('');
+}
+function openPlatzModal(id){
+  const std = (((state.fruehereBaeume || {})[id] || [])[0] || {}).baum || {};
+  const html = `
+    <button class="close" onclick="closeModal()" aria-label="Schließen"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true" focusable="false"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg></button>
+    <h2>Platz ${escHtml(id)} – frei</h2>
+    ${std.standort_zeile ? `<p style="font-size:.82rem;color:var(--muted);">Standort: ${escHtml(std.standort_zeile)}</p>` : ''}
+    <div class="kat-frueher-titel">Früher an diesem Platz</div>
+    ${renderFruehereBaeume(id)}
+    ${isEditMode() ? `<div class="edit-actions">
+      <button class="btn" onclick="openBaumAddForm('${escAttr(id)}')">Neu bepflanzen</button>
+      <button class="btn secondary" onclick="closeModal()">Schließen</button>
+    </div>` : ''}`;
+  document.getElementById('modal-content').innerHTML = html;
+  document.getElementById('overlay').classList.add('open');
+}
+
 function katArtWaehlen(art){
   _katArt = art || '';
   _katStdEdit = null;
@@ -290,6 +329,8 @@ function renderKatUebersicht(alle){
     oben = `<div class="kat-schnell">
         ${ohne ? `<button type="button" class="kat-art kat-ohne" onclick="katArtWaehlen('__ohne')">
             <span class="kat-art-name">Ohne Standort</span><span class="kat-art-zahl">${ohne} ${ohne === 1 ? 'Baum' : 'Bäume'} noch nicht im Lageplan</span>${SVG_WEITER}</button>` : ''}
+        ${freiePlaetze().length ? `<button type="button" class="kat-art" onclick="katArtWaehlen('__frei')">
+            <span class="kat-art-name">Freie Plätze</span><span class="kat-art-zahl">${freiePlaetze().length} ${freiePlaetze().length === 1 ? 'Platz' : 'Plätze'} zum Nachpflanzen</span>${SVG_WEITER}</button>` : ''}
         <button type="button" class="kat-art" onclick="katArtWaehlen('__standorte')">
             <span class="kat-art-name">Standorte prüfen</span><span class="kat-art-zahl">${namen} Standorte${ohneName ? ` · ${ohneName} ohne Namen` : ''}</span>${SVG_WEITER}</button>
       </div>`;
@@ -454,6 +495,12 @@ function renderBaumTable(){
   }
   const reset = document.getElementById('kat-suche-leeren');
   if(reset) reset.hidden = !q;
+  if(_katArt === '__frei' && !q){
+    inhalt.innerHTML = renderKatFreiePlaetze();
+    if(tabelle) tabelle.hidden = true;
+    tbody.innerHTML = '';
+    return;
+  }
   if(_katArt === '__standorte' && !q){
     inhalt.innerHTML = renderKatStandorte();
     if(tabelle) tabelle.hidden = true;
@@ -1847,6 +1894,7 @@ function openBaumModal(id){
          </div>
          <ul class="log-list" id="ernte-list"></ul>
          <div id="ernte-chart-wrap" style="margin-bottom:10px;"></div>`)}
+      ${((state.fruehereBaeume || {})[id] || []).length ? karteAbschnitt('frueher', 'Früher an diesem Platz', String(state.fruehereBaeume[id].length), renderFruehereBaeume(id)) : ''}
       ${karteAbschnitt('beob', 'Beobachtungen', `<span id="beob-anzahl">${(state.sukzession[id]||[]).length || ''}</span>`,
         `<button class="btn log-neu" id="sukz-neu" onclick="logNeu('sukz','${ti}')">Beobachtung eintragen</button>
          <div class="addlog" id="sukz-form" hidden>

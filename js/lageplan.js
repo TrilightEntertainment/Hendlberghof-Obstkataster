@@ -661,6 +661,19 @@ function renderSatMarkers(){
     satMarkers.push(m);
     satMarkerById[id] = m;
   });
+  /* Freie Plätze nur für Angemeldete: Besucher suchen Bäume, keine Lücken. */
+  const frei = isEditMode() && zeigen && !filter ? freiePlaetze().filter(id => kartenPos(id)) : [];
+  frei.forEach(id => {
+    const pos = kartenPos(id);
+    const icon = L.divIcon({className: 'kp-huelle', html: '<span class="kp frei"></span>', iconSize: [22, 22], iconAnchor: [11, 11]});
+    const m = L.marker([pos.lat, pos.lng], {icon, keyboard: false});
+    m.bindTooltip(`${escHtml(id)} — Platz frei`, {direction: 'top', offset: [0, -8]});
+    m.on('click', () => { if(!placeMode && !_kb) openPlatzModal(id); });
+    m.addTo(satMap);
+    satMarkers.push(m);
+  });
+  const legendeFrei = document.getElementById('lp-leg-frei');
+  if(legendeFrei) legendeFrei.hidden = !frei.length;
   if(_satErstmals && FLAECHEN){
     _satErstmals = false;
     lageGanzerHof();
