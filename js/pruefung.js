@@ -102,16 +102,18 @@ const PRUEF_GPS_GUT = 10, PRUEF_GPS_STECKNADEL = 25, PRUEF_GPS_WARTEN_S = 30;
    in der man sie abgeht. Die Lage ist die Kreismitte im Foto, umgerechnet mit dem
    Gummituch aus tools/foto_entzerren.py. In den Reihen ist sie genauer als GPS
    (Restfehler Median 0,7 m) und taugt als Stecknadel. Beim Haus und auf der Wiese
-   gibt es kaum Passpunkte (Probe am Baum 22: rund 6 m daneben) — dort nur Suchhilfe.
+   gibt es kaum Passpunkte (Probe am Baum 22: rund 6 m daneben) — dort nur Suchhilfe. Am
+   Westende von Weg 2 ebenso: Das Nachziehen der Swale-Reihen (v143) hat das Foto dort um
+   bis zu 6 m verschoben.
    Hier stehen bewusst nur Nummern und Lage, beides sieht man auf dem öffentlichen
    Foto. Die Sorten kommen aus der privaten Prüfliste.
    Standort = Vorbelegung beim Bestätigen, in der Karte änderbar. */
 const PRUEF_FOTO_BEREICHE = [
-  { titel:'Weg 1, untere Reihe', standort:'Weg1 Unten', stecknadel:true, baeume:[['704',48.0701,15.843932], ['727',48.070133,15.843982], ['719',48.070167,15.844017], ['720',48.070198,15.844057], ['726',48.070232,15.844104], ['709',48.070268,15.844155], ['875',48.070307,15.844207], ['874',48.070338,15.844261]] },
-  { titel:'Weg 2, Westende', standort:'Weg2 Oben', stecknadel:true, baeume:[['705',48.070524,15.843259], ['745',48.070547,15.843414], ['732',48.070593,15.843422], ['623',48.070583,15.843348]] },
-  { titel:'Garten beim Haus', standort:'', stecknadel:false, baeume:[['2',48.069516,15.844203], ['955',48.069571,15.844301], ['953',48.069582,15.844328], ['945',48.06955,15.844366], ['921',48.069562,15.844402], ['939',48.069607,15.844389], ['940',48.069594,15.844397], ['957',48.069623,15.844398], ['920',48.069571,15.844435], ['923',48.069583,15.844472], ['922',48.069596,15.84451], ['846',48.069644,15.844554], ['845',48.069648,15.844608], ['8',48.069606,15.844559], ['9',48.069615,15.844614]] },
-  { titel:'Böschung unter dem Garten', standort:'Böschung 3', stecknadel:false, baeume:[['16',48.069527,15.844674], ['18',48.069456,15.844502], ['1008',48.069396,15.844302]] },
-  { titel:'Wiese', standort:'Böschung 1', stecknadel:false, baeume:[['1009',48.069618,15.844869], ['1010',48.069635,15.844921], ['1004',48.069537,15.844907], ['1003',48.069453,15.844972], ['1002',48.069276,15.845047], ['1005',48.069249,15.845268], ['1001',48.06928,15.844796], ['1006',48.069373,15.84472], ['1007',48.06927,15.844629]] }
+  { titel:'Weg 1, untere Reihe', standort:'Weg1 Unten', stecknadel:true, baeume:[['704',48.0701,15.843916], ['727',48.070134,15.843969], ['719',48.070167,15.844008], ['720',48.070197,15.844053], ['726',48.070231,15.844108], ['709',48.070268,15.844167], ['875',48.070309,15.844223], ['874',48.070343,15.844277]] },
+  { titel:'Weg 2, Westende', standort:'Weg2 Oben', stecknadel:false, baeume:[['705',48.070485,15.843251], ['745',48.070497,15.843425], ['732',48.070561,15.843411], ['623',48.070547,15.843323]] },
+  { titel:'Garten beim Haus', standort:'', stecknadel:false, baeume:[['2',48.069508,15.844206], ['955',48.069566,15.844296], ['953',48.069579,15.844322], ['945',48.069544,15.844363], ['921',48.069557,15.844399], ['939',48.069605,15.844382], ['940',48.069591,15.844391], ['957',48.069621,15.84439], ['920',48.069567,15.844431], ['923',48.06958,15.844468], ['922',48.069594,15.844506], ['846',48.069645,15.844548], ['845',48.06965,15.844604], ['8',48.069604,15.844556], ['9',48.069615,15.844612]] },
+  { titel:'Böschung unter dem Garten', standort:'Böschung 3', stecknadel:false, baeume:[['16',48.069523,15.844676], ['18',48.069447,15.844508], ['1008',48.069383,15.844318]] },
+  { titel:'Wiese', standort:'Böschung 1', stecknadel:false, baeume:[['1009',48.069622,15.844872], ['1010',48.069641,15.844925], ['1004',48.069537,15.844913], ['1003',48.06945,15.844982], ['1002',48.069267,15.845066], ['1005',48.069242,15.845287], ['1001',48.069267,15.844816], ['1006',48.069363,15.844732], ['1007',48.069255,15.844652]] }
 ];
 const PRUEF_FOTO_NUMMERN = new Map(PRUEF_FOTO_BEREICHE.flatMap(gruppe=> gruppe.baeume.map(([nr, lat, lng])=>
   [pruefNummer(nr), { nr, lat, lng, gruppe }])));

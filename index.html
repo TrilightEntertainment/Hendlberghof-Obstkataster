@@ -424,6 +424,12 @@
   .lp-filter select{flex:1;min-width:0;}
   .kp-huelle{background:none;border:none;}
   .kp{display:block;width:14px;height:14px;margin:4px;border-radius:50%;box-sizing:border-box;background:var(--kp);border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.45);transition:transform .3s ease;}
+  .kp-nr{display:none;}
+  .lp-nah .kp{display:flex;align-items:center;justify-content:center;width:30px;height:30px;margin:-4px;border:2px solid var(--stroh);background:rgba(40,54,42,.6);box-shadow:0 0 0 1px rgba(40,54,42,.35);}
+  .lp-nah .kp.ungefaehr{background:rgba(40,54,42,.35);border:2px dashed var(--stroh);box-shadow:none;}
+  .lp-nah .kp.frei{background:transparent;border-style:dashed;}
+  .lp-nah .kp-nr{display:block;color:#F1EDE2;font:600 .66rem 'DM Sans',sans-serif;white-space:nowrap;}
+  .lp-nah .kp.selected{transform:scale(1.2);outline:2px solid #F1EDE2;}
   .kp.frei{background:rgba(255,255,255,.2);border:2px dashed var(--stroh);box-shadow:0 0 0 1px rgba(40,54,42,.7);}
   .kat-frueher{padding:8px 0;border-top:1px solid var(--rand);}
   .kat-frueher-titel{font-size:.75rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-top:12px;}
@@ -541,6 +547,11 @@
   .kat-baum{display:flex;align-items:center;gap:10px;width:100%;min-height:44px;padding:6px 0;border:none;background:none;cursor:pointer;text-align:left;font:inherit;}
   .kat-liste>.kat-baum+.kat-baum{border-top:1px solid var(--rand);}
   .kat-id{flex:0 0 auto;min-width:44px;border:1px solid var(--stroh);border-radius:6px;padding:2px 6px;text-align:center;font-size:.82rem;color:var(--waldrand);}
+  .kat-baum.kat-karte{background:var(--card-bg);border:1px solid var(--rand);border-radius:12px;padding:10px 12px;margin:6px 0;}
+  .kat-baum.kat-karte.mit-art{border-left-width:3px;}
+  .kat-liste>.kat-karte+.kat-karte,.kat-sorte>.kat-karte+.kat-karte,.kat-std-liste>.kat-karte+.kat-karte{border-top:1px solid var(--rand);}
+  .kat-liste>.kat-zeile:has(.kat-karte)+.kat-zeile,.kat-sorte>.kat-zeile:has(.kat-karte)+.kat-zeile{border-top:none;}
+  .kat-baum-sorte{display:block;font-family:Georgia,serif;font-size:1rem;color:var(--ackerde);}
   .kat-baum-text{flex:1;min-width:0;font-size:.84rem;color:var(--muted);}
   /* Stecknadel zum Setzen (v137): goldener Rahmen, überall gleich */
   .kat-zeile{display:flex;align-items:center;gap:8px;}
@@ -1098,6 +1109,7 @@ Keine Internetverbindung — Offline-Modus
       </div>
       <button class="btn secondary" id="btn-gps-place" title="Aktuelle GPS-Position für den gewählten Baum übernehmen">Per GPS setzen</button>
       <button class="btn secondary" id="btn-karte-bearbeiten" onclick="kbStart()" style="display:none;">Karte bearbeiten</button>
+      <button class="btn secondary" id="btn-swale" onclick="swaleNachziehen()" style="display:none;"></button>
       <span id="place-status" style="font-size:.85rem;color:var(--muted);"></span>
     </div>
     <div class="map-wrap" id="map-wrap">
@@ -1524,10 +1536,10 @@ Keine Internetverbindung — Offline-Modus
 
 <!-- Aus einem einzelnen Script-Block herausgeloest (F6). Reihenfolge ist
      bindend: Ueber Dateigrenzen hinweg gibt es kein Hoisting mehr. -->
-<script src="js/kern.js?v=142"></script>
-<script src="js/kataster.js?v=142"></script>
-<script src="js/lageplan.js?v=142"></script>
-<script src="js/start.js?v=142"></script>
+<script src="js/kern.js?v=143"></script>
+<script src="js/kataster.js?v=143"></script>
+<script src="js/lageplan.js?v=143"></script>
+<script src="js/start.js?v=143"></script>
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-app.js";
@@ -1694,10 +1706,10 @@ Keine Internetverbindung — Offline-Modus
     });
   }
 </script>
-<script src="js/berater.js?v=142"></script>
-<script src="js/shop.js?v=142"></script>
-<script src="js/konfigurator.js?v=142"></script>
-<script src="js/pruefung.js?v=142"></script>
-<script src="js/baumfinder.js?v=142"></script>
+<script src="js/berater.js?v=143"></script>
+<script src="js/shop.js?v=143"></script>
+<script src="js/konfigurator.js?v=143"></script>
+<script src="js/pruefung.js?v=143"></script>
+<script src="js/baumfinder.js?v=143"></script>
 </body>
 </html>

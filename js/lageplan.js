@@ -313,7 +313,7 @@ const EBENEN_KEY = 'hendlberghof_kartenebenen';
 const FOTO_GRENZEN = [[48.06945, 15.84287], [48.07116, 15.84452]];
 let _ebenen = null;
 let _ebenenOffen = false;
-const _ebenenWahl = {grund: 'hof', foto: true, fotoDeckkraft: 85, bestand: true, planung: false, hoehen: false, baeume: true};
+const _ebenenWahl = {grund: 'hof', foto: true, fotoDeckkraft: 85, bestand: true, konzept: true, planung: false, hoehen: false, baeume: true};
 let _hoehenEbene = null;
 let _hoehenPromise = null;
 try { Object.assign(_ebenenWahl, JSON.parse(localStorage.getItem(EBENEN_KEY) || '{}')); } catch(e){}
@@ -380,7 +380,8 @@ function renderEbenenKnopf(){
       ${haken('foto', 'Foto mit Reihen (ca. 2024)')}
       <label class="lp-ebenen-regler">Deckkraft<input type="range" min="0" max="100" step="5" value="${w.fotoDeckkraft}" oninput="ebeneSetzen('fotoDeckkraft', +this.value)"${w.foto ? '' : ' disabled'}></label>
       ${haken('bestand', 'Wege &amp; Swale')}
-      ${haken('planung', 'Konzeptplan 2020')}
+      ${haken('konzept', 'Mein Konzept')}
+      ${haken('planung', 'Konzeptplan 2020 (Vorlage)')}
       ${haken('hoehen', 'Höhenlinien (5 m)')}
       ${haken('baeume', 'Bäume')}
     </div>`;
@@ -396,7 +397,7 @@ function ebeneSetzen(key, wert){
   ebenenMerken();
   if(key === 'grund' || key === 'foto' || key === 'fotoDeckkraft' || key === 'hoehen') ebenenAnwenden();
   if(key === 'foto'){ const r = document.querySelector('.lp-ebenen-regler input'); if(r) r.disabled = !wert; }
-  if(key === 'bestand' || key === 'planung'){
+  if(key === 'bestand' || key === 'konzept' || key === 'planung'){
     if(_flaecheAktiv){ const o = kartenObjekt(_flaecheAktiv); if(o && !_ebenenWahl[o.ebene]) objektMarkieren(null); }
     zeichneKarte();
     renderLageFilter();
@@ -435,7 +436,12 @@ function initSatMap(){
     }))().addTo(satMap);
     renderEbenenKnopf();
     /* Aus der Ferne kleinere Punkte, sonst decken sich die Reihen zu. */
-    const fernKlasse = () => satMap.getContainer().classList.toggle('lp-fern', satMap.getZoom() < 19);
+    /* Aus der Nähe goldener Ring mit Nummer (v143), aus der Ferne Punkt in der Farbe der Obstart. */
+    const fernKlasse = () => {
+      const c = satMap.getContainer(), z = satMap.getZoom();
+      c.classList.toggle('lp-fern', z < 19);
+      c.classList.toggle('lp-nah', z >= 19.5);
+    };
     satMap.on('zoomend', fernKlasse);
     fernKlasse();
     satMap.on('click', function(e){
@@ -479,7 +485,7 @@ const KARTEN_ART_FARBEN = Object.assign({
 
 function kartenObjektAusState(id, u){
   if(!u || typeof u !== 'object') return null;
-  try { return {id, name: u.name || 'Ohne Namen', art: u.art || 'Sonstiges', ebene: u.ebene === 'planung' ? 'planung' : 'bestand', typ: u.typ === 'linie' ? 'linie' : 'flaeche', geo: JSON.parse(u.geo)}; }
+  try { return {id, name: u.name || 'Ohne Namen', art: u.art || 'Sonstiges', ebene: ['planung', 'konzept'].includes(u.ebene) ? u.ebene : 'bestand', typ: u.typ === 'linie' ? 'linie' : 'flaeche', geo: JSON.parse(u.geo)}; }
   catch(e){ return null; }
 }
 
@@ -524,15 +530,26 @@ function objektGroesse(o){
   return `${Math.round(summe).toLocaleString('de-AT')} m²`;
 }
 
+/* Eigene Arten im Konzept: Jede Art bekommt von selbst eine feste, ruhige Farbe. */
+const KARTEN_EIGENE_FARBEN = ['#D9B458', '#8FBF7A', '#7FB3C8', '#C99A7A', '#B59AC8', '#A8B86A', '#D08A8A', '#7FC4A8'];
+function kartenArtFarbe(art){
+  if(KARTEN_ART_FARBEN[art]) return KARTEN_ART_FARBEN[art];
+  let h = 0;
+  for(const z of String(art || '')) h = (h * 31 + z.charCodeAt(0)) >>> 0;
+  return KARTEN_EIGENE_FARBEN[h % KARTEN_EIGENE_FARBEN.length];
+}
 function objektStil(o, aktiv){
-  const farbe = KARTEN_ART_FARBEN[o.art] || '#FFFFFF';
-  const plan = o.ebene === 'planung';
+  const farbe = o.ebene === 'konzept' ? kartenArtFarbe(o.art) : (KARTEN_ART_FARBEN[o.art] || '#FFFFFF');
+  /* Der Plan von 2020 ist nur noch Vorlage zum Nachzeichnen: blass und nicht antippbar. */
+  if(o.ebene === 'planung'){
+    return o.typ === 'linie' ? {color: farbe, weight: 2, opacity: .35, dashArray: '4 4', interactive: false, fill: false}
+      : {color: farbe, weight: 1, opacity: .4, dashArray: '4 3', fillOpacity: 0, interactive: false};
+  }
   if(o.typ === 'linie'){
     if(o.art === 'Grundstücksgrenze') return {color: farbe, weight: aktiv ? 3 : 1.5, opacity: 1, dashArray: '6 5', fill: false};
-    return {color: farbe, weight: aktiv ? 6 : 3.5, opacity: plan ? .6 : .95, dashArray: plan ? '4 4' : null, lineCap: 'round', lineJoin: 'round', fill: false};
+    return {color: farbe, weight: aktiv ? 6 : 3.5, opacity: .95, lineCap: 'round', lineJoin: 'round', fill: false};
   }
-  return {color: farbe, weight: aktiv ? 2.5 : (plan ? 1 : 1.6), opacity: plan ? .75 : .95, dashArray: plan ? '4 3' : null,
-          fillColor: farbe, fillOpacity: aktiv ? .22 : (plan ? .04 : .1)};
+  return {color: farbe, weight: aktiv ? 2.5 : 1.6, opacity: .95, fillColor: farbe, fillOpacity: aktiv ? .22 : .1};
 }
 
 let _kartenRenderer = null;
@@ -543,7 +560,7 @@ function zeichneKarte(){
   _flaechenEbene = L.layerGroup().addTo(satMap);
   const objekte = kartenObjekte().filter(o => _ebenenWahl[o.ebene] || (_kb && _kb.id === o.id));
   /* Planung unten, Flächen vor Linien, damit Wege antippbar bleiben */
-  const rang = o => (o.ebene === 'planung' ? 0 : 2) + (o.typ === 'linie' ? 1 : 0);
+  const rang = o => (o.ebene === 'planung' ? 0 : o.ebene === 'konzept' ? 1 : 2) * 2 + (o.typ === 'linie' ? 1 : 0);
   objekte.sort((a, b) => rang(a) - rang(b)).forEach(o => {
     const stil = Object.assign({renderer: _kartenRenderer}, objektStil(o, o.id === _flaecheAktiv));
     const l = o.typ === 'linie' ? L.polyline(o.geo, stil) : L.polygon(o.geo, stil);
@@ -578,7 +595,7 @@ function objektMarkieren(id, wo, zoomen){
   if(l._objekt.typ !== 'linie') l.bringToFront();
   const o = l._objekt;
   if(zoomen) satMap.fitBounds(l.getBounds(), {padding: [24, 24], maxZoom: 21});
-  const herkunft = o.ebene === 'planung' ? 'Konzeptplan 2020' : 'Bestand';
+  const herkunft = o.ebene === 'konzept' ? 'Mein Konzept' : 'Bestand';
   L.popup({closeButton: false, className: 'lp-popup', autoPanPadding: [16, 16]})
     .setLatLng(wo || l.getBounds().getCenter())
     .setContent(`<div class="lp-fl-name">${escHtml(o.name)}</div><div class="lp-fl-info">${escHtml(o.art)} · ${objektGroesse(o)}</div><div class="lp-fl-info">${herkunft}</div>`)
@@ -605,10 +622,10 @@ function renderLageFilter(){
     const opt = o => `<option value="${escAttr(o.id)}">${escHtml(o.name)}</option>`;
     const alle = kartenObjekte().filter(o => o.art !== 'Grundstücksgrenze');
     const bestand = _ebenenWahl.bestand ? sortiert(alle.filter(o => o.ebene === 'bestand')) : [];
-    const planung = _ebenenWahl.planung ? sortiert(alle.filter(o => o.ebene === 'planung')) : [];
+    const konzept = _ebenenWahl.konzept ? sortiert(alle.filter(o => o.ebene === 'konzept')) : [];
     bereich.innerHTML = `<option value="">Ganzer Hof</option>
       ${bestand.length ? `<optgroup label="Bestand">${bestand.map(opt).join('')}</optgroup>` : ''}
-      ${planung.length ? `<optgroup label="Konzeptplan 2020">${planung.map(opt).join('')}</optgroup>` : ''}`;
+      ${konzept.length ? `<optgroup label="Mein Konzept">${konzept.map(opt).join('')}</optgroup>` : ''}`;
     bereich.value = _flaecheAktiv || '';
   }
   const art = document.getElementById('lp-obstart');
@@ -618,6 +635,67 @@ function renderLageFilter(){
     art.innerHTML = `<option value="">Alle Obstarten</option>${arten.map(a => `<option value="${escAttr(a)}">${escHtml(a)}</option>`).join('')}`;
     art.value = arten.includes(wert) ? wert : '';
   }
+}
+
+/* Swale-Reihen nachziehen (v143, Volkmar 30.10.2026): Der Swale liegt auf einer
+   Höhenlinie, die Reihen waren mit dem alten Foto schräg eingezeichnet. Je Baum
+   [alt Breite, alt Länge, neu Breite, neu Länge], berechnet aus Abstand und Lage zur
+   Swale-Linie. Die Stecknadeln liegen in der Cloud, deshalb tippt der Admin einmal.
+   Wer schon anders steht, bleibt: Es zählt nur, was noch am alten Platz ist. */
+const SWALE_NACHZIEHEN = {
+  '615':[48.0704139,15.8439025,48.070417,15.8439064],
+  '620':[48.0704045,15.8434673,48.0703222,15.8435069],
+  '683':[48.0703906,15.8434144,48.0703006,15.8434688],
+  '688':[48.0703117,15.8433929,48.0702232,15.843457],
+  '695':[48.0703834,15.8437577,48.070367,15.8437856],
+  '702':[48.0703816,15.8433607,48.0702907,15.8434169],
+  '706':[48.0703493,15.8431837,48.070223,15.8432525],
+  '710':[48.0704550,15.8437809,48.0704402,15.8437803],
+  '713':[48.0704712,15.8438811,48.0704731,15.8438777],
+  '714':[48.0703422,15.8435351,48.0702792,15.8436009],
+  '716':[48.0703691,15.8433017,48.0702711,15.8433504],
+  '723':[48.0703583,15.8436155,48.0703145,15.8436683],
+  '725':[48.0703009,15.8433393,48.0702134,15.8434165],
+  '728':[48.0703691,15.8436880,48.0703413,15.843728],
+  '729':[48.0703941,15.8438113,48.0703857,15.8438308],
+  '734':[48.0702902,15.8432668,48.0701881,15.8433609],
+  '738':[48.0704313,15.8436316,48.0703865,15.8436433],
+  '760':[48.0703242,15.8434626,48.0702445,15.8435389],
+  '766':[48.0704403,15.8437067,48.0704125,15.8437124],
+  '767':[48.0704282,15.8439803,48.0704311,15.843978],
+  '809':[48.0704188,15.8435518,48.0703546,15.8435755],
+  '842':[48.0702830,15.8432159,48.0701671,15.8433146],
+  '849':[48.0704891,15.8439508,48.0704925,15.8439506],
+  '865':[48.0703583,15.8432293,48.0702405,15.8432866]
+};
+function swaleOffen(){
+  const pos = state.satPositions || {};
+  return Object.keys(SWALE_NACHZIEHEN).filter(id => {
+    const p = pos[id], z = SWALE_NACHZIEHEN[id];
+    /* Rechts ist der Weg kürzer als die Toleranz, deshalb zählt das Ziel extra. */
+    return p && getTree(id) && !(p.lat === z[2] && p.lng === z[3]) && Math.abs(p.lat - z[0]) < 0.000005 && Math.abs(p.lng - z[1]) < 0.000007;
+  });
+}
+function swaleKnopfZeigen(){
+  const k = document.getElementById('btn-swale');
+  if(!k) return;
+  const offen = isAdmin() ? swaleOffen() : [];
+  k.style.display = offen.length ? '' : 'none';
+  k.textContent = `${offen.length} Swale-Bäume nachziehen`;
+}
+function swaleNachziehen(){
+  const offen = swaleOffen();
+  if(!offen.length) return;
+  if(!confirm(`${offen.length} Stecknadeln der Reihen Swale Oben und Unten auf die neue Swale-Linie verschieben?\n\nAm linken Ende sind das bis zu 15 m, am rechten fast nichts.`)) return;
+  const vorher = {};
+  offen.forEach(id => {
+    vorher[id] = state.satPositions[id];
+    const z = SWALE_NACHZIEHEN[id];
+    state.satPositions[id] = {lat: z[2], lng: z[3]};
+  });
+  saveState();
+  renderSatMarkers();
+  setUndo('swale', {vorher}, `${offen.length} Bäume nachgezogen — `);
 }
 
 let _satErstmals = true;
@@ -638,7 +716,7 @@ function renderSatMarkers(){
     if(filter && t.frucht !== filter) return;
     const id = t.id;
     const farbe = KARTEN_FARBEN[(t.frucht||'').toLowerCase()] || '#B2543A';
-    const icon = L.divIcon({className: 'kp-huelle', html: `<span class="kp${pos.ungefaehr ? ' ungefaehr' : ''}" style="--kp:${farbe}"></span>`, iconSize: [22, 22], iconAnchor: [11, 11]});
+    const icon = L.divIcon({className: 'kp-huelle', html: `<span class="kp${pos.ungefaehr ? ' ungefaehr' : ''}" style="--kp:${farbe}"><span class="kp-nr">${escHtml(id)}</span></span>`, iconSize: [22, 22], iconAnchor: [11, 11]});
     const m = L.marker([pos.lat, pos.lng], {icon, draggable: darfZiehen, keyboard: false});
     m.bindTooltip(`${escHtml(id)} — ${escHtml(t.sorte || '')}${pos.ungefaehr ? ' · Lage ungefähr' : ''}`, {direction: 'top', offset: [0, -8]});
     m.on('dragstart', ()=>{ _dragMoved = true; });
@@ -665,13 +743,14 @@ function renderSatMarkers(){
   const frei = isEditMode() && zeigen && !filter ? freiePlaetze().filter(id => kartenPos(id)) : [];
   frei.forEach(id => {
     const pos = kartenPos(id);
-    const icon = L.divIcon({className: 'kp-huelle', html: '<span class="kp frei"></span>', iconSize: [22, 22], iconAnchor: [11, 11]});
+    const icon = L.divIcon({className: 'kp-huelle', html: `<span class="kp frei"><span class="kp-nr">${escHtml(id)}</span></span>`, iconSize: [22, 22], iconAnchor: [11, 11]});
     const m = L.marker([pos.lat, pos.lng], {icon, keyboard: false});
     m.bindTooltip(`${escHtml(id)} — Platz frei`, {direction: 'top', offset: [0, -8]});
     m.on('click', () => { if(!placeMode && !_kb) openPlatzModal(id); });
     m.addTo(satMap);
     satMarkers.push(m);
   });
+  swaleKnopfZeigen();
   const legendeFrei = document.getElementById('lp-leg-frei');
   if(legendeFrei) legendeFrei.hidden = !frei.length;
   if(_satErstmals && FLAECHEN){
@@ -834,11 +913,12 @@ function kbLeiste(){
   } else if(k.modus === 'objekt'){
     const o = kartenObjekt(k.id) || k.neu;
     const namen = [...new Set(kartenObjekte().map(x => x.name))].sort((a, b) => a.localeCompare(b, 'de'));
-    const arten = [...new Set(Object.keys(KARTEN_ART_FARBEN).concat(kartenObjekte().map(x => x.art)))].sort((a, b) => a.localeCompare(b, 'de'));
+    /* Vorschläge nur aus Eigenem: Die Arten des alten Plans sollen nicht weiterleben. */
+    const arten = [...new Set(kartenObjekte().filter(x => x.ebene !== 'planung').map(x => x.art))].sort((a, b) => a.localeCompare(b, 'de'));
     box.innerHTML = `<div class="lp-bearb-form">
         <label>Name<input type="text" id="kb-name" list="kb-namen" value="${escAttr(o.name)}" autocomplete="off"></label>
         <label>Art<input type="text" id="kb-art" list="kb-arten" value="${escAttr(o.art)}" autocomplete="off"></label>
-        <label>Ebene<select id="kb-ebene"><option value="bestand"${o.ebene === 'bestand' ? ' selected' : ''}>Bestand</option><option value="planung"${o.ebene === 'planung' ? ' selected' : ''}>Planung</option></select></label>
+        <label>Ebene<select id="kb-ebene"><option value="konzept"${o.ebene === 'konzept' ? ' selected' : ''}>Mein Konzept</option><option value="bestand"${o.ebene === 'bestand' ? ' selected' : ''}>Bestand</option></select></label>
         <datalist id="kb-namen">${namen.map(n => `<option value="${escAttr(n)}">`).join('')}</datalist>
         <datalist id="kb-arten">${arten.map(n => `<option value="${escAttr(n)}">`).join('')}</datalist>
       </div>
@@ -880,10 +960,12 @@ function kbErstellt(e){
   kbNeuesObjekt(typ, geo);
 }
 
+/* Beim Zeichnen bleiben Ebene und Art vom letzten Objekt: Meist kommen mehrere gleiche. */
+let _kbLetzteEbene = 'konzept', _kbLetzteArt = '';
 function kbNeuesObjekt(typ, geo){
   const id = `k${Date.now().toString(36)}`;
   _kb.modus = 'objekt'; _kb.id = id;
-  _kb.neu = {id, name: typ === 'linie' ? 'Neue Linie' : 'Neue Fläche', art: typ === 'linie' ? 'Weg' : 'Sonstiges', ebene: 'bestand', typ, geo};
+  _kb.neu = {id, name: typ === 'linie' ? 'Neue Linie' : 'Neue Fläche', art: _kbLetzteArt || '', ebene: _kbLetzteEbene, typ, geo};
   /* Erst beim Speichern in den Zustand; bis dahin nur auf der Karte */
   const stil = Object.assign({renderer: _kartenRenderer}, objektStil(_kb.neu, true));
   const l = typ === 'linie' ? L.polyline(geo, stil) : L.polygon(geo, stil);
@@ -923,7 +1005,9 @@ function kbObjektSpeichern(){
   const geo = _kbGeoAusLayer(l, alt.typ);
   if(alt.typ === 'linie' ? geo.length < 2 : (!geo[0] || geo[0].length < 3)){ showToast(alt.typ === 'linie' ? 'Eine Linie braucht mindestens 2 Punkte.' : 'Eine Fläche braucht mindestens 3 Ecken.', 'error'); return; }
   if(!state.karte) state.karte = {};
-  state.karte[k.id] = {name, art: art || 'Sonstiges', ebene: document.getElementById('kb-ebene').value, typ: alt.typ, geo: JSON.stringify(geo), stand: new Date().toISOString().slice(0, 10)};
+  _kbLetzteEbene = document.getElementById('kb-ebene').value;
+  _kbLetzteArt = art;
+  state.karte[k.id] = {name, art: art || 'Sonstiges', ebene: _kbLetzteEbene, typ: alt.typ, geo: JSON.stringify(geo), stand: new Date().toISOString().slice(0, 10)};
   saveState();
   if(l.pm) l.pm.disable();
   showToast(`${name} gespeichert`, 'success');

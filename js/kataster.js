@@ -249,7 +249,7 @@ function renderKatFreiePlaetze(){
     <div class="kat-std-liste">${ids.map(id=>{
       const f = state.fruehereBaeume[id][0];
       const text = [(f.baum || {}).sorte, f.jahr ? `abgestorben ${f.jahr}` : ''].filter(Boolean).map(escHtml).join(' · ');
-      return `<button type="button" class="kat-baum" onclick="openPlatzModal('${escAttr(id)}')"><span class="kat-id">${escHtml(id)}</span><span class="kat-baum-text">${text}</span>${SVG_WEITER}</button>`;
+      return `<button type="button" class="kat-baum kat-karte" onclick="openPlatzModal('${escAttr(id)}')"><span class="kat-id">${escHtml(id)}</span><span class="kat-baum-text">${text}</span>${SVG_WEITER}</button>`;
     }).join('') || '<div class="empty">Kein Platz frei.</div>'}</div>`;
 }
 function renderFruehereBaeume(id){
@@ -288,12 +288,16 @@ function katWuchsWaehlen(w){ _katWuchs = w || ''; renderBaumTable(); }
 const SVG_WEITER = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><polyline points="9 6 15 12 9 18"/></svg>`;
 const SVG_ZURUECK = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><polyline points="15 6 9 12 15 18"/></svg>`;
 
+/* Baumkarte im Stil der Prüfung (v143): goldene Nummer, Sorte in Serifen, Angaben darunter.
+   Der Farbstreifen der Obstart nur in der Suche: Sonst ist die Liste schon nach Art sortiert. */
 function katBaumZeile(t, mitSorte, setzen){
-  const teile = [mitSorte ? t.sorte : '', mitSorte ? t.frucht : '', t.standort_zeile,
-    t.pflueckzeitpunkt || t.pflueck_reifezeit ? `Pflücken ${kartePflueckText(t.pflueckzeitpunkt || t.pflueck_reifezeit)}` : '']
-    .filter(Boolean).map(escHtml).join(' · ');
-  const zeile = `<button type="button" class="kat-baum" onclick="openBaumModal('${escAttr(t.id)}')">
-      <span class="kat-id">${t.id_placeholder ? '–' : escHtml(t.id)}</span><span class="kat-baum-text">${teile || '<i>keine Angaben</i>'}</span>${setzen ? '' : SVG_WEITER}
+  const pflueck = t.pflueckzeitpunkt || t.pflueck_reifezeit;
+  const angaben = [mitSorte ? t.frucht : '', t.unterlage, t.ausgepflanzt ? `gepflanzt ${t.ausgepflanzt}` : '', t.standort_zeile,
+    pflueck ? `Pflücken ${kartePflueckText(pflueck)}` : ''].filter(Boolean).map(escHtml).join(' · ');
+  const suche = !!(document.getElementById('baum-search') || {}).value;
+  const farbe = suche && KARTEN_FARBEN[(t.frucht || '').toLowerCase()];
+  const zeile = `<button type="button" class="kat-baum kat-karte${farbe ? ' mit-art' : ''}"${farbe ? ` style="border-left-color:${farbe}"` : ''} onclick="openBaumModal('${escAttr(t.id)}')">
+      <span class="kat-id">${t.id_placeholder ? '–' : escHtml(t.id)}</span><span class="kat-baum-text">${mitSorte && t.sorte ? `<span class="kat-baum-sorte">${escHtml(t.sorte)}</span>` : ''}${angaben || '<i>keine Angaben</i>'}</span>${setzen ? '' : SVG_WEITER}
     </button>`;
   return setzen ? `<div class="kat-zeile">${zeile}${katNadelKnopf(t.id, true)}</div>` : zeile;
 }

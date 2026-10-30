@@ -117,6 +117,9 @@ function doUndo(){
       else state.baumEdits[k] = data.vorher[k];
     });
     saveState(); renderBaumTable();
+  } else if(type==='swale'){
+    Object.assign(state.satPositions, data.vorher);
+    saveState(); renderSatMarkers();
   } else if(type==='baumTot'){
     state.fruehereBaeume[data.id] = state.fruehereBaeume[data.id].slice(1);
     if(data.custom) state.customTrees.push(data.custom);
