@@ -868,10 +868,11 @@
 #tab-pruefung .pr-balken{height:3px;background:var(--border);border-radius:2px;margin:8px 0;overflow:hidden;}
 #tab-pruefung .pr-balken div{height:100%;background:var(--waldrand);}
 #tab-pruefung .pr-zahlen{display:flex;flex-wrap:wrap;gap:6px 12px;font-size:.75rem;color:var(--muted);}
-#tab-pruefung .pr-scan{position:sticky;top:0;z-index:5;background:var(--kalkstein);padding:8px 0 10px;}
+#tab-pruefung .pr-scan{position:sticky;top:0;z-index:5;background:var(--kalkstein);padding:6px 0;}
+#tab-pruefung .pr-karte{scroll-margin-top:70px;}
 #tab-pruefung .pr-scan label,#tab-pruefung .pr-zeile-label{display:block;font-size:.7rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;}
 #tab-pruefung .pr-scan-feld{display:flex;gap:8px;}
-#tab-pruefung .pr-scan-feld input{flex:1;min-width:0;font-size:22px;letter-spacing:1px;padding:10px 14px;background:var(--card-bg);border-color:var(--waldrand);}
+#tab-pruefung .pr-scan-feld input{flex:1;min-width:0;font-size:18px;letter-spacing:.5px;padding:7px 12px;background:var(--card-bg);border-color:var(--waldrand);}
 #tab-pruefung .pr-scan-feld .btn{min-width:48px;font-size:1rem;}
 #tab-pruefung .pr-scan-hinweis{font-size:.75rem;color:var(--muted);margin-top:5px;}
 #tab-pruefung .pr-filter{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;}
@@ -879,10 +880,6 @@
 #tab-pruefung .pr-trefferkopf{font-size:.82rem;color:var(--muted);margin:2px 0 10px;}
 #tab-pruefung .pr-keintreffer{display:flex;flex-direction:column;align-items:flex-start;gap:8px;color:var(--text);}
 #tab-pruefung .pr-liste{display:flex;flex-direction:column;gap:8px;}
-#tab-pruefung .pr-runde-titel{font-family:Georgia,serif;font-weight:400;font-size:1rem;color:var(--waldrand);margin:12px 0 0;}
-#tab-pruefung .pr-runde-nr{display:flex;flex-direction:column;gap:inherit;scroll-margin-top:140px;}
-#tab-pruefung .pr-runde-fertig{margin-top:14px;border-top:1px solid var(--border);padding-top:10px;}
-#tab-pruefung .pr-runde-fertig summary{cursor:pointer;font-size:.88rem;color:var(--muted);min-height:32px;}
 #tab-pruefung .pr-nichts{font-size:.88rem;color:var(--muted);font-style:italic;padding:12px 0;}
 #tab-pruefung .pr-karte{background:var(--card-bg);border:1px solid var(--border);border-left:3px solid var(--muted);border-radius:12px;padding:10px 14px;}
 #tab-pruefung .pr-karte[data-art="apfel"]{border-left-color:#dc2626;}
@@ -1216,13 +1213,11 @@ Keine Internetverbindung — Offline-Modus
     <div class="pr-rahmen">
       <div id="pr-oben"></div>
       <div class="pr-scan" id="pr-scan" style="display:none;">
-        <label for="pr-nummer">Etikett-Nr.</label>
         <div class="pr-scan-feld">
           <input type="text" id="pr-nummer" autocomplete="off" autocorrect="off" autocapitalize="characters"
-                 spellcheck="false" enterkeyhint="search" placeholder="tippen oder scannen">
+                 spellcheck="false" enterkeyhint="search" aria-label="Etikett-Nummer" placeholder="Etikett tippen oder scannen">
           <button type="button" class="btn secondary" data-pr="nummer-leeren" aria-label="Nummer löschen">✕</button>
         </div>
-        <div class="pr-scan-hinweis">Scannen: ins Feld tippen → „Text scannen“ → Kamera aufs Etikett.</div>
       </div>
       <div id="pruefung-inhalt"></div>
     </div>
@@ -1520,10 +1515,10 @@ Keine Internetverbindung — Offline-Modus
 
 <!-- Aus einem einzelnen Script-Block herausgeloest (F6). Reihenfolge ist
      bindend: Ueber Dateigrenzen hinweg gibt es kein Hoisting mehr. -->
-<script src="js/kern.js?v=140"></script>
-<script src="js/kataster.js?v=140"></script>
-<script src="js/lageplan.js?v=140"></script>
-<script src="js/start.js?v=140"></script>
+<script src="js/kern.js?v=141"></script>
+<script src="js/kataster.js?v=141"></script>
+<script src="js/lageplan.js?v=141"></script>
+<script src="js/start.js?v=141"></script>
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-app.js";
@@ -1690,10 +1685,10 @@ Keine Internetverbindung — Offline-Modus
     });
   }
 </script>
-<script src="js/berater.js?v=140"></script>
-<script src="js/shop.js?v=140"></script>
-<script src="js/konfigurator.js?v=140"></script>
-<script src="js/pruefung.js?v=140"></script>
-<script src="js/baumfinder.js?v=140"></script>
+<script src="js/berater.js?v=141"></script>
+<script src="js/shop.js?v=141"></script>
+<script src="js/konfigurator.js?v=141"></script>
+<script src="js/pruefung.js?v=141"></script>
+<script src="js/baumfinder.js?v=141"></script>
 </body>
 </html>

@@ -678,7 +678,7 @@ function lageMarkerWaehlen(id, blinken){
   el.addEventListener('animationend', () => { el.classList.remove('blink'); el.classList.add('selected'); }, {once: true});
 }
 
-/* Prüfrunde: eine Stelle aus dem Foto zeigen, an der noch kein Baum im Kataster steht. */
+/* Prüfung: eine Stelle aus dem Foto zeigen, an der noch kein Baum im Kataster steht. */
 let _lagePunkt = null;
 function lagePunktWeg(){ if(_lagePunkt){ _lagePunkt.remove(); _lagePunkt = null; } }
 function lagePunktZeigen(lat, lng, text){

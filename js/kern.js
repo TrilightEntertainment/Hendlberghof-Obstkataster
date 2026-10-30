@@ -543,7 +543,7 @@ function getTree(id){ return getTreeMap().get(id); }
    Lageplan“ tippt, bekommt unter der Karte eine Leiste „Zurück zu …“. Sie
    öffnet die Karte wieder und kehrt in den Reiter zurück, aus dem man kam.
    Wer selbst einen anderen Reiter wählt, braucht sie nicht mehr. */
-let _lageplanZurueck = null;   /* null oder { id, tab } oder { liste:true, tab } oder { runde:true, nr, pnr, tab } */
+let _lageplanZurueck = null;   /* null oder { id, tab } oder { liste:true, tab } oder { pruefung:true, nr, pnr, tab } */
 /* Setzliste (v137): Wer aus „Ohne Standort“ kommt, setzt der Reihe nach –
    IDs in der Reihenfolge der Liste, sonst null. Gilt nur im Lageplan. */
 let _setzListe = null;
@@ -602,7 +602,7 @@ function renderLageplanZurueck(){
   const t = _lageplanZurueck.id ? getTree(_lageplanZurueck.id) : null;
   leiste.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><polyline points="15 6 9 12 15 18"/></svg>
     ${_lageplanZurueck.liste ? '<span>Zurück zur Liste <span class="lz-sorte">Ohne Standort</span></span>'
-      : _lageplanZurueck.runde ? `<span>Zurück zur <span class="lz-sorte">Prüfrunde</span> · ${escHtml(String(_lageplanZurueck.nr))}</span>`
+      : _lageplanZurueck.pruefung ? `<span>Zurück zur <span class="lz-sorte">Prüfung</span> · ${escHtml(String(_lageplanZurueck.nr))}</span>`
       : `<span>Zurück zu <span class="lz-sorte">${escHtml((t && t.sorte) || 'Baum')}</span> · ${escHtml(String(_lageplanZurueck.id))}</span>`}`;
 }
 function lageplanZurueck(){
@@ -611,7 +611,7 @@ function lageplanZurueck(){
   _lageplanZurueck = null;
   renderLageplanZurueck();
   if(z.liste){ activateTab(z.tab || 'baumkataster'); katArtWaehlen('__ohne'); return; }
-  if(z.runde){ activateTab(z.tab); pruefRundeZurueck(z.pnr, z.nr); return; }
+  if(z.pruefung){ activateTab(z.tab); pruefFotoZurueck(z.pnr); return; }
   if(z.tab) activateTab(z.tab);
   openBaumModal(z.id);
 }

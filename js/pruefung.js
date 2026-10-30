@@ -97,7 +97,7 @@ const PRUEF_JAHRE = (()=>{ const a = []; for(let j = new Date().getFullYear(); j
    und für eine Stecknadel im Kataster muss sie mindestens STECKNADEL sein. */
 const PRUEF_GPS_GUT = 10, PRUEF_GPS_STECKNADEL = 25, PRUEF_GPS_WARTEN_S = 30;
 
-/* Prüfrunde (v140, Volkmar 30.10.2026): Nummern, die auf dem Foto von ca. 2024
+/* Foto-Bereiche (v140, seit v141 normale Gebiete; Volkmar 30.10.2026): Nummern, die auf dem Foto von ca. 2024
    (assets/images/lageplan.jpg) stehen, aber nicht im Kataster — in der Reihenfolge,
    in der man sie abgeht. Die Lage ist die Kreismitte im Foto, umgerechnet mit dem
    Gummituch aus tools/foto_entzerren.py. In den Reihen ist sie genauer als GPS
@@ -106,16 +106,17 @@ const PRUEF_GPS_GUT = 10, PRUEF_GPS_STECKNADEL = 25, PRUEF_GPS_WARTEN_S = 30;
    Hier stehen bewusst nur Nummern und Lage, beides sieht man auf dem öffentlichen
    Foto. Die Sorten kommen aus der privaten Prüfliste.
    Standort = Vorbelegung beim Bestätigen, in der Karte änderbar. */
-const PRUEF_RUNDE = [
+const PRUEF_FOTO_BEREICHE = [
   { titel:'Weg 1, untere Reihe', standort:'Weg1 Unten', stecknadel:true, baeume:[['704',48.0701,15.843932], ['727',48.070133,15.843982], ['719',48.070167,15.844017], ['720',48.070198,15.844057], ['726',48.070232,15.844104], ['709',48.070268,15.844155], ['875',48.070307,15.844207], ['874',48.070338,15.844261]] },
   { titel:'Weg 2, Westende', standort:'Weg2 Oben', stecknadel:true, baeume:[['705',48.070524,15.843259], ['745',48.070547,15.843414], ['732',48.070593,15.843422], ['623',48.070583,15.843348]] },
   { titel:'Garten beim Haus', standort:'', stecknadel:false, baeume:[['2',48.069516,15.844203], ['955',48.069571,15.844301], ['953',48.069582,15.844328], ['945',48.06955,15.844366], ['921',48.069562,15.844402], ['939',48.069607,15.844389], ['940',48.069594,15.844397], ['957',48.069623,15.844398], ['920',48.069571,15.844435], ['923',48.069583,15.844472], ['922',48.069596,15.84451], ['846',48.069644,15.844554], ['845',48.069648,15.844608], ['8',48.069606,15.844559], ['9',48.069615,15.844614]] },
   { titel:'Böschung unter dem Garten', standort:'Böschung 3', stecknadel:false, baeume:[['16',48.069527,15.844674], ['18',48.069456,15.844502], ['1008',48.069396,15.844302]] },
   { titel:'Wiese', standort:'Böschung 1', stecknadel:false, baeume:[['1009',48.069618,15.844869], ['1010',48.069635,15.844921], ['1004',48.069537,15.844907], ['1003',48.069453,15.844972], ['1002',48.069276,15.845047], ['1005',48.069249,15.845268], ['1001',48.06928,15.844796], ['1006',48.069373,15.84472], ['1007',48.06927,15.844629]] }
 ];
-const PRUEF_RUNDE_NUMMERN = new Map(PRUEF_RUNDE.flatMap(gruppe=> gruppe.baeume.map(([nr, lat, lng])=>
+const PRUEF_FOTO_NUMMERN = new Map(PRUEF_FOTO_BEREICHE.flatMap(gruppe=> gruppe.baeume.map(([nr, lat, lng])=>
   [pruefNummer(nr), { nr, lat, lng, gruppe }])));
-function pruefRundeNummer(e){ return e && e.alt_id ? PRUEF_RUNDE_NUMMERN.get(pruefNummer(e.alt_id)) || null : null; }
+const PRUEF_FOTO_FOLGE = new Map(Array.from(PRUEF_FOTO_NUMMERN.keys()).map((n, i)=> [n, i]));
+function pruefFotoNummer(e){ return e && e.alt_id ? PRUEF_FOTO_NUMMERN.get(pruefNummer(e.alt_id)) || null : null; }
 
 let pruefung = pruefungLeer();
 let pruefOffen = null;          /* P-Nr bzw. F-Id der aufgeklappten Karte */
@@ -124,7 +125,6 @@ let pruefFundForm = null;       /* null oder { etikett } — Formular „Fund oh
 let pruefGpsLaeuft = null;       /* { pnr, watch, timer, bestes, start } während der Messung */
 let pruefSyncWarnung = false;
 let pruefEinzeln = null;        /* P-Nr, die aus „Im Topf“ heraus allein gezeigt wird */
-let pruefRundeAlle = false;     /* Prüfrunde: alle offenen Nummern statt der ersten 10 */
 
 function pruefungLeer(){ return { liste:{}, listeStand:'', listeQuelle:'', ergebnisse:{}, funde:{} }; }
 
@@ -185,7 +185,11 @@ function pruefJetzt(){ return new Date().toISOString(); }
 function pruefStatus(id){ return PRUEF_STATUS.find(s=>s.id===id); }
 function pruefFilter(){
   const vorgabe = { gebiet:'', status:'offen', ansicht:'pruefen', topfBereich:'', topfVerkauf:false };
-  try{ return Object.assign(vorgabe, JSON.parse(localStorage.getItem(PRUEF_FILTER_KEY) || '{}')); }
+  try{
+    const f = Object.assign(vorgabe, JSON.parse(localStorage.getItem(PRUEF_FILTER_KEY) || '{}'));
+    if(f.ansicht === 'runde') f.ansicht = 'pruefen';   /* eigene Ansicht bis v140 */
+    return f;
+  }
   catch(e){ return vorgabe; }
 }
 function pruefFilterSetzen(teil){
@@ -207,7 +211,7 @@ function pruefDatum(iso){
   const d = new Date(iso);
   return `${d.getDate()}. ${d.getMonth()+1}. ${d.getFullYear()}`;
 }
-function pruefStandardOrt(e){ return !pruefRundeNummer(e) && PRUEF_BEET_GEBIETE.includes(e.gebiet) ? 'beet' : 'ausgepflanzt'; }
+function pruefStandardOrt(e){ return !pruefFotoNummer(e) && PRUEF_BEET_GEBIETE.includes(e.gebiet) ? 'beet' : 'ausgepflanzt'; }
 
 function pruefUnterlageNorm(v){
   const t = String(v || '').trim();
@@ -248,13 +252,26 @@ function pruefAlleEintraege(){
   const liste = Object.values(pruefung.liste).slice().sort((a, b)=> (a.folge||0) - (b.folge||0));
   const funde = Object.values(pruefung.funde || {}).filter(f=> !f.geloescht)
     .map(f=> Object.assign({ fund:true, pnr:f.id, alt_id:f.etikett, warnungen:[], plan:[] }, f));
+  const echte = liste.concat(funde);
+  /* Nummern vom Foto ohne jeden Eintrag (745, 1010) brauchen trotzdem eine Karte. */
+  const belegt = new Set(echte.filter(e=> e.alt_id).map(e=> pruefNummer(e.alt_id)));
+  const platzhalter = [];
+  PRUEF_FOTO_NUMMERN.forEach((z, n)=>{
+    if(!belegt.has(n) && !getTree(n)) platzhalter.push({ platzhalter:true, pnr:`FOTO-${z.nr}`, alt_id:z.nr, gebiet:z.gruppe.titel, sorte:'', frucht:'', warnungen:[], plan:[] });
+  });
   const gebiete = pruefGebiete();
-  const rang = g => { const i = gebiete.indexOf(g); return i < 0 ? 999 : i; };
-  return liste.concat(funde).sort((a, b)=>
-    rang(a.gebiet) - rang(b.gebiet) || (a.fund ? 1 : 0) - (b.fund ? 1 : 0) || (a.folge||0) - (b.folge||0));
+  const rang = e => { const i = gebiete.indexOf(pruefBereichVon(e)); return i < 0 ? 999 : i; };
+  const fotoFolge = e => { const i = e.alt_id ? PRUEF_FOTO_FOLGE.get(pruefNummer(e.alt_id)) : undefined; return i === undefined ? 9999 : i; };
+  return echte.concat(platzhalter).sort((a, b)=>
+    rang(a) - rang(b) || fotoFolge(a) - fotoFolge(b) || (a.fund ? 1 : 0) - (b.fund ? 1 : 0) || (a.folge||0) - (b.folge||0));
+}
+/* Wo der Baum in der Gebietsauswahl steht: Das Foto weiß es genauer als die Tabelle. */
+function pruefBereichVon(e){
+  const foto = pruefFotoNummer(e);
+  return foto ? foto.gruppe.titel : e.gebiet;
 }
 function pruefGebiete(){
-  const reihe = [];
+  const reihe = PRUEF_FOTO_BEREICHE.map(g=> g.titel);
   Object.values(pruefung.liste).slice().sort((a, b)=>(a.folge||0)-(b.folge||0)).forEach(e=>{
     if(e.gebiet && !reihe.includes(e.gebiet)) reihe.push(e.gebiet);
   });
@@ -266,7 +283,8 @@ function pruefGebiete(){
 function pruefBereiche(){
   const karte = typeof kartenObjekte === 'function' && typeof FLAECHEN !== 'undefined' && FLAECHEN
     ? kartenObjekte().filter(o=> o.ebene === 'bestand' && o.art !== 'Grundstücksgrenze').map(o=> o.name) : [];
-  return Array.from(new Set(pruefGebiete().filter(g=> g !== 'Laut Tabelle abgegeben').concat(['Waldgarten'], karte)));
+  const fotoBereiche = PRUEF_FOTO_BEREICHE.map(g=> g.titel);
+  return Array.from(new Set(pruefGebiete().filter(g=> g !== 'Laut Tabelle abgegeben' && !fotoBereiche.includes(g)).concat(['Waldgarten'], karte)));
 }
 /* Mutterbaum nachschlagen: zuerst im Kataster, dann in der Prüfliste. */
 function pruefHerkunft(nr){
@@ -300,7 +318,18 @@ function pruefHerkunftAusfuellen(){
 function pruefErgebnis(e){ return e.fund ? e : (pruefung.ergebnisse[e.pnr] || null); }
 function pruefIstErledigt(e){
   const r = pruefErgebnis(e);
-  if(!r || !r.status) return false;
+  if(!r || !r.status){
+    /* Doppelte Nummer im Foto-Bereich (719, 2, 9): Am Ort steht ein Baum. Ist einer
+       der Einträge bestimmt, bleibt der andere nicht als offener Baum stehen. */
+    if(!pruefFotoNummer(e)) return false;
+    const n = pruefNummer(e.alt_id);
+    return Object.values(pruefung.liste).concat(Object.values(pruefung.funde || {})).some(x=>{
+      const nr = x.alt_id || x.etikett;
+      if(x.pnr === e.pnr || x.id === e.pnr || !nr || pruefNummer(nr) !== n) return false;
+      const rx = x.etikett !== undefined ? x : pruefung.ergebnisse[x.pnr];
+      return !!(rx && rx.status && rx.status !== 'fehlt');
+    });
+  }
   /* Nicht gefunden zählt erst nach dem zweiten Durchgang als erledigt. */
   return r.status !== 'fehlt' || (r.durchgaenge || 1) >= 2;
 }
@@ -331,19 +360,13 @@ function renderPruefung(){
   }
   const filter = pruefFilter();
   const umschalter = `<div class="pr-segment pr-ansicht" role="group" aria-label="Ansicht">
-      ${[['pruefen', 'Prüfen'], ['runde', 'Prüfrunde'], ['topf', 'Im Topf']].map(([v, l])=>
+      ${[['pruefen', 'Prüfen'], ['topf', 'Im Topf']].map(([v, l])=>
         `<button type="button" class="${filter.ansicht===v?'aktiv':''}" data-pr="ansicht" data-ansicht="${v}">${l}</button>`).join('')}
     </div>`;
   if(filter.ansicht === 'topf'){
     scan.style.display = 'none';
     oben.innerHTML = umschalter;
     wurzel.innerHTML = renderPruefTopf();
-    return;
-  }
-  if(filter.ansicht === 'runde' && !pruefEinzeln && !pruefSuchbegriffe(feld.value).length){
-    const zeilen = pruefRundeZeilen();
-    oben.innerHTML = `${umschalter}${renderPruefRundeKopf(zeilen)}${pruefFundForm ? renderPruefFundForm() : ''}`;
-    wurzel.innerHTML = renderPruefRunde(zeilen);
     return;
   }
   const alle = pruefAlleEintraege();
@@ -359,7 +382,10 @@ function renderPruefung(){
     treffer = alle.filter(e=> e.alt_id && begriffe.includes(pruefNummer(e.alt_id)));
   } else {
     treffer = alle.filter(e=>{
-      if(filter.gebiet && e.gebiet !== filter.gebiet) return false;
+      if(filter.gebiet && pruefBereichVon(e) !== filter.gebiet) return false;
+      /* Die offene Karte bleibt stehen, sonst spränge sie bei „Stimmt“ weg, bevor
+         GPS und Standort erledigt sind. */
+      if(e.pnr === pruefOffen) return true;
       const r = pruefErgebnis(e);
       if(filter.status === 'offen') return !pruefIstErledigt(e);
       if(filter.status === 'warnung') return (e.warnungen || []).length > 0;
@@ -369,7 +395,7 @@ function renderPruefung(){
   }
 
   const gebietOptionen = pruefGebiete().map(g=>{
-    const teil = alle.filter(e=>e.gebiet===g);
+    const teil = alle.filter(e=> pruefBereichVon(e) === g);
     const fertig = teil.filter(pruefIstErledigt).length;
     return `<option value="${escAttr(g)}" ${g===filter.gebiet?'selected':''}>${escHtml(g)} (${fertig}/${teil.length})</option>`;
   }).join('');
@@ -426,99 +452,23 @@ function renderPruefung(){
     ${renderPruefVorschlaege()}`;
 }
 
-/* ---------- Prüfrunde ----------
-   Eine Nummer gilt als erledigt, sobald einer ihrer Einträge geprüft ist (719,
-   2 und 9 stehen doppelt in der Tabelle). Die gerade offene Karte bleibt an ihrem
-   Platz, sonst spränge sie beim Antippen von „Stimmt“ weg, bevor GPS und Standort
-   erledigt sind. */
-function pruefRundeZeilen(){
-  const alle = pruefAlleEintraege();
-  const zeilen = [];
-  PRUEF_RUNDE_NUMMERN.forEach((z, n)=>{
-    const eintraege = alle.filter(e=> e.alt_id && pruefNummer(e.alt_id) === n);
-    const imKataster = !!getTree(n);
-    zeilen.push(Object.assign({}, z, { eintraege, imKataster, erledigt:imKataster || eintraege.some(pruefIstErledigt) }));
-  });
-  return zeilen;
+/* ---------- Bereiche vom Foto ---------- */
+function pruefFotoKartenknopf(nr, pnr){
+  return `<button type="button" class="btn secondary" data-pr="foto-karte" data-nr="${escAttr(nr)}" data-pnr="${escAttr(pnr || '')}">Auf der Karte zeigen</button>`;
 }
-function renderPruefRundeKopf(zeilen){
-  const fertig = zeilen.filter(z=> z.erledigt).length;
-  const anteil = Math.round(fertig / zeilen.length * 100);
-  return `
-    <div class="pr-fortschritt">
-      <div class="pr-fortschritt-zeile"><div><b>${fertig} von ${zeilen.length}</b> Nummern geprüft</div><span>${anteil} %</span></div>
-      <div class="pr-balken"><div style="width:${anteil}%"></div></div>
-      <div class="pr-scan-hinweis">Diese Nummern stehen auf dem Foto, aber nicht im Kataster. Der Reihe nach abgehen, Etikett vergleichen, Status antippen.</div>
-    </div>`;
-}
-function pruefRundeKartenknopf(nr, pnr){
-  return `<button type="button" class="btn secondary" data-pr="runde-karte" data-nr="${escAttr(nr)}" data-pnr="${escAttr(pnr || '')}">Auf der Karte zeigen</button>`;
-}
-function renderPruefRundeNummer(z){
-  if(z.eintraege.length){
-    return `<div class="pr-runde-nr" data-runde-nr="${escAttr(z.nr)}">${z.eintraege.map(renderPruefKarte).join('')}</div>`;
-  }
-  const kopf = z.imKataster ? 'Steht schon im Kataster' : 'Steht nicht im Numbers-Buch';
-  return `
-    <div class="pr-runde-nr" data-runde-nr="${escAttr(z.nr)}">
-      <div class="pr-karte${z.erledigt ? ' geprueft' : ''}">
-        <div class="pr-karte-kopf"><span class="pr-nr">${escHtml(z.nr)}</span><span class="pr-sorte"><i>${kopf}</i></span></div>
-        ${z.imKataster ? '' : `
-        <div class="pr-hinweis">Nur auf dem Foto: ${escHtml(z.gruppe.titel)}. Steht er dort, neu erfassen.</div>
-        <div class="pr-detail-fuss">
-          <button type="button" class="btn" data-pr="fund-neu" data-etikett="${escAttr(z.nr)}" data-gebiet="${escAttr(z.gruppe.standort)}">Neu erfassen</button>
-          ${pruefRundeKartenknopf(z.nr)}
-        </div>`}
-      </div>
-    </div>`;
-}
-function renderPruefRunde(zeilen){
-  const offen = zeilen.filter(z=> !z.erledigt || z.eintraege.some(e=> e.pnr === pruefOffen));
-  const fertig = zeilen.filter(z=> !offen.includes(z));
-  const sichtbar = pruefRundeAlle ? offen : offen.slice(0, 10);
-  const mehr = offen.length - sichtbar.length;
-  let gruppe = null;
-  const liste = sichtbar.map(z=>{
-    const titel = z.gruppe !== gruppe ? `<h3 class="pr-runde-titel">${escHtml(z.gruppe.titel)}</h3>` : '';
-    gruppe = z.gruppe;
-    return `${titel}${renderPruefRundeNummer(z)}`;
-  }).join('');
-  const bereitZahl = pruefUebernahmeBereit().length;
-  return `
-    <div class="pr-liste">${liste || '<div class="pr-nichts">Die Prüfrunde ist fertig.</div>'}</div>
-    ${mehr > 0 ? `<button class="btn secondary pr-mehr" data-pr="runde-mehr">Alle zeigen (${mehr} weitere)</button>` : ''}
-    ${fertig.length ? `<details class="pr-runde-fertig"><summary>Schon geprüft (${fertig.length})</summary><div class="pr-liste">${fertig.map(renderPruefRundeNummer).join('')}</div></details>` : ''}
-    ${isAdmin() && bereitZahl ? `<div class="pr-fuss"><button class="btn" data-pr="uebernahme">Ins Kataster übernehmen (${bereitZahl})</button></div>` : ''}
-    <datalist id="pr-notizen">${pruefNotizVorschlaege().map(n=>`<option value="${escAttr(n)}">`).join('')}</datalist>
-    ${renderPruefVorschlaege()}`;
-}
-function pruefRundeZeigen(nr){
-  const el = document.querySelector(`[data-runde-nr="${CSS.escape(nr)}"]`);
-  if(el) el.scrollIntoView({ block:'start' });
-}
-/* Nächste offene Nummer nach der aktuellen, am Ende von vorn. */
-function pruefRundeNaechster(){
-  const zeilen = pruefRundeZeilen();
-  const i = zeilen.findIndex(z=> z.eintraege.some(e=> e.pnr === pruefOffen));
-  const z = zeilen.slice(i + 1).concat(zeilen.slice(0, Math.max(i + 1, 0))).find(x=> !x.erledigt);
-  pruefOffen = z && z.eintraege.length ? z.eintraege[0].pnr : null;
-  pruefRundeAlle = true;
-  renderPruefung();
-  if(z) pruefRundeZeigen(z.nr);
-  else showToast('Die Prüfrunde ist fertig.', 'success', 4000);
-}
-function pruefRundeKarte(nr, pnr){
-  const z = PRUEF_RUNDE_NUMMERN.get(pruefNummer(nr));
+function pruefFotoKarte(nr, pnr){
+  const z = PRUEF_FOTO_NUMMERN.get(pruefNummer(nr));
   if(!z) return;
   activateTab('lageplan');
-  _lageplanZurueck = { runde:true, nr:z.nr, pnr, tab:'pruefung' };
+  _lageplanZurueck = { pruefung:true, nr:z.nr, pnr, tab:'pruefung' };
   renderLageplanZurueck();
   lagePunktZeigen(z.lat, z.lng, z.nr);
 }
-function pruefRundeZurueck(pnr, nr){
+function pruefFotoZurueck(pnr){
   if(pnr) pruefOffen = pnr;
   renderPruefung();
-  pruefRundeZeigen(nr);
+  const el = document.querySelector(`[data-karte="${CSS.escape(pnr || '')}"]`);
+  if(el) el.scrollIntoView({ block:'start' });
 }
 
 /* Vorschlagslisten für „Angaben korrigieren“ — bereits Korrigiertes und
@@ -619,6 +569,18 @@ function pruefPlanText(e){
 }
 
 function renderPruefKarte(e){
+  if(e.platzhalter){
+    const z = pruefFotoNummer(e);
+    return `
+    <div class="pr-karte" data-karte="${escAttr(e.pnr)}">
+      <div class="pr-karte-kopf"><span class="pr-nr">${escHtml(z.nr)}</span><span class="pr-sorte"><i>Steht nicht im Numbers-Buch</i></span></div>
+      <div class="pr-hinweis">Nur auf dem Foto: ${escHtml(z.gruppe.titel)}. Steht er dort, neu erfassen.</div>
+      <div class="pr-detail-fuss">
+        <button type="button" class="btn" data-pr="fund-neu" data-etikett="${escAttr(z.nr)}" data-gebiet="${escAttr(z.gruppe.standort)}">Neu erfassen</button>
+        ${pruefFotoKartenknopf(z.nr, e.pnr)}
+      </div>
+    </div>`;
+  }
   const r = pruefErgebnis(e);
   const st = r && r.status ? pruefStatus(r.status) : null;
   const offen = pruefOffen === e.pnr;
@@ -634,7 +596,7 @@ function renderPruefKarte(e){
     e.fund ? 'neu erfasst' : e.pnr]
     .filter(Boolean).map(escHtml).join(' · ');
   const korrigiert = ['sorte','frucht','unterlage','veredelt','ausgepflanzt','standort'].some(f=> pruefGeaendert(e, r, f));
-  const foto = pruefRundeNummer(e);
+  const foto = pruefFotoNummer(e);
   const hinweis = [foto ? `auf dem Foto: ${foto.gruppe.titel}` : '', e.gebiet, pruefPlanText(e), e.hinweis, e.wo && !e.gebiet.includes(e.wo) ? `Tabelle: ${e.wo}` : '']
     .filter(Boolean).map(escHtml).join(' · ');
   let chip = '';
@@ -643,7 +605,7 @@ function renderPruefKarte(e){
     chip = `<span class="pr-chip pr-st-${st.id}">${st.kurz}${zusatz}</span>`;
   }
   return `
-    <div class="pr-karte${offen?' offen':''}${st?' geprueft':''}" data-art="${escAttr(art)}">
+    <div class="pr-karte${offen?' offen':''}${st?' geprueft':''}" data-art="${escAttr(art)}" data-karte="${escAttr(e.pnr)}">
       <button type="button" class="pr-karte-kopf" data-pr="auf" data-pnr="${escAttr(e.pnr)}" aria-expanded="${offen}">
         <span class="pr-nr">${e.alt_id ? escHtml(e.alt_id) : '–'}</span>
         <span class="pr-sorte">${w('sorte') ? escHtml(w('sorte')) : '<i>Sorte fehlt</i>'}</span>
@@ -688,7 +650,7 @@ function renderPruefDetail(e, r){
       </div>
       <div class="pr-detail-fuss">
         <button type="button" class="btn" data-pr="naechster">Nächster Baum</button>
-        ${pruefRundeNummer(e) ? pruefRundeKartenknopf(pruefRundeNummer(e).nr, e.pnr) : ''}
+        ${pruefFotoNummer(e) ? pruefFotoKartenknopf(pruefFotoNummer(e).nr, e.pnr) : ''}
         ${r && r.zeit ? `<span class="pr-zeit">zuletzt ${escHtml(pruefDatum(r.zeit))}</span>` : ''}
         ${r && r.status && !e.fund ? `<button type="button" class="pr-link" data-pr="zuruecksetzen" data-pnr="${pnr}">zurücksetzen</button>` : ''}
         ${e.fund ? `<button type="button" class="pr-link" data-pr="fund-loeschen" data-pnr="${pnr}">Fund löschen</button>` : ''}
@@ -886,8 +848,8 @@ function pruefStatusSetzen(pnr, status){
     if(aenderung.durchgaenge === 2) showToast('Zweiter Durchgang: als abgeschrieben vermerkt.', 'info', 3000);
   }
   if(!r || !r.ort) aenderung.ort = pruefStandardOrt(e);
-  /* Prüfrunde: Wer ihn draußen bestätigt, bekommt den Standort der Reihe vorbelegt. */
-  const foto = pruefRundeNummer(e);
+  /* Foto-Bereich: Wer ihn draußen bestätigt, bekommt den Standort der Reihe vorbelegt. */
+  const foto = pruefFotoNummer(e);
   if(foto && foto.gruppe.standort && ['stimmt', 'abweichend', 'ohneEtikett'].includes(status) && !pruefWert(e, r, 'standort')){
     aenderung.korrektur = Object.assign({}, r && r.korrektur, { standort:foto.gruppe.standort });
   }
@@ -966,6 +928,31 @@ function pruefNaechster(){
   feld.scrollIntoView({ block:'center' });
 }
 
+/* „Nächster Baum“: Das Feld ist leer und bereit zum Scannen (Fokus im selben
+   Tippen, sonst keine Tastatur samt „Text scannen“). Darunter stehen die offenen
+   Bäume des Gebiets, in dem der letzte stand — also die in der Nähe. Ist ein
+   Foto-Bereich fertig, geht es im nächsten weiter. */
+function pruefWeiter(){
+  const aktuell = pruefOffen ? pruefAlleEintraege().find(e=> e.pnr === pruefOffen) : null;
+  if(aktuell){
+    let gebiet = pruefBereichVon(aktuell) || '';
+    const reihe = PRUEF_FOTO_BEREICHE.map(g=> g.titel);
+    const i = reihe.indexOf(gebiet);
+    pruefOffen = null;
+    if(i >= 0){
+      const offenIn = g => pruefAlleEintraege().some(e=> pruefBereichVon(e) === g && !pruefIstErledigt(e));
+      if(!offenIn(gebiet)){
+        const weiter = reihe.slice(i + 1).concat(reihe.slice(0, i)).find(offenIn);
+        showToast(weiter ? `${gebiet} ist fertig. Weiter: ${weiter}` : 'Alle Foto-Bereiche sind fertig.', 'success', 4000);
+        if(weiter) gebiet = weiter;
+      }
+    }
+    pruefFilterSetzen({ gebiet, status:'offen' });
+    pruefSichtbar = PRUEF_SEITE;
+  }
+  pruefNaechster();
+}
+
 function pruefFundSpeichern(){
   const wert = id => (document.getElementById(id) || {}).value || '';
   const id = `F-${Date.now().toString(36)}`;
@@ -973,7 +960,7 @@ function pruefFundSpeichern(){
   const gebiet = wert('pr-fund-gebiet').trim() || 'Waldgarten';
   const anzahl = Math.max(1, parseInt(wert('pr-fund-anzahl'), 10) || 1);
   const herkunft = pruefNummer(wert('pr-fund-herkunft').trim());
-  const foto = pruefRundeNummer({ alt_id:wert('pr-fund-etikett').trim() });
+  const foto = pruefFotoNummer({ alt_id:wert('pr-fund-etikett').trim() });
   pruefung.funde[id] = {
     id, etikett:wert('pr-fund-etikett').trim(), standort:(foto && foto.gruppe.standort) || '', sorte:wert('pr-fund-sorte').trim(),
     frucht:wert('pr-fund-art').trim(), gebiet, unterlage:'', veredelt:'',
@@ -984,8 +971,7 @@ function pruefFundSpeichern(){
   };
   pruefFundForm = null;
   pruefOffen = id;
-  /* In der Prüfrunde bleibt die Liste stehen, sonst wäre man in der Nummernsuche. */
-  if(pruefFilter().ansicht !== 'runde') document.getElementById('pr-nummer').value = pruefung.funde[id].etikett;
+  document.getElementById('pr-nummer').value = pruefung.funde[id].etikett;
   pruefungSpeichern();
   renderPruefung();
 }
@@ -1050,11 +1036,11 @@ function pruefUebernahmeBereit(){
    im Kataster oder schon in dieser Übernahme —, kommt ein Zusatz dazu. Ohne
    Nummer (Zukauf 2015) gibt es eine NEU-Nummer wie bei jeder Neuanlage. */
 /* Stecknadel beim Übernehmen: GPS, wenn es genau genug ist. Ein in der Reihe
-   bestätigter Baum der Prüfrunde bekommt sonst die Lage aus dem Foto — die ist
+   bestätigter Baum aus einem Foto-Bereich bekommt sonst die Lage aus dem Foto — die ist
    dort genauer als die meisten Messungen; nur sehr gutes GPS geht ihr vor. */
 function pruefNadel(e, r){
   const gps = r.gps;
-  const foto = pruefRundeNummer(e);
+  const foto = pruefFotoNummer(e);
   const ausFoto = !!(foto && foto.gruppe.stecknadel && r.status === 'stimmt');
   if(gps && gps.gpsAccuracy <= (ausFoto ? 5 : PRUEF_GPS_STECKNADEL)){
     return { pos:{ lat:gps.lat, lng:gps.lng, gpsAccuracy:gps.gpsAccuracy }, text:`Stecknadel aus GPS (±${gps.gpsAccuracy} m)` };
@@ -1191,7 +1177,7 @@ function pruefExport(){
     'Geprüft am': r && r.status ? pruefDatum(r.zeit) : '', 'Im Kataster als': r && r.uebernommen ? r.uebernommen.id : '',
     'Warnzeichen': (e.warnungen||[]).join('; '), 'Tabellenblatt': e.blatt || ''
   });
-  const zeilen = pruefAlleEintraege().map(e=> zeile(e, pruefErgebnis(e)));
+  const zeilen = pruefAlleEintraege().filter(e=> !e.platzhalter).map(e=> zeile(e, pruefErgebnis(e)));
   Object.keys(pruefung.ergebnisse).filter(p=> !pruefung.liste[p]).forEach(p=>{
     zeilen.push(zeile({ pnr:p, sorte:'(nicht mehr in der Liste)', warnungen:[] }, Object.assign({}, pruefung.ergebnisse[p], { korrektur:null })));
   });
@@ -1215,13 +1201,8 @@ function pruefExport(){
       case 'gps': pruefGps(pnr); break;
       case 'gps-stopp': pruefGpsStopp(); renderPruefung(); break;
       case 'uebernahme': pruefUebernahmeOeffnen(); break;
-      case 'naechster':
-        pruefEinzeln = null;
-        if(pruefFilter().ansicht === 'runde' && !document.getElementById('pr-nummer').value.trim()) pruefRundeNaechster();
-        else pruefNaechster();
-        break;
-      case 'runde-mehr': pruefRundeAlle = true; renderPruefung(); break;
-      case 'runde-karte': pruefRundeKarte(el.dataset.nr, pnr); break;
+      case 'naechster': pruefEinzeln = null; pruefWeiter(); break;
+      case 'foto-karte': pruefFotoKarte(el.dataset.nr, pnr); break;
       case 'zuruecksetzen':
         if(confirm('Ergebnis für diesen Baum löschen?')){ delete pruefung.ergebnisse[pnr]; pruefungSpeichern(); renderPruefung(); }
         break;
@@ -1235,8 +1216,7 @@ function pruefExport(){
       case 'einzeln-aus': pruefEinzeln = null; pruefOffen = null; renderPruefung(); break;
       case 'topf-export': pruefTopfExport(); break;
       case 'fund-neu':
-        if(pruefFilter().ansicht !== 'runde') pruefFilterSetzen({ ansicht:'pruefen' });
-        pruefEinzeln = null;
+        pruefFilterSetzen({ ansicht:'pruefen' }); pruefEinzeln = null;
         pruefFundForm = { etikett:el.dataset.etikett || document.getElementById('pr-nummer').value.trim(), gebiet:el.dataset.gebiet || '' };
         renderPruefung();
         document.querySelector('.pr-fund') && document.querySelector('.pr-fund').scrollIntoView({ block:'start' });
