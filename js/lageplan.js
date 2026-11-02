@@ -318,7 +318,7 @@ const EBENEN_KEY = 'hendlberghof_kartenebenen';
 const FOTO_GRENZEN = [[48.06945, 15.84287], [48.07116, 15.84452]];
 let _ebenen = null;
 let _ebenenOffen = false;
-const _ebenenWahl = {grund: 'hof', foto: true, fotoDeckkraft: 85, bestand: true, konzept: true, planung: false, hoehen: false, baeume: true};
+const _ebenenWahl = {grund: 'hof', foto: true, fotoDeckkraft: 85, bestand: true, konzept: true, planung: false, hoehen: false, baeume: true, namen: true};
 let _hoehenEbene = null;
 let _hoehenPromise = null;
 try { Object.assign(_ebenenWahl, JSON.parse(localStorage.getItem(EBENEN_KEY) || '{}')); } catch(e){}
@@ -332,6 +332,7 @@ function ebenenAnwenden(){
   an(_ebenen.foto, _ebenenWahl.foto);
   _ebenen.foto.setOpacity(_ebenenWahl.fotoDeckkraft / 100);
   if(_ebenen.foto._container) _ebenen.foto.bringToFront();
+  satMap.getContainer().classList.toggle('lp-ohne-namen', !_ebenenWahl.namen);
   if(_ebenenWahl.hoehen) hoehenZeigen();
   else if(_hoehenEbene) _hoehenEbene.remove();
 }
@@ -389,6 +390,7 @@ function renderEbenenKnopf(){
       ${haken('planung', 'Konzeptplan 2020 (Vorlage)')}
       ${haken('hoehen', 'Höhenlinien (5 m)')}
       ${haken('baeume', 'Bäume')}
+      ${haken('namen', 'Namen der Flächen &amp; Wege')}
     </div>`;
 }
 
@@ -400,7 +402,7 @@ function ebenenOeffnen(offen){
 function ebeneSetzen(key, wert){
   _ebenenWahl[key] = wert;
   ebenenMerken();
-  if(key === 'grund' || key === 'foto' || key === 'fotoDeckkraft' || key === 'hoehen') ebenenAnwenden();
+  if(key === 'grund' || key === 'foto' || key === 'fotoDeckkraft' || key === 'hoehen' || key === 'namen') ebenenAnwenden();
   if(key === 'foto'){ const r = document.querySelector('.lp-ebenen-regler input'); if(r) r.disabled = !wert; }
   if(key === 'bestand' || key === 'konzept' || key === 'planung'){
     if(_flaecheAktiv){ const o = kartenObjekt(_flaecheAktiv); if(o && !_ebenenWahl[o.ebene]) objektMarkieren(null); }
@@ -408,12 +410,14 @@ function ebeneSetzen(key, wert){
     renderLageFilter();
   }
   if(key === 'baeume') renderSatMarkers();
+  if(key === 'namen') namenEntzerren();
 }
 
 function initSatMap(){
   if(typeof L === 'undefined') return;
   if(!satMap){
     satMap = L.map('sat-map', {maxZoom: 22, zoomSnap: 0.5}).setView([48.0702, 15.8442], 18);
+    satMap.createPane('lpNamen').style.zIndex = 590;   /* unter den Bäumen, deren Nummern bleiben lesbar */
     _ebenen = {
       basis: L.tileLayer('https://mapsneu.wien.gv.at/basemap/bmaporthofoto30cm/normal/google3857/{z}/{y}/{x}.jpeg', {
         maxZoom: 22, maxNativeZoom: 19, attribution: 'basemap.at'
@@ -449,6 +453,7 @@ function initSatMap(){
       c.classList.toggle('lp-fern', z < 19);
       c.classList.toggle('lp-mittel', z >= 19 && z < 19.5);
       c.classList.toggle('lp-nah', z >= 19.5);
+      namenEntzerren();
     };
     satMap.on('zoomend', fernKlasse);
     fernKlasse();
@@ -475,7 +480,7 @@ function initSatMap(){
   }
   renderSatMarkers();
   setTimeout(()=>{ satMap.invalidateSize(); }, 100);
-  setTimeout(()=>{ satMap.invalidateSize(); }, 500);
+  setTimeout(()=>{ satMap.invalidateSize(); namenEntzerren(); }, 500);
 }
 
 /* ---------- Kartenobjekte: Bestand und Planung (v123) ----------
@@ -573,8 +578,10 @@ function zeichneKarte(){
     const stil = Object.assign({renderer: _kartenRenderer}, objektStil(o, o.id === _flaecheAktiv));
     const l = o.typ === 'linie' ? L.polyline(o.geo, stil) : L.polygon(o.geo, stil);
     l._objekt = o;
-    if(o.ebene === 'bestand' && o.typ === 'linie' && o.art !== 'Grundstücksgrenze')
-      l.bindTooltip(escHtml(o.name), {permanent: true, direction: 'center', className: 'lp-label', interactive: false});
+    /* Namen sitzen immer am Objekt und werden nur per CSS aus- und eingeblendet (lp-ohne-namen).
+       Der Plan von 2020 bleibt ohne Namen, er ist nur Vorlage. */
+    if(o.ebene !== 'planung' && o.art !== 'Grundstücksgrenze')
+      l.bindTooltip(escHtml(o.name), {permanent: true, direction: 'center', className: o.typ === 'linie' ? 'lp-label lp-label-weg' : 'lp-label', interactive: false, pane: 'lpNamen'});
     l.on('click', e => {
       L.DomEvent.stopPropagation(e);
       if(placeMode) return;
@@ -582,6 +589,24 @@ function zeichneKarte(){
       objektMarkieren(o.id, e.latlng);
     });
     l.addTo(_flaechenEbene);
+  });
+  namenEntzerren();
+}
+
+/* Namen, die sich auf dem Bildschirm überdecken würden: Die größere Fläche behält ihren Namen,
+   der kleinere kommt beim Hineinzoomen wieder. Antippen zeigt ihn weiterhin. */
+function namenEntzerren(){
+  if(!_flaechenEbene) return;
+  const groesse = l => { const b = l.getBounds(); return (b.getNorth() - b.getSouth()) * (b.getEast() - b.getWest()); };
+  const mitNamen = [];
+  _flaechenEbene.eachLayer(l => { const t = l.getTooltip && l.getTooltip(); if(t && t.getElement()) mitNamen.push({l, el: t.getElement()}); });
+  mitNamen.forEach(n => n.el.classList.remove('lp-label-verdeckt'));
+  const belegt = [];
+  mitNamen.sort((a, b) => groesse(b.l) - groesse(a.l)).forEach(({el}) => {
+    const r = el.getBoundingClientRect();
+    if(!r.width) return;
+    if(belegt.some(b => r.left < b.right && r.right > b.left && r.top < b.bottom && r.bottom > b.top)) el.classList.add('lp-label-verdeckt');
+    else belegt.push(r);
   });
 }
 

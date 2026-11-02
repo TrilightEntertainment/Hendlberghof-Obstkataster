@@ -471,7 +471,9 @@
   .lp-suche #btn-naechster{flex:none;white-space:nowrap;}   /* klein neben dem Suchfeld (v137) */
   .lp-label{background:rgba(40,54,42,.72);color:#F1EDE2;border:none;border-radius:4px;box-shadow:none;font:500 .72rem/1.2 'DM Sans',system-ui,sans-serif;padding:2px 6px;white-space:nowrap;}
   .lp-label::before{display:none;}
-  .lp-fern .lp-label{display:none;}
+  .lp-fern .lp-label-weg{display:none;}
+  .lp-ohne-namen .lp-label{display:none;}
+  .lp-label-verdeckt{visibility:hidden;}
   .lp-hoehe{background:none;border:none;box-shadow:none;color:#F1EDE2;font:600 .7rem/1 'DM Sans',system-ui,sans-serif;text-shadow:0 0 3px rgba(0,0,0,.8);padding:0;}
   .lp-hoehe::before{display:none;}
   .lp-fern .lp-hoehe{display:none;}
@@ -1539,10 +1541,10 @@ Keine Internetverbindung — Offline-Modus
 
 <!-- Aus einem einzelnen Script-Block herausgeloest (F6). Reihenfolge ist
      bindend: Ueber Dateigrenzen hinweg gibt es kein Hoisting mehr. -->
-<script src="js/kern.js?v=144"></script>
-<script src="js/kataster.js?v=144"></script>
-<script src="js/lageplan.js?v=144"></script>
-<script src="js/start.js?v=144"></script>
+<script src="js/kern.js?v=145"></script>
+<script src="js/kataster.js?v=145"></script>
+<script src="js/lageplan.js?v=145"></script>
+<script src="js/start.js?v=145"></script>
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-app.js";
@@ -1709,10 +1711,10 @@ Keine Internetverbindung — Offline-Modus
     });
   }
 </script>
-<script src="js/berater.js?v=144"></script>
-<script src="js/shop.js?v=144"></script>
-<script src="js/konfigurator.js?v=144"></script>
-<script src="js/pruefung.js?v=144"></script>
-<script src="js/baumfinder.js?v=144"></script>
+<script src="js/berater.js?v=145"></script>
+<script src="js/shop.js?v=145"></script>
+<script src="js/konfigurator.js?v=145"></script>
+<script src="js/pruefung.js?v=145"></script>
+<script src="js/baumfinder.js?v=145"></script>
 </body>
 </html>
