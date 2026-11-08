@@ -583,8 +583,8 @@ function zeichneKarte(){
     if(o.ebene !== 'planung' && o.art !== 'Grundstücksgrenze')
       l.bindTooltip(escHtml(o.name), {permanent: true, direction: 'center', className: o.typ === 'linie' ? 'lp-label lp-label-weg' : 'lp-label', interactive: false, pane: 'lpNamen'});
     l.on('click', e => {
+      if(placeMode) return;   /* Tipp geht durch zur Karte, sonst lässt sich in einer Fläche kein Baum setzen */
       L.DomEvent.stopPropagation(e);
-      if(placeMode) return;
       if(_kb){ kbObjektGetippt(o.id); return; }
       objektMarkieren(o.id, e.latlng);
     });
