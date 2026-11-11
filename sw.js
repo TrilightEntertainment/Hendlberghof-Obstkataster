@@ -1,81 +1,20 @@
-const CACHE_NAME = 'hendlberghof-v147';
-const CORE_ASSETS = [
-  './',
-  './index.html',
-  /* Seit der Dateitrennung (F6) liegt der Code in eigenen Dateien. Fehlen sie
-     im Vorrat, startet die App offline nicht — index.html allein genuegt nicht.
-     Reihenfolge hier ohne Belang; bindend ist sie nur in index.html. */
-  './js/kern.js?v=147',
-  './js/kataster.js?v=147',
-  './js/lageplan.js?v=147',
-  './js/start.js?v=147',
-  './js/berater.js?v=147',
-  './js/shop.js?v=147',
-  './js/konfigurator.js?v=147',
-  './js/pruefung.js?v=147',
-  './js/baumfinder.js?v=147',
-  './assets/images/lageplan.jpg',
-  './data/baum_data.json',
-  './data/sorten_data.json',
-  './data/seed_positions.json',
-  './data/flaechen.json',
-  './data/lage_ungefaehr.json',
-  './icons/icon-192.png',
-  './icons/icon-512.png',
-  './icons/seedling.svg',
-  './icons/tree.svg',
-  './manifest.json',
-  './arche_pdfs/berner_rosenapfel.pdf',
-  './arche_pdfs/birnfoermigerapfel.pdf',
-  './arche_pdfs/danziger_kantapfel_web.pdf',
-  './arche_pdfs/galloway_pepping_foto_und_beschreibung.pdf',
-  './arche_pdfs/geflammter_kardinal.pdf',
-  './arche_pdfs/george_cave_01_1.pdf',
-  './arche_pdfs/gruener_fuerstenapfel.pdf',
-  './arche_pdfs/kleine_kasseler_renette_beschreibung_und_foto.pdf',
-  './arche_pdfs/kronprinz_rudolf.pdf',
-  './arche_pdfs/landsberger_renette.pdf',
-  './arche_pdfs/oberoesterreichischer_bruennerling.pdf',
-  './arche_pdfs/peasgoods_sondergleichen.pdf',
-  './arche_pdfs/rodauner_goldapfel_beschreibung_und_foto.pdf',
-  './arche_pdfs/roter_bellefleur.pdf',
-  './arche_pdfs/schmidberger_renette.pdf',
-  './arche_pdfs/schoener_von_wiltshire.pdf',
-  './arche_pdfs/schweizer_glockenapfel_web.pdf',
-  './arche_pdfs/siebenkant_beschreibung_und_foto.pdf',
-  './arche_pdfs/steirischer_maschanzker.pdf',
-  './arche_pdfs_birnen/abbe_fetel.pdf',
-  './arche_pdfs_birnen/graefin_von_paris.pdf',
-  './arche_pdfs_birnen/kiefers_saemling.pdf',
-  './arche_pdfs_birnen/nordhauuser_forellenbirne.pdf',
-  './arche_pdfs_birnen/williams_christbirne.pdf'
-];
-
-self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(CORE_ASSETS)).catch(() => {})
-  );
-  self.skipWaiting();
-});
-
+/* Abschied des alten Service Workers (Umzug nach www.hendlberghof.at/kataster, 11.11.2026).
+   Auf installierten Geräten ersetzt er den bisherigen: löscht dessen Vorrat, meldet sich ab
+   und schickt offene Fenster an die neue Adresse. */
+const NEU = 'https://www.hendlberghof.at/kataster/';
+self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', (event) => {
-  event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)))
-    )
-  );
-  self.clients.claim();
+  event.waitUntil((async () => {
+    const keys = await caches.keys();
+    await Promise.all(keys.map((k) => caches.delete(k)));
+    await self.registration.unregister();
+    const fenster = await self.clients.matchAll({type: 'window'});
+    fenster.forEach((c) => { const u = new URL(c.url); c.navigate(NEU + u.search + u.hash).catch(() => {}); });
+  })());
 });
-
 self.addEventListener('fetch', (event) => {
-  if (event.request.method !== 'GET') return;
-  event.respondWith(
-    fetch(event.request)
-      .then((resp) => {
-        const copy = resp.clone();
-        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy)).catch(() => {});
-        return resp;
-      })
-      .catch(() => caches.match(event.request))
-  );
+  if (event.request.mode === 'navigate') {
+    const u = new URL(event.request.url);
+    event.respondWith(Response.redirect(NEU + u.search + u.hash, 301));
+  }
 });
