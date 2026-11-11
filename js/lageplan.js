@@ -335,11 +335,18 @@ function ebenenAnwenden(){
   satMap.getContainer().classList.toggle('lp-ohne-namen', !_ebenenWahl.namen);
   if(_ebenenWahl.hoehen) hoehenZeigen();
   else if(_hoehenEbene) _hoehenEbene.remove();
+  if(_ebenenWahl.hoehen !== _hoehenQuelleAn && satMap.attributionControl){
+    _hoehenQuelleAn = _ebenenWahl.hoehen;
+    satMap.attributionControl[_hoehenQuelleAn ? 'addAttribution' : 'removeAttribution'](HOEHEN_QUELLE);
+  }
 }
 
-/* Höhenlinien der Vermessung 2023 (data/hoehenlinien.json, tools/hoehenlinien.py):
-   5-m-Abstand, jede 10-m-Linie kräftiger und einmal beschriftet. Geladen wird
-   erst, wenn jemand die Ebene einschaltet. */
+/* Höhenlinien aus dem Geländemodell des BEV (data/hoehenlinien.json, tools/hoehenlinien_bev.py,
+   seit v146): Boden ohne Bäume und Häuser, 5-m-Abstand, jede 10-m-Linie kräftiger und einmal
+   beschriftet. Geladen wird erst, wenn jemand die Ebene einschaltet. CC BY 4.0 verlangt die
+   Quellenangabe, sie steht unten in der Karte, solange die Ebene an ist. */
+const HOEHEN_QUELLE = 'Höhenlinien © BEV (CC BY 4.0)';
+let _hoehenQuelleAn = false;
 function hoehenZeigen(){
   if(_hoehenEbene){ if(!satMap.hasLayer(_hoehenEbene)) _hoehenEbene.addTo(satMap); return; }
   if(!_hoehenPromise){
