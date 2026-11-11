@@ -1,19 +1,20 @@
-const CACHE_NAME = 'hendlberghof-v148';
+const CACHE_NAME = 'hendlberghof-v149';
 const CORE_ASSETS = [
   './',
   './index.html',
   /* Seit der Dateitrennung (F6) liegt der Code in eigenen Dateien. Fehlen sie
      im Vorrat, startet die App offline nicht — index.html allein genuegt nicht.
      Reihenfolge hier ohne Belang; bindend ist sie nur in index.html. */
-  './js/kern.js?v=148',
-  './js/kataster.js?v=148',
-  './js/lageplan.js?v=148',
-  './js/start.js?v=148',
-  './js/berater.js?v=148',
-  './js/shop.js?v=148',
-  './js/konfigurator.js?v=148',
-  './js/pruefung.js?v=148',
-  './js/baumfinder.js?v=148',
+  './js/kern.js?v=149',
+  './js/kataster.js?v=149',
+  './js/lageplan.js?v=149',
+  './js/start.js?v=149',
+  './js/berater.js?v=149',
+  './js/shop.js?v=149',
+  './js/konfigurator.js?v=149',
+  './js/pruefung.js?v=149',
+  './js/baumfinder.js?v=149',
+  './js/hofsync.js?v=149',
   './assets/images/lageplan.jpg',
   './data/baum_data.json',
   './data/sorten_data.json',
@@ -69,6 +70,9 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
+  /* Daten vom eigenen Server (seit v149) nie aus dem Vorrat: Ohne Netz meldet die App das selbst
+     und arbeitet mit dem Stand im Gerät weiter. */
+  if (event.request.url.includes('/hofbuch/api.php')) return;
   event.respondWith(
     fetch(event.request)
       .then((resp) => {

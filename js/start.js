@@ -111,54 +111,30 @@ function applyEditModeUI(){
   if(typeof merklistenNeuLaden === 'function') merklistenNeuLaden();
 }
 
-const LOGIN_ACCOUNTS = {
-  admin: 'mail@trilight.eu',
-  mitarbeiter: 'mail@trilight.eu' // separater Account nötig
-};
-let pendingLoginRole = '';
-
-function isAdmin(){ const u = window.__firebaseUser; return u && u.email === LOGIN_ACCOUNTS.admin; }
+/* Anmeldung (seit v149 über den eigenen Server, hofsync.js): ein Passwort, die Rolle ergibt sich daraus.
+   Admin = Hofbuch-Passwort, Helfer = Helfer-Passwort (setzt der Admin unter Daten & Sicherung). */
+function isAdmin(){ return !!window.__anmeldung && window.__anmeldung.rolle === 'admin'; }
 function isMitarbeiter(){ return isEditMode() && !isAdmin(); }
 
 function handleLoginToggle(){
   if(isEditMode()){
-    if(window.__firebaseSignOut) window.__firebaseSignOut();
+    if(typeof hofAbmelden === 'function') hofAbmelden();
     return;
   }
   showLoginDialog();
 }
 
+/* Echtes <form> mit Benutzername- und Passwortfeld: Nur so bietet Safari an,
+   das Passwort im Schlüsselbund zu sichern, und füllt es beim nächsten Mal per
+   Face ID / Touch ID ein. Ein verstecktes Feld (type=hidden) erkennt Safari
+   nicht als Benutzernamen — deshalb steht der Name sichtbar, aber gesperrt. */
 function showLoginDialog(){
   const html = `
     <button class="close" onclick="closeModal()" aria-label="Schließen"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true" focusable="false"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg></button>
     <h2>Anmeldung</h2>
-    <p style="margin:12px 0 16px;color:var(--muted);font-size:.9rem;">Rolle wählen:</p>
-    <div style="display:flex;flex-direction:column;gap:10px;max-width:280px;">
-      <button class="btn" onclick="loginAsRole('admin')" style="text-align:left;padding:14px 18px;">
-        <b>Admin</b><br><span style="font-size:.82rem;color:var(--muted);">Voller Zugriff auf alle Funktionen</span>
-      </button>
-      <button class="btn" onclick="loginAsRole('mitarbeiter')" style="text-align:left;padding:14px 18px;">
-        <b>Mitarbeiter:in</b><br><span style="font-size:.82rem;color:var(--muted);">Ernte, Beobachtungen, Phänologie</span>
-      </button>
-    </div>`;
-  document.getElementById('modal-content').innerHTML = html;
-  document.getElementById('overlay').classList.add('open');
-}
-
-/* Echtes <form> mit Benutzername- und Passwortfeld: Nur so bietet Safari an,
-   das Passwort im Schlüsselbund zu sichern, und füllt es beim nächsten Mal per
-   Face ID / Touch ID ein. Ein verstecktes Feld (type=hidden) erkennt Safari
-   nicht als Benutzernamen — deshalb steht die Adresse sichtbar, aber gesperrt. */
-function loginAsRole(role){
-  pendingLoginRole = role;
-  const email = LOGIN_ACCOUNTS[role];
-  closeModal();
-  const html = `
-    <button class="close" onclick="closeModal()" aria-label="Schließen"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true" focusable="false"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg></button>
-    <h2>Anmeldung — ${role==='admin'?'Admin':'Mitarbeiter:in'}</h2>
     <form id="login-form" class="login-form" autocomplete="on" onsubmit="event.preventDefault();submitLogin();">
-      <label for="login-email">Konto</label>
-      <input type="email" id="login-email" name="username" autocomplete="username" value="${escAttr(email)}" readonly>
+      <label for="login-email">Zugang</label>
+      <input type="text" id="login-email" name="username" autocomplete="username" value="Hendlberghof" readonly>
       <label for="login-pw">Passwort</label>
       <div class="login-pw-wrap">
         <input type="password" id="login-pw" name="password" autocomplete="current-password" placeholder="Passwort eingeben" required>
@@ -182,85 +158,46 @@ function loginPasswortZeigen(btn){
   btn.setAttribute('aria-label', zeigen ? 'Passwort verbergen' : 'Passwort zeigen');
   btn.classList.toggle('aktiv', zeigen);
 }
-/* Firebase-Fehlercodes in Sätze, mit denen man etwas anfangen kann. */
-function loginFehlertext(err){
-  const code = (err && err.code) || '';
-  if(code === 'auth/invalid-credential' || code === 'auth/wrong-password' || code === 'auth/invalid-login-credentials')
-    return 'Passwort stimmt nicht. Unten „Passwort vergessen?“ schickt einen Link zum Neusetzen.';
-  if(code === 'auth/too-many-requests') return 'Zu viele Versuche — bitte ein paar Minuten warten.';
-  if(code === 'auth/network-request-failed') return 'Keine Verbindung. Anmelden geht nur mit Internet.';
-  if(code === 'auth/user-not-found') return 'Dieses Konto gibt es nicht.';
-  return `Anmeldung fehlgeschlagen: ${(err && err.message) || err}`;
+/* Antworten des Servers in Sätze, mit denen man etwas anfangen kann. */
+function loginFehlertext(antwort){
+  const st = antwort && antwort.status;
+  if(st === 403) return 'Passwort stimmt nicht.';
+  if(st === 429) return 'Zu viele Versuche — bitte eine Viertelstunde warten.';
+  if(!st) return 'Keine Verbindung. Anmelden geht nur mit Internet.';
+  return `Anmeldung fehlgeschlagen: ${(antwort && antwort.fehler) || st}`;
 }
 function submitLogin(){
-  const email = (document.getElementById('login-email').value||'').trim();
   const pw = document.getElementById('login-pw').value;
   const errEl = document.getElementById('login-error');
   const zeige = text => { if(errEl){ errEl.textContent = text; errEl.style.display = 'block'; } };
-  if(!email || !pw){ zeige('Bitte das Passwort eingeben.'); return; }
-  if(!window.__firebaseSignIn){ zeige('Anmeldung ist noch nicht bereit, bitte kurz warten und erneut versuchen.'); return; }
-  window.__firebaseSignIn(email, pw).catch(err=> zeige(loginFehlertext(err)));
+  if(!pw){ zeige('Bitte das Passwort eingeben.'); return; }
+  if(typeof hofAnmelden !== 'function'){ zeige('Anmeldung ist noch nicht bereit, bitte kurz warten und erneut versuchen.'); return; }
+  hofAnmelden(pw).catch(err=> zeige(loginFehlertext(err)));
 }
-/* Schickt den Link zum Neusetzen an die Konto-Adresse. Firebase stellt die
-   Seite dafür selbst bereit — hier muss nichts gehostet werden. Ob die Adresse
-   existiert, verrät Firebase absichtlich nicht; die Meldung bleibt daher neutral. */
+/* Kein Rücksetzen per Mail mehr (Firebase ist weg): Das Admin-Passwort ist das des Hofbuchs
+   und wird am Mac neu gesetzt; das Helfer-Passwort setzt der Admin in der App. */
 function passwortVergessen(){
-  const email = (document.getElementById('login-email').value||'').trim();
   const info = document.getElementById('login-info');
-  const errEl = document.getElementById('login-error');
-  if(errEl) errEl.style.display = 'none';
-  if(!window.__firebasePasswortReset){ showToast('Anmeldung ist noch nicht bereit — bitte kurz warten.', 'error', 4000); return; }
-  if(!confirm(`Link zum Neusetzen des Passworts an ${email} schicken?`)) return;
-  window.__firebasePasswortReset(email).then(()=>{
-    info.textContent = `E-Mail an ${email} ist unterwegs. Den Link darin öffnen, neues Passwort festlegen und hier anmelden. Nichts angekommen? Spam-Ordner prüfen.`;
-    info.style.display = 'block';
-  }).catch(err=>{
-    if(errEl){ errEl.textContent = loginFehlertext(err); errEl.style.display = 'block'; }
-  });
+  info.textContent = 'Helfer: bei Volkmar nach dem aktuellen Helfer-Passwort fragen. Admin: Das Passwort ist das des Hofbuchs und wird am Mac neu gesetzt (vorbereiten.command).';
+  info.style.display = 'block';
 }
 
-/* Umzug zu World4You (Stufe B): einmalige Sicherung aller Firebase-Daten als Datei. */
-async function umzugSichern(){
-  const aus = document.getElementById('umzug-ergebnis');
-  if(!isAdmin() || !window.__umzugExport){ showToast('Nur angemeldet als Admin.', 'error', 4000); return; }
-  aus.textContent = 'Wird geholt …';
-  try {
-    const d = await window.__umzugExport();
-    const m = d.main || {}, p = d.pruefung || {};
-    const zahl = o => Array.isArray(o) ? o.length : Object.keys(o || {}).length;
-    const blob = new Blob([JSON.stringify(d)], {type: 'application/json'});
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = `kataster-umzug-${d.erstellt.slice(0, 16).replace(/[:T]/g, '-')}.json`;
-    document.body.appendChild(a); a.click(); a.remove();
-    aus.textContent = `Gesichert: ${zahl(m.customTrees)} eigene Bäume, ${zahl(m.satPositions)} Lagen, ${zahl(m.karte)} Kartenobjekte, `
-      + `${zahl(p.liste)} Einträge der Prüfliste, ${zahl(p.ergebnisse)} Prüfergebnisse, ${zahl((d.bestellungen || {}).liste)} Bestellungen. `
-      + `Die Datei liegt in „Downloads“.`;
-  } catch(err){
-    aus.textContent = `Nicht gesichert: ${(err && err.message) || err}`;
-  }
+/* Umzug zu World4You (Stufe B): die Datei aus „Für den Umzug sichern“ (v148, noch Firebase) einspielen. */
+function umzugDateiGewaehlt(input){
+  const datei = input.files && input.files[0];
+  input.value = '';
+  if(datei && typeof hofUmzugEinspielen === 'function') hofUmzugEinspielen(datei);
 }
 
+/* Baum- und Sortenangaben ändert nur der Admin (v149); Helfer korrigieren im Prüfmodus. */
 function editBaumWithLogin(id){
-  if(isAdmin()){
-    openBaumEditForm(id);
-    return;
-  }
-  if(isEditMode()){
-    openBaumEditForm(id);
-    return;
-  }
+  if(isAdmin()){ openBaumEditForm(id); return; }
+  if(isEditMode()){ showToast('Angaben ändert der Admin. Korrekturen bitte im Prüfmodus eintragen.', 'info', 5000); return; }
   showLoginDialog();
 }
 function editSorteWithLogin(sorteName){
-  if(isAdmin()){
-    openSortenEditForm(sorteName);
-    return;
-  }
-  if(isEditMode()){
-    openSortenEditForm(sorteName);
-    return;
-  }
+  if(isAdmin()){ openSortenEditForm(sorteName); return; }
+  if(isEditMode()){ showToast('Sortenangaben ändert der Admin.', 'info', 5000); return; }
   showLoginDialog();
 }
 

@@ -1140,11 +1140,22 @@ Keine Internetverbindung — Offline-Modus
   <!-- DATEN & SICHERUNG -->
   <section id="tab-daten" style="display:none;">
     <div class="card" style="max-width:640px;margin-bottom:16px;" id="card-umzug">
-      <h3>Umzug auf den eigenen Server</h3>
-      <p class="snippet">Holt alles frisch aus Firebase in eine Datei: Bäume, Lagen, Karte, Ernten, Prüfung und Bestellungen.
-      Die Datei braucht Claude für den Umzug. Erst am Umzugstag drücken, danach im Kataster nichts mehr ändern.</p>
-      <button class="btn" type="button" onclick="umzugSichern()">Für den Umzug sichern</button>
+      <h3>Umzug: Daten einspielen</h3>
+      <p class="snippet">Einmalig am Umzugstag: die Datei aus „Für den Umzug sichern“ wählen. Sie kommt auf den eigenen Server,
+      danach zeigt jedes Gerät denselben Stand. Diese Karte verschwindet nach dem Umzug wieder.</p>
+      <label class="btn">Umzugsdatei wählen<input type="file" accept="application/json,.json" hidden onchange="umzugDateiGewaehlt(this)"></label>
       <div id="umzug-ergebnis" class="snippet" style="margin-top:8px;"></div>
+    </div>
+    <div class="card" style="max-width:640px;margin-bottom:16px;" id="card-helfer">
+      <h3>Helfer-Zugang</h3>
+      <p class="snippet">Ein gemeinsames Passwort für alle Helfer: prüfen, Angaben korrigieren, GPS setzen, Ernte und Pflege eintragen.
+      Ins Kataster übernehmen, löschen, Sorten, Karte und Einstellungen bleiben beim Admin. Reist jemand ab, hier ein neues
+      Passwort setzen — alle Helfer müssen sich dann neu anmelden.</p>
+      <form class="pa-zeile" onsubmit="event.preventDefault();hofHelferPasswortSetzen()">
+        <input type="text" id="helfer-pw" autocomplete="off" placeholder="Neues Helfer-Passwort (mind. 8 Zeichen)" style="flex:1;min-width:200px;">
+        <button class="btn" type="submit">Setzen</button>
+      </form>
+      <div id="helfer-pw-ergebnis" class="snippet" style="margin-top:8px;"></div>
     </div>
     <div style="max-width:640px;margin-bottom:16px;">
 <details class="karte-abschnitt phaeno-box" id="phaeno-box" data-merk="phaeno" hidden>
@@ -1548,175 +1559,13 @@ Keine Internetverbindung — Offline-Modus
 
 <!-- Aus einem einzelnen Script-Block herausgeloest (F6). Reihenfolge ist
      bindend: Ueber Dateigrenzen hinweg gibt es kein Hoisting mehr. -->
-<script src="js/kern.js?v=148"></script>
-<script src="js/kataster.js?v=148"></script>
-<script src="js/lageplan.js?v=148"></script>
-<script src="js/start.js?v=148"></script>
+<script src="js/kern.js?v=149"></script>
+<script src="js/kataster.js?v=149"></script>
+<script src="js/lageplan.js?v=149"></script>
+<script src="js/start.js?v=149"></script>
 
-<script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-app.js";
-  import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail }
-    from "https://www.gstatic.com/firebasejs/12.17.1/firebase-auth.js";
-  import { getFirestore, doc, getDoc, setDoc, onSnapshot, enableIndexedDbPersistence }
-    from "https://www.gstatic.com/firebasejs/12.17.1/firebase-firestore.js";
-
-  const firebaseConfig = {
-    apiKey: "AIzaSyBD4ZsWnJdZorSfxkcsk00vO9SquWK6l8A",
-    authDomain: "hendlberghof.firebaseapp.com",
-    projectId: "hendlberghof",
-    storageBucket: "hendlberghof.firebasestorage.app",
-    messagingSenderId: "511331674485",
-    appId: "1:511331674485:web:5471ed06ee8b1b5c490b3c",
-    measurementId: "G-VLS1Q9SWBG"
-  };
-
-  const app = initializeApp(firebaseConfig);
-  const auth = getAuth(app);
-  const db = getFirestore(app);
-  enableIndexedDbPersistence(db).catch(()=>{ /* mehrere offene Tabs o.ä. - Offline-Cache dann nur eingeschränkt */ });
-
-  /* Zwei Dokumente statt einem (Datenschutz, 3.8.2026).
-
-     app_state/main       oeffentlich lesbar - Katalog-Overlays, Positionen,
-                          Ernten, Beobachtungen. Nichts davon ist personenbezogen.
-     app_state/bestellungen  nur angemeldet - Anfragen mit Name, Adresse,
-                          E-Mail und Telefon.
-
-     Firestore-Regeln greifen je Dokument, nicht je Feld. Solange die
-     Bestellungen im selben Dokument lagen wie der Katalog, war jede
-     Kundenanschrift fuer jeden abrufbar, der die Projekt-URL kennt - und die
-     steht im Quelltext der App. Ein Feld laesst sich nicht verstecken, nur ein
-     Dokument.
-
-     GRUNDSATZ: Bestellungen werden NIE wieder in das oeffentliche Dokument
-     geschrieben, auch nicht ersatzweise, wenn das private scheitert. Dann
-     bleiben sie lokal und im Monatsbackup, und der Nutzer bekommt eine
-     Warnung - Verfuegbarkeit rechtfertigt keine Offenlegung. */
-  const stateDocRef = doc(db, 'app_state', 'main');
-  const bestellDocRef = doc(db, 'app_state', 'bestellungen');
-  /* Bestandsprüfung (22.10.2026): Baumschulbestand und frei getippte Notizen —
-     ebenfalls nur angemeldet, aus demselben Grund wie die Bestellungen. */
-  const pruefDocRef = doc(db, 'app_state', 'pruefung');
-  let firstSnapshot = true;
-  let bestellAbo = null;
-  let pruefAbo = null;
-
-  onSnapshot(stateDocRef, async (snap)=>{
-    if(window.__dataReadyPromise){ try{ await window.__dataReadyPromise; }catch(e){} }
-    if(snap.exists()){
-      window.applyRemoteState(snap.data());
-    } else if(firstSnapshot){
-      // Noch kein Dokument in der Cloud: einmalig den lokalen Stand hochladen
-      setDoc(stateDocRef, window.getCurrentState()).catch(err=>{
-        console.warn('Erstmaliges Hochladen des lokalen Standes fehlgeschlagen:', err);
-      });
-    }
-    firstSnapshot = false;
-  }, (err)=>{
-    console.warn('Firestore-Synchronisierung nicht verfügbar (offline?), es wird lokal weitergearbeitet:', err);
-  });
-
-  const _satMerge = (local, remote, deleted)=>{
-    const out = Object.assign({}, local||{});
-    if(remote && typeof remote==='object' && !Array.isArray(remote)){
-      Object.keys(remote).forEach(k=>{
-        if(!(k in out) && !(deleted && deleted[k])) out[k] = remote[k];
-      });
-    }
-    return out;
-  };
-
-  let bestellWarnungGezeigt = false;
-  window.__syncToFirestore = async (data)=>{
-    const bestellungen = data.bestellungen || [];
-
-    /* Zuerst der private Teil. Gelingt er nicht, bleiben die Bestellungen lokal
-       - sie wandern trotzdem nicht ins oeffentliche Dokument. */
-    if(auth.currentUser){
-      try {
-        await setDoc(bestellDocRef, { liste: bestellungen, stand: new Date().toISOString() });
-      } catch(err){
-        console.warn('Bestellungen konnten nicht privat gesichert werden:', err);
-        if(bestellungen.length && !bestellWarnungGezeigt){
-          bestellWarnungGezeigt = true;
-          if(window.showToast) window.showToast(
-            `Bestellungen bleiben vorerst nur auf diesem Gerät — die Firestore-Regel für `
-            + `app_state/bestellungen fehlt noch. Siehe firestore.rules.`, 'error', 9000);
-        }
-      }
-    }
-
-    try {
-      const snap = await getDoc(stateDocRef);
-      if(snap.exists()){
-        const remote = snap.data();
-        data.satPositions = _satMerge(data.satPositions, remote.satPositions, data.deletedSatPositions);
-      }
-      const oeffentlich = Object.assign({}, data);
-      delete oeffentlich.bestellungen;      /* nie im oeffentlichen Dokument */
-      await setDoc(stateDocRef, oeffentlich);
-    } catch(err){
-      console.warn('Synchronisierung fehlgeschlagen (Änderung bleibt lokal gespeichert):', err);
-    }
-  };
-
-  /* Vor dem Schreiben den Stand der Cloud einmischen — prüfen zwei Geräte
-     gleichzeitig, ginge sonst das Ergebnis des einen verloren. */
-  window.__syncPruefung = async (daten)=>{
-    if(!auth.currentUser) return;
-    try {
-      const snap = await getDoc(pruefDocRef);
-      const zusammen = snap.exists() ? window.pruefungZusammenfuehren(daten, snap.data()) : daten;
-      await setDoc(pruefDocRef, Object.assign({}, zusammen, { stand: new Date().toISOString() }));
-    } catch(err){
-      if(window.pruefSyncFehler) window.pruefSyncFehler(err);
-    }
-  };
-
-  /* Umzug zu World4You (Stufe B, 11.11.2026): alle drei Dokumente frisch vom Server, nicht aus dem Gerät. */
-  window.__umzugExport = async ()=>{
-    const [m, b, p] = await Promise.all([getDoc(stateDocRef), getDoc(bestellDocRef), getDoc(pruefDocRef)]);
-    return { erstellt: new Date().toISOString(), quelle: 'firebase',
-      main: m.exists() ? m.data() : null, bestellungen: b.exists() ? b.data() : null, pruefung: p.exists() ? p.data() : null };
-  };
-
-  window.__firebaseSignIn = (email, password)=> signInWithEmailAndPassword(auth, email, password);
-  window.__firebaseSignOut = ()=> signOut(auth);
-  /* Mail auf Deutsch; der Link führt auf Firebases eigene Seite zum Neusetzen. */
-  window.__firebasePasswortReset = (email)=>{ auth.languageCode = 'de'; return sendPasswordResetEmail(auth, email); };
-
-  onAuthStateChanged(auth, (user)=>{
-    const wasLoggedIn = !!window.__firebaseUser;
-    window.__firebaseUser = user;
-    if(window.applyEditModeUI) window.applyEditModeUI();
-    if(user && !wasLoggedIn) closeModal();
-
-    /* Das private Dokument erst abonnieren, wenn jemand angemeldet ist - ohne
-       Anmeldung waere jeder Versuch ein Regelverstoss und wuerde die Konsole
-       mit Fehlern fuellen. */
-    if(user && !bestellAbo){
-      bestellAbo = onSnapshot(bestellDocRef, async (snap)=>{
-        if(window.__dataReadyPromise){ try{ await window.__dataReadyPromise; }catch(e){} }
-        if(snap.exists() && window.applyRemoteBestellungen)
-          window.applyRemoteBestellungen(snap.data().liste || []);
-      }, (err)=>{
-        console.warn('Bestellungen nicht abrufbar (Regel für app_state/bestellungen fehlt?):', err);
-      });
-    } else if(!user && bestellAbo){
-      bestellAbo(); bestellAbo = null;
-    }
-    if(user && !pruefAbo){
-      pruefAbo = onSnapshot(pruefDocRef, async (snap)=>{
-        if(window.__dataReadyPromise){ try{ await window.__dataReadyPromise; }catch(e){} }
-        if(snap.exists() && window.applyRemotePruefung) window.applyRemotePruefung(snap.data());
-      }, (err)=>{
-        if(window.pruefSyncFehler) window.pruefSyncFehler(err);
-      });
-    } else if(!user && pruefAbo){
-      pruefAbo(); pruefAbo = null;
-    }
-  });
-</script>
+<!-- Bis v148 lag hier die Anbindung an Firebase. Seit v149 laufen Daten und Anmeldung über den
+     eigenen Server (Hofbuch-Schnittstelle), siehe js/hofsync.js. -->
 
 <script>
   if('serviceWorker' in navigator){
@@ -1725,10 +1574,11 @@ Keine Internetverbindung — Offline-Modus
     });
   }
 </script>
-<script src="js/berater.js?v=148"></script>
-<script src="js/shop.js?v=148"></script>
-<script src="js/konfigurator.js?v=148"></script>
-<script src="js/pruefung.js?v=148"></script>
-<script src="js/baumfinder.js?v=148"></script>
+<script src="js/berater.js?v=149"></script>
+<script src="js/shop.js?v=149"></script>
+<script src="js/konfigurator.js?v=149"></script>
+<script src="js/pruefung.js?v=149"></script>
+<script src="js/baumfinder.js?v=149"></script>
+<script src="js/hofsync.js?v=149"></script>
 </body>
 </html>

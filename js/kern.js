@@ -197,7 +197,7 @@ function saveState(){
   clearTimeout(_saveTimer);
   _saveTimer = setTimeout(()=>{
     localStorage.setItem(LS_KEY, JSON.stringify(state));
-    if(window.__syncToFirestore) window.__syncToFirestore(state);
+    if(typeof hofSyncBald === 'function') hofSyncBald();
   }, 300);
 }
 let state;
@@ -238,8 +238,8 @@ function toggleVerifiziert(sorteName, context){
   else openSortenModal(sorteName);
 }
 
-/* ---------- Editierbarkeit (Login-geschützt via Firebase Authentication) ---------- */
-function isEditMode(){ return !!window.__firebaseUser; }
+/* ---------- Editierbarkeit (Anmeldung über den eigenen Server, hofsync.js; seit v149 statt Firebase) ---------- */
+function isEditMode(){ return !!window.__anmeldung; }
 function getCurrentState(){ return state; }
 
 /* Bestellungen kommen seit 3.8.2026 aus einem eigenen, nur angemeldet lesbaren
@@ -363,7 +363,16 @@ function applyRemoteState(remote){
   if(!state.betrieb) state.betrieb = {};
   if(!state.karte) state.karte = {};
   if(!state.fruehereBaeume) state.fruehereBaeume = {};
-  localStorage.setItem(LS_KEY, JSON.stringify(state));
+  zustandNachFernaenderung();
+}
+
+/* Nach Änderungen vom Server (hofsync.js, früher applyRemoteState): Zwischenspeicher
+   verwerfen, im Gerät sichern, neu zeichnen. Schickt selbst nichts. */
+function zustandNachFernaenderung(){
+  _mittelCache = null;
+  _sortenCache = null;
+  invalidateTreeCache();
+  try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch(e){}
   /* Arbeitskopie der Merklisten nachziehen, sonst zeigt dieses Gerät weiter den
      Stand von vor der Synchronisierung. */
   if(typeof ladeMerklisten === 'function') ladeMerklisten();
@@ -372,7 +381,10 @@ function applyRemoteState(remote){
   renderResults();
   renderUnplacedSelect();
   if(document.getElementById('tab-lageplan').style.display!=='none') renderPins();
-  if(satMap) renderSatMarkers();
+  if(satMap){
+    renderSatMarkers();
+    if(typeof zeichneKarte === 'function' && !(typeof _kb !== 'undefined' && _kb)) zeichneKarte();
+  }
 }
 
 /* ---------- Betriebsmodus (A1) ----------

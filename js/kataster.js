@@ -269,7 +269,7 @@ function openPlatzModal(id){
     ${std.standort_zeile ? `<p style="font-size:.82rem;color:var(--muted);">Standort: ${escHtml(std.standort_zeile)}</p>` : ''}
     <div class="kat-frueher-titel">Früher an diesem Platz</div>
     ${renderFruehereBaeume(id)}
-    ${isEditMode() ? `<div class="edit-actions">
+    ${isAdmin() ? `<div class="edit-actions">
       <button class="btn" onclick="openBaumAddForm('${escAttr(id)}')">Neu bepflanzen</button>
       <button class="btn secondary" onclick="closeModal()">Schließen</button>
     </div>` : ''}`;
@@ -335,8 +335,8 @@ function renderKatUebersicht(alle){
             <span class="kat-art-name">Ohne Standort</span><span class="kat-art-zahl">${ohne} ${ohne === 1 ? 'Baum' : 'Bäume'} noch nicht im Lageplan</span>${SVG_WEITER}</button>` : ''}
         ${freiePlaetze().length ? `<button type="button" class="kat-art" onclick="katArtWaehlen('__frei')">
             <span class="kat-art-name">Freie Plätze</span><span class="kat-art-zahl">${freiePlaetze().length} ${freiePlaetze().length === 1 ? 'Platz' : 'Plätze'} zum Nachpflanzen</span>${SVG_WEITER}</button>` : ''}
-        <button type="button" class="kat-art" onclick="katArtWaehlen('__standorte')">
-            <span class="kat-art-name">Standorte prüfen</span><span class="kat-art-zahl">${namen} Standorte${ohneName ? ` · ${ohneName} ohne Namen` : ''}</span>${SVG_WEITER}</button>
+        ${isAdmin() ? `<button type="button" class="kat-art" onclick="katArtWaehlen('__standorte')">
+            <span class="kat-art-name">Standorte prüfen</span><span class="kat-art-zahl">${namen} Standorte${ohneName ? ` · ${ohneName} ohne Namen` : ''}</span>${SVG_WEITER}</button>` : ''}
       </div>`;
   }
   return oben + (gruppen || '<div class="empty">Keine Bäume.</div>');
@@ -947,8 +947,9 @@ const MERKLISTE_EIGEN = 'eigen';
 const MERK_GAST_KEY = 'hendlberghof_merkliste_gast';
 let _gastMerklisten = null;
 
+/* Die Merklisten des Hofes führt nur der Admin; Helfer haben wie Besucher ihren eigenen Topf am Gerät (v149). */
 function merklistenTopf(){
-  if(typeof isEditMode === 'function' && isEditMode()){
+  if(typeof isAdmin === 'function' && isAdmin()){
     if(!state.merklisten) state.merklisten = {};
     return state.merklisten;
   }
@@ -960,7 +961,7 @@ function merklistenTopf(){
 }
 
 function merkSpeichern(){
-  if(typeof isEditMode === 'function' && isEditMode()){ saveState(); return; }
+  if(typeof isAdmin === 'function' && isAdmin()){ saveState(); return; }
   try { localStorage.setItem(MERK_GAST_KEY, JSON.stringify(_gastMerklisten || {})); }
   catch(e){ /* Speicher voll oder gesperrt — die Liste bleibt für diese Sitzung */ }
 }
@@ -1751,7 +1752,7 @@ function karteSorteInhalt(t, merged, sorteInfo){
   const ausSorte = sorteInfo && sorteInfo.recherchiert;
   const sn = escAttr(t.sorte||'');
   const ti = escAttr(t.id);
-  const pruefen = !isEditMode() ? ''
+  const pruefen = !isAdmin() ? ''
     : ausSorte ? `<div class="badge-recherche">Sortenangaben web-recherchiert – bitte prüfen</div>
         <button class="btn-verify" onclick="toggleVerifiziert('${sn}', {baumId:'${ti}'})">Als verifiziert markieren</button>`
     : state.verifiziert[t.sorte] ? `<div class="badge-verifiziert">Verifiziert am ${escHtml(state.verifiziert[t.sorte])}</div>
@@ -1857,7 +1858,7 @@ function openBaumModal(id){
     ${!angemeldet && bestellbar ? `<button type="button" id="karte-merken" class="karte-symbol${gemerkt ? ' gemerkt' : ''}" title="Merken" aria-label="Merken" aria-pressed="${gemerkt}" onclick="karteMerken('${ti}')"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M6 3h12v18l-6-4-6 4z"/></svg></button>` : ''}
     ${!angemeldet ? symbol('Teilen', `karteTeilen('${ti}')`, `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 15V3"/><polyline points="7 8 12 3 17 8"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg>`) : ''}
     ${symbol('Als PDF speichern', `exportBaumKartePDF('${ti}')`, `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M6 9V3h12v6"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="7"/></svg>`, ' nur-rechner')}
-    ${angemeldet ? symbol('Bearbeiten', `editBaumWithLogin('${ti}')`, `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true" focusable="false"><line x1="4" y1="7" x2="20" y2="7"/><circle cx="14" cy="7" r="2.3"/><line x1="4" y1="14" x2="20" y2="14"/><circle cx="9" cy="14" r="2.3"/><line x1="4" y1="21" x2="20" y2="21"/><circle cx="16" cy="21" r="2.3"/></svg>`) : ''}
+    ${isAdmin() ? symbol('Bearbeiten', `editBaumWithLogin('${ti}')`, `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true" focusable="false"><line x1="4" y1="7" x2="20" y2="7"/><circle cx="14" cy="7" r="2.3"/><line x1="4" y1="14" x2="20" y2="14"/><circle cx="9" cy="14" r="2.3"/><line x1="4" y1="21" x2="20" y2="21"/><circle cx="16" cy="21" r="2.3"/></svg>`) : ''}
     ${symbol('Schließen', 'closeModal()', `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true" focusable="false"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>`)}
   </div>`;
 

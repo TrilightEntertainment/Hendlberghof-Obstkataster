@@ -216,7 +216,7 @@ function renderBestellModalContent() {
   /* Speichern ist Buchhaltung des Hofes, nicht Sache des Besuchers: Ohne
      Anmeldung erreicht der Eintrag die Cloud nie, waere also ein Knopf, der
      Sicherheit vortaeuscht. Fuer Gaeste fuehrt der Weg ueber "Anfrage senden". */
-  if(typeof isEditMode === 'function' && isEditMode())
+  if(typeof isAdmin === 'function' && isAdmin())
     html += '<button class="btn secondary" onclick="bestellungSpeichern()">Anfragen speichern</button>';
   html += '</div>';
   html += '</div>';

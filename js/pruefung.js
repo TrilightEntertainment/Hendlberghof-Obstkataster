@@ -15,8 +15,8 @@
      pruefung.ergebnisse  P-Nr → { status, ort, notiz, gps, zeit, durchgaenge }
      pruefung.funde       F-… → Bäume, die auf keiner Liste stehen
 
-   Gespeichert lokal (eigener Schlüssel) und im privaten Firestore-Dokument
-   app_state/pruefung — Lesen und Schreiben nur angemeldet. Die Liste ist
+   Gespeichert lokal (eigener Schlüssel) und am eigenen Server als private
+   Einträge kataster_pruef* (hofsync.js, seit v149) — Lesen und Schreiben nur angemeldet. Die Liste ist
    Betriebsbestand, die Notizen sind frei getippt; beides gehört nicht in das
    öffentlich lesbare app_state/main.
 
@@ -144,11 +144,11 @@ function pruefungSpeichern(){
   catch(e){ console.warn('[pruefung] lokal nicht speicherbar:', e); }
   clearTimeout(_pruefTimer);
   _pruefTimer = setTimeout(()=>{
-    if(isEditMode() && window.__syncPruefung) window.__syncPruefung(pruefung);
+    if(isEditMode() && typeof hofSyncBald === 'function') hofSyncBald();
   }, 600);
 }
 
-/* Für das Firebase-Modul: je Eintrag gewinnt der jüngere Zeitstempel. */
+/* Je Eintrag gewinnt der jüngere Zeitstempel (beim Einspielen der Firebase-Daten noch gebraucht). */
 function pruefungZusammenfuehren(lokal, fern){
   const aus = Object.assign(pruefungLeer(), lokal);
   if(!fern) return aus;
@@ -168,6 +168,11 @@ function pruefungZusammenfuehren(lokal, fern){
 }
 function applyRemotePruefung(fern){
   pruefung = pruefungZusammenfuehren(pruefung, fern);
+  pruefNachFernaenderung();
+}
+/* Nach Änderungen vom Server (hofsync.js): im Gerät sichern, neu zeichnen. */
+function pruefNachFernaenderung(){
+  pruefNormalisieren(pruefung);
   try{ localStorage.setItem(PRUEF_LS_KEY, JSON.stringify(pruefung)); }catch(e){}
   const tab = document.getElementById('tab-pruefung');
   if(tab && tab.style.display !== 'none') renderPruefung();
@@ -176,7 +181,7 @@ function pruefSyncFehler(err){
   console.warn('[pruefung] nicht synchronisiert:', err);
   if(pruefSyncWarnung) return;
   pruefSyncWarnung = true;
-  showToast('Prüfergebnisse bleiben vorerst nur auf diesem Gerät — die Firestore-Regel für app_state/pruefung fehlt noch.', 'error', 9000);
+  showToast('Prüfergebnisse bleiben vorerst nur auf diesem Gerät — der Server ist gerade nicht erreichbar.', 'error', 9000);
 }
 window.pruefungZusammenfuehren = pruefungZusammenfuehren;
 window.applyRemotePruefung = applyRemotePruefung;
@@ -832,7 +837,7 @@ function pruefSetze(pnr, aenderung){
     pruefung.funde[pnr] = Object.assign({}, pruefung.funde[pnr], aenderung, { zeit:pruefJetzt() });
   } else {
     const alt = pruefung.ergebnisse[pnr] || { ort:pruefStandardOrt(e) };
-    pruefung.ergebnisse[pnr] = Object.assign({}, alt, aenderung, { zeit:pruefJetzt(), von:(window.__firebaseUser||{}).email || '' });
+    pruefung.ergebnisse[pnr] = Object.assign({}, alt, aenderung, { zeit:pruefJetzt(), von:(typeof hofWer === 'function' ? hofWer() : '') });
   }
   pruefungSpeichern();
   pruefSofortVeroeffentlichen();
@@ -1016,7 +1021,7 @@ function pruefFundSpeichern(){
     vermehrung:wert('pr-fund-vermehrung'), herkunft, anzahl,
     /* Wer vor Ort neu erfasst, hat ihn gesehen: gilt als vorhanden. */
     status:'stimmt', ort,
-    notiz:'', zeit:pruefJetzt(), von:(window.__firebaseUser||{}).email || ''
+    notiz:'', zeit:pruefJetzt(), von:(typeof hofWer === 'function' ? hofWer() : '')
   };
   pruefFundForm = null;
   pruefOffen = id;
