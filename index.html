@@ -1139,6 +1139,13 @@ Keine Internetverbindung — Offline-Modus
 
   <!-- DATEN & SICHERUNG -->
   <section id="tab-daten" style="display:none;">
+    <div class="card" style="max-width:640px;margin-bottom:16px;" id="card-umzug">
+      <h3>Umzug auf den eigenen Server</h3>
+      <p class="snippet">Holt alles frisch aus Firebase in eine Datei: Bäume, Lagen, Karte, Ernten, Prüfung und Bestellungen.
+      Die Datei braucht Claude für den Umzug. Erst am Umzugstag drücken, danach im Kataster nichts mehr ändern.</p>
+      <button class="btn" type="button" onclick="umzugSichern()">Für den Umzug sichern</button>
+      <div id="umzug-ergebnis" class="snippet" style="margin-top:8px;"></div>
+    </div>
     <div style="max-width:640px;margin-bottom:16px;">
 <details class="karte-abschnitt phaeno-box" id="phaeno-box" data-merk="phaeno" hidden>
   <summary><span class="ka-kopf"><span class="ka-titel">Phänologie</span><span class="ka-info">für die Vorhersage<span class="ka-pfeil"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><polyline points="6 9 12 15 18 9"/></svg></span></span></span></summary>
@@ -1541,10 +1548,10 @@ Keine Internetverbindung — Offline-Modus
 
 <!-- Aus einem einzelnen Script-Block herausgeloest (F6). Reihenfolge ist
      bindend: Ueber Dateigrenzen hinweg gibt es kein Hoisting mehr. -->
-<script src="js/kern.js?v=147"></script>
-<script src="js/kataster.js?v=147"></script>
-<script src="js/lageplan.js?v=147"></script>
-<script src="js/start.js?v=147"></script>
+<script src="js/kern.js?v=148"></script>
+<script src="js/kataster.js?v=148"></script>
+<script src="js/lageplan.js?v=148"></script>
+<script src="js/start.js?v=148"></script>
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-app.js";
@@ -1666,6 +1673,13 @@ Keine Internetverbindung — Offline-Modus
     }
   };
 
+  /* Umzug zu World4You (Stufe B, 11.11.2026): alle drei Dokumente frisch vom Server, nicht aus dem Gerät. */
+  window.__umzugExport = async ()=>{
+    const [m, b, p] = await Promise.all([getDoc(stateDocRef), getDoc(bestellDocRef), getDoc(pruefDocRef)]);
+    return { erstellt: new Date().toISOString(), quelle: 'firebase',
+      main: m.exists() ? m.data() : null, bestellungen: b.exists() ? b.data() : null, pruefung: p.exists() ? p.data() : null };
+  };
+
   window.__firebaseSignIn = (email, password)=> signInWithEmailAndPassword(auth, email, password);
   window.__firebaseSignOut = ()=> signOut(auth);
   /* Mail auf Deutsch; der Link führt auf Firebases eigene Seite zum Neusetzen. */
@@ -1711,10 +1725,10 @@ Keine Internetverbindung — Offline-Modus
     });
   }
 </script>
-<script src="js/berater.js?v=147"></script>
-<script src="js/shop.js?v=147"></script>
-<script src="js/konfigurator.js?v=147"></script>
-<script src="js/pruefung.js?v=147"></script>
-<script src="js/baumfinder.js?v=147"></script>
+<script src="js/berater.js?v=148"></script>
+<script src="js/shop.js?v=148"></script>
+<script src="js/konfigurator.js?v=148"></script>
+<script src="js/pruefung.js?v=148"></script>
+<script src="js/baumfinder.js?v=148"></script>
 </body>
 </html>

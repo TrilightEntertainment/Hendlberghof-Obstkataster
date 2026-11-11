@@ -219,6 +219,28 @@ function passwortVergessen(){
   });
 }
 
+/* Umzug zu World4You (Stufe B): einmalige Sicherung aller Firebase-Daten als Datei. */
+async function umzugSichern(){
+  const aus = document.getElementById('umzug-ergebnis');
+  if(!isAdmin() || !window.__umzugExport){ showToast('Nur angemeldet als Admin.', 'error', 4000); return; }
+  aus.textContent = 'Wird geholt …';
+  try {
+    const d = await window.__umzugExport();
+    const m = d.main || {}, p = d.pruefung || {};
+    const zahl = o => Array.isArray(o) ? o.length : Object.keys(o || {}).length;
+    const blob = new Blob([JSON.stringify(d)], {type: 'application/json'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `kataster-umzug-${d.erstellt.slice(0, 16).replace(/[:T]/g, '-')}.json`;
+    document.body.appendChild(a); a.click(); a.remove();
+    aus.textContent = `Gesichert: ${zahl(m.customTrees)} eigene Bäume, ${zahl(m.satPositions)} Lagen, ${zahl(m.karte)} Kartenobjekte, `
+      + `${zahl(p.liste)} Einträge der Prüfliste, ${zahl(p.ergebnisse)} Prüfergebnisse, ${zahl((d.bestellungen || {}).liste)} Bestellungen. `
+      + `Die Datei liegt in „Downloads“.`;
+  } catch(err){
+    aus.textContent = `Nicht gesichert: ${(err && err.message) || err}`;
+  }
+}
+
 function editBaumWithLogin(id){
   if(isAdmin()){
     openBaumEditForm(id);
