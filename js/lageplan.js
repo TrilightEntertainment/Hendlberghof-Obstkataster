@@ -531,6 +531,13 @@ function kartenObjekte(){
 }
 function kartenObjekt(id){ return kartenObjekte().find(o => o.id === id) || null; }
 
+/* Namen der Kartenflächen als Standort-Vorschläge (v147): Bestandsflächen und alles aus
+   „Mein Konzept“. Gleiche Schreibweise wie auf der Karte, dann findet der Zoom beim Setzen
+   die Fläche. „Mein Konzept“ liegt in state.karte und ist auch ohne geöffneten Lageplan da. */
+function kartenStandortNamen(){
+  return kartenObjekte().filter(o => o.art !== 'Grundstücksgrenze' && (o.ebene === 'konzept' || o.typ === 'flaeche')).map(o => o.name);
+}
+
 /* Fläche in m² und Länge in m, eben gerechnet – auf 4,5 ha genau genug. */
 function _kMeter(p, lat0){ return [p[1] * 111320 * Math.cos(lat0 * Math.PI / 180), p[0] * 110540]; }
 function objektGroesse(o){

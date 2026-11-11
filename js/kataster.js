@@ -378,10 +378,8 @@ function katStdVorschlaege(){
   const n = {};
   getAllTrees().forEach(t => { const s = katStdName(t.standort_zeile); if(s) n[s] = (n[s] || 0) + 1; });
   const liste = Object.keys(n).sort((a, b) => n[b] - n[a] || a.localeCompare(b, 'de'));
-  if(typeof kartenObjekte === 'function' && typeof FLAECHEN !== 'undefined' && FLAECHEN){
-    kartenObjekte().filter(o => o.ebene === 'bestand' && o.typ === 'flaeche' && o.art !== 'Grundstücksgrenze')
-      .forEach(o => { if(!liste.some(x => _katStdSchl(x) === _katStdSchl(o.name))) liste.push(o.name); });
-  }
+  if(typeof kartenStandortNamen === 'function')
+    kartenStandortNamen().forEach(n => { if(!liste.some(x => _katStdSchl(x) === _katStdSchl(n))) liste.push(n); });
   return liste;
 }
 

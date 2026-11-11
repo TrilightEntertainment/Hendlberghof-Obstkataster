@@ -562,10 +562,14 @@ function renderPruefVorschlaege(){
   const liste = Object.values(pruefung.liste);
   const baeume = getAllTrees();
   const dl = (id, werte)=> `<datalist id="${id}">${werte.map(w=>`<option value="${escAttr(w)}">`).join('')}</datalist>`;
+  /* Erst die eingetragenen Standorte, dann die Flächen der Karte (v147) */
+  const standorte = pruefNachHaeufigkeit(korr.map(k=>k.standort).concat(baeume.map(t=>t.standort_zeile)));
+  const flaechen = typeof kartenStandortNamen === 'function'
+    ? kartenStandortNamen().filter(n=> !standorte.some(s=> s.toLowerCase() === n.toLowerCase())) : [];
   return dl('pr-dl-sorten', pruefNachHaeufigkeit(korr.map(k=>k.sorte).concat(liste.map(e=>e.sorte), baeume.map(t=>t.sorte))))
     + dl('pr-dl-arten', pruefNachHaeufigkeit(korr.map(k=>k.frucht).concat(liste.map(e=>e.frucht), baeume.map(t=>t.frucht))))
     + dl('pr-dl-unterlagen', pruefNachHaeufigkeit(korr.map(k=>k.unterlage), PRUEF_UNTERLAGEN))
-    + dl('pr-dl-standorte', pruefNachHaeufigkeit(korr.map(k=>k.standort).concat(baeume.map(t=>t.standort_zeile))));
+    + dl('pr-dl-standorte', standorte.concat(flaechen));
 }
 
 function pruefPlanText(e){
