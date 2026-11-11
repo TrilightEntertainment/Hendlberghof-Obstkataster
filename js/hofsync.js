@@ -238,6 +238,9 @@ async function _hofHolen(){
   /* Der Server ist noch leer (vor dem Einspielen der Umzugsdatei): nichts anfassen und nichts
      schicken – sonst landet der zufällige Stand eines Geräts als Grundbestand am Server. */
   if(voll && !j.eintraege.length && !Object.keys(_hofBasis.eintraege).length){ _hofBasis = {seit: j.jetzt, eintraege: {}, leer: true}; _hofBasisMerken(); return; }
+  /* War der Server beim letzten Mal leer, kommt jetzt der eingespielte Bestand: dann einmal
+     vollständig holen, damit der alte Gerätestand ersetzt und nicht hochgeschickt wird. */
+  if(_hofBasis.leer && j.eintraege.length && !voll){ _hofBasis = {seit: '', eintraege: {}}; return _hofHolen(); }
   if(j.eintraege.length) delete _hofBasis.leer;
   let geaendert = false, pruefGeaendert = false;
   const gesehen = new Set();
