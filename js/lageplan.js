@@ -241,8 +241,8 @@ function mapAspect(){
    Bäume stehen mit ihren Koordinaten in state.satPositions. Bäume, die bisher
    nur auf dem alten Foto standen, sind aus dem Foto umgerechnet
    (data/lage_ungefaehr.json) und tragen den Vermerk „Lage ungefähr“, bis jemand
-   sie auf der Karte zurechtzieht. Die Flächen (data/flaechen.json) stammen aus
-   dem Permakulturkonzept 2020 und sind ein Entwurf. */
+   sie auf der Karte zurechtzieht. Die Linien in data/flaechen.json sind Bestand
+   (Wege, Swale, Grenze); die Flächen zeichnet Volkmar selbst („Mein Konzept“). */
 let satMap = null;
 let satMarkers = [];
 let satMarkerById = {};
@@ -313,12 +313,12 @@ function setMapLayer(layer){
 /* ---------- Ebenen (v124) ----------
    Ein Knopf oben rechts in der Karte: Grundbild (eigenes Luftbild 2023 oder
    basemap.at) und Ebenen darüber (Foto mit Reihen samt Deckkraft, Wege &
-   Swale, Konzeptplan, Bäume). Die Wahl merkt sich jedes Gerät selbst. */
+   Swale, Mein Konzept, Höhenlinien, Bäume). Die Wahl merkt sich jedes Gerät selbst. */
 const EBENEN_KEY = 'hendlberghof_kartenebenen';
 const FOTO_GRENZEN = [[48.06945, 15.84287], [48.07116, 15.84452]];
 let _ebenen = null;
 let _ebenenOffen = false;
-const _ebenenWahl = {grund: 'hof', foto: true, fotoDeckkraft: 85, bestand: true, konzept: true, planung: false, hoehen: false, baeume: true, namen: true};
+const _ebenenWahl = {grund: 'hof', foto: true, fotoDeckkraft: 85, bestand: true, konzept: true, hoehen: false, baeume: true, namen: true};
 let _hoehenEbene = null;
 let _hoehenPromise = null;
 try { Object.assign(_ebenenWahl, JSON.parse(localStorage.getItem(EBENEN_KEY) || '{}')); } catch(e){}
@@ -394,7 +394,6 @@ function renderEbenenKnopf(){
       <label class="lp-ebenen-regler">Deckkraft<input type="range" min="0" max="100" step="5" value="${w.fotoDeckkraft}" oninput="ebeneSetzen('fotoDeckkraft', +this.value)"${w.foto ? '' : ' disabled'}></label>
       ${haken('bestand', 'Wege &amp; Swale')}
       ${haken('konzept', 'Mein Konzept')}
-      ${haken('planung', 'Konzeptplan 2020 (Vorlage)')}
       ${haken('hoehen', 'Höhenlinien (5 m)')}
       ${haken('baeume', 'Bäume')}
       ${haken('namen', 'Namen der Flächen &amp; Wege')}
@@ -411,7 +410,7 @@ function ebeneSetzen(key, wert){
   ebenenMerken();
   if(key === 'grund' || key === 'foto' || key === 'fotoDeckkraft' || key === 'hoehen' || key === 'namen') ebenenAnwenden();
   if(key === 'foto'){ const r = document.querySelector('.lp-ebenen-regler input'); if(r) r.disabled = !wert; }
-  if(key === 'bestand' || key === 'konzept' || key === 'planung'){
+  if(key === 'bestand' || key === 'konzept'){
     if(_flaecheAktiv){ const o = kartenObjekt(_flaecheAktiv); if(o && !_ebenenWahl[o.ebene]) objektMarkieren(null); }
     zeichneKarte();
     renderLageFilter();
@@ -490,10 +489,10 @@ function initSatMap(){
   setTimeout(()=>{ satMap.invalidateSize(); namenEntzerren(); }, 500);
 }
 
-/* ---------- Kartenobjekte: Bestand und Planung (v123) ----------
-   data/flaechen.json enthält Linien und Flächen mit Ebene „bestand“ (Wege
-   aus dem Luftbild, Swale, Grundstücksgrenze) oder „planung“ (Konzeptplan
-   2020). Änderungen aus der App liegen in state.karte, je Objekt-ID:
+/* ---------- Kartenobjekte: Bestand und Mein Konzept (v123, v143) ----------
+   data/flaechen.json enthält die Linien der Ebene „bestand“ (Wege aus dem
+   Luftbild, Swale, Grundstücksgrenze). Der Konzeptplan 2020 als Vorlage ist
+   seit v146 entfernt (Volkmar 11.11.2026). Änderungen aus der App liegen in state.karte, je Objekt-ID:
    {name, art, ebene, typ, geo} – geo als JSON-Text, weil Firestore keine
    Listen in Listen speichert. null heißt gelöscht. Der Stand in der App hat
    Vorrang vor der Datei. */
@@ -505,7 +504,8 @@ const KARTEN_ART_FARBEN = Object.assign({
 
 function kartenObjektAusState(id, u){
   if(!u || typeof u !== 'object') return null;
-  try { return {id, name: u.name || 'Ohne Namen', art: u.art || 'Sonstiges', ebene: ['planung', 'konzept'].includes(u.ebene) ? u.ebene : 'bestand', typ: u.typ === 'linie' ? 'linie' : 'flaeche', geo: JSON.parse(u.geo)}; }
+  if(u.ebene === 'planung') return null;   /* Reste des Plans 2020 */
+  try { return {id, name: u.name || 'Ohne Namen', art: u.art || 'Sonstiges', ebene: u.ebene === 'konzept' ? 'konzept' : 'bestand', typ: u.typ === 'linie' ? 'linie' : 'flaeche', geo: JSON.parse(u.geo)}; }
   catch(e){ return null; }
 }
 
@@ -560,11 +560,6 @@ function kartenArtFarbe(art){
 }
 function objektStil(o, aktiv){
   const farbe = o.ebene === 'konzept' ? kartenArtFarbe(o.art) : (KARTEN_ART_FARBEN[o.art] || '#FFFFFF');
-  /* Der Plan von 2020 ist nur noch Vorlage zum Nachzeichnen: blass und nicht antippbar. */
-  if(o.ebene === 'planung'){
-    return o.typ === 'linie' ? {color: farbe, weight: 2, opacity: .35, dashArray: '4 4', interactive: false, fill: false}
-      : {color: farbe, weight: 1, opacity: .4, dashArray: '4 3', fillOpacity: 0, interactive: false};
-  }
   if(o.typ === 'linie'){
     if(o.art === 'Grundstücksgrenze') return {color: farbe, weight: aktiv ? 3 : 1.5, opacity: 1, dashArray: '6 5', fill: false};
     return {color: farbe, weight: aktiv ? 6 : 3.5, opacity: .95, lineCap: 'round', lineJoin: 'round', fill: false};
@@ -579,15 +574,15 @@ function zeichneKarte(){
   if(!_kartenRenderer) _kartenRenderer = L.svg({padding: .5});
   _flaechenEbene = L.layerGroup().addTo(satMap);
   const objekte = kartenObjekte().filter(o => _ebenenWahl[o.ebene] || (_kb && _kb.id === o.id));
-  /* Planung unten, Flächen vor Linien, damit Wege antippbar bleiben */
-  const rang = o => (o.ebene === 'planung' ? 0 : o.ebene === 'konzept' ? 1 : 2) * 2 + (o.typ === 'linie' ? 1 : 0);
+  /* Konzept unter Bestand, Flächen vor Linien, damit Wege antippbar bleiben */
+  const rang = o => (o.ebene === 'konzept' ? 0 : 1) * 2 + (o.typ === 'linie' ? 1 : 0);
   objekte.sort((a, b) => rang(a) - rang(b)).forEach(o => {
     const stil = Object.assign({renderer: _kartenRenderer}, objektStil(o, o.id === _flaecheAktiv));
     const l = o.typ === 'linie' ? L.polyline(o.geo, stil) : L.polygon(o.geo, stil);
     l._objekt = o;
     /* Namen sitzen immer am Objekt und werden nur per CSS aus- und eingeblendet (lp-ohne-namen).
-       Der Plan von 2020 bleibt ohne Namen, er ist nur Vorlage. */
-    if(o.ebene !== 'planung' && o.art !== 'Grundstücksgrenze')
+       Die Grundstücksgrenze bleibt ohne Namen. */
+    if(o.art !== 'Grundstücksgrenze')
       l.bindTooltip(escHtml(o.name), {permanent: true, direction: 'center', className: o.typ === 'linie' ? 'lp-label lp-label-weg' : 'lp-label', interactive: false, pane: 'lpNamen'});
     l.on('click', e => {
       if(placeMode) return;   /* Tipp geht durch zur Karte, sonst lässt sich in einer Fläche kein Baum setzen */
@@ -951,7 +946,7 @@ function kbLeiste(){
         <button type="button" class="btn secondary" onclick="kbGpsStart()">Per GPS gehen</button>
         <button type="button" class="btn" onclick="kbEnde()">Fertig</button>
       </div>
-      <div class="lp-bearb-hinweis">Fläche oder Linie antippen, um sie zu ändern. ${_ebenenWahl.planung ? '' : 'Den Konzeptplan blendest du über den Ebenen-Knopf ein.'}</div>`;
+      <div class="lp-bearb-hinweis">Fläche oder Linie antippen, um sie zu ändern.</div>`;
   } else if(k.modus === 'zeichnen'){
     box.innerHTML = `<div class="lp-bearb-hinweis">${k.typ === 'linie'
         ? 'Punkt für Punkt auf die Karte tippen. Zum Abschließen den letzten Punkt noch einmal antippen.'
@@ -970,8 +965,7 @@ function kbLeiste(){
   } else if(k.modus === 'objekt'){
     const o = kartenObjekt(k.id) || k.neu;
     const namen = [...new Set(kartenObjekte().map(x => x.name))].sort((a, b) => a.localeCompare(b, 'de'));
-    /* Vorschläge nur aus Eigenem: Die Arten des alten Plans sollen nicht weiterleben. */
-    const arten = [...new Set(kartenObjekte().filter(x => x.ebene !== 'planung').map(x => x.art))].sort((a, b) => a.localeCompare(b, 'de'));
+    const arten = [...new Set(kartenObjekte().map(x => x.art))].sort((a, b) => a.localeCompare(b, 'de'));
     box.innerHTML = `<div class="lp-bearb-form">
         <label>Name<input type="text" id="kb-name" list="kb-namen" value="${escAttr(o.name)}" autocomplete="off"></label>
         <label>Art<input type="text" id="kb-art" list="kb-arten" value="${escAttr(o.art)}" autocomplete="off"></label>
